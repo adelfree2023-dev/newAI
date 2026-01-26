@@ -7,11 +7,7 @@ import { APP_GUARD } from '@nestjs/core';
 @Module({
   providers: [
     TenantContextService,
-    TenantScopedGuard,
-    {
-      provide: APP_GUARD,
-      useClass: TenantScopedGuard,
-    },
+    TenantScopedGuard
   ],
   exports: [TenantContextService, TenantScopedGuard],
 })

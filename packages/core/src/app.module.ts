@@ -10,8 +10,9 @@ import { ErrorHandlingModule } from './security/layers/s5-error-handling/error-h
 import { RateLimitingModule } from './security/layers/s6-rate-limiting/rate-limit.module';
 import { EncryptionModule } from './security/layers/s7-encryption/encryption.module';
 import { WebProtectionModule } from './security/layers/s8-web-protection/web-protection.module';
-import { APP_FILTER } from '@nestjs/core';
+import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { AllExceptionsFilter } from './security/layers/s5-error-handling/exceptions/secure-exception.filter';
+import { TenantIsolationInterceptor } from './security/layers/s2-tenant-isolation/tenant-isolation.interceptor';
 import { AuditLoggerMiddleware } from './security/layers/s4-audit-logging/audit-logger.middleware';
 import { NestModule, MiddlewareConsumer } from '@nestjs/common';
 
@@ -43,6 +44,10 @@ import { NestModule, MiddlewareConsumer } from '@nestjs/common';
         {
             provide: APP_FILTER,
             useClass: AllExceptionsFilter,
+        },
+        {
+            provide: APP_INTERCEPTOR,
+            useClass: TenantIsolationInterceptor,
         },
     ],
 })
