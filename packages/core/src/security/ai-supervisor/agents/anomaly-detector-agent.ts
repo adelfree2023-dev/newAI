@@ -1,6 +1,5 @@
-```typescript
 import { Logger } from '@nestjs/common';
-import { Skill, SkillContext } from '../../shims/ai-agent-types';
+import { AgentRuntime } from '../shims/ai-agent-types';
 import { AuditService } from '../../layers/s4-audit-logging/audit.service';
 import { TenantContextService } from '../../layers/s2-tenant-isolation/tenant-context.service';
 
@@ -40,7 +39,7 @@ export class AnomalyDetectorAgent {
 
   async detectAnomalies(behaviorData: any) {
     try {
-      this.logger.debug(`[AI] 🔍 بدء كشف السلوك غير الطبيعي: ${ JSON.stringify(behaviorData) } `);
+      this.logger.debug(`[AI] 🔍 بدء كشف السلوك غير الطبيعي: ${JSON.stringify(behaviorData)} `);
 
       const tenantId = behaviorData.tenantId || this.tenantContext.getTenantId() || 'system';
       const contextType = behaviorData.contextType || 'general';
@@ -76,11 +75,11 @@ export class AnomalyDetectorAgent {
         await this.logAnomalyEvent(result);
       }
 
-      this.logger.log(`[AI] 📊 درجة السلوك غير الطبيعي: ${ combinedScore.toFixed(2) } - المستوى: ${ severity } `);
+      this.logger.log(`[AI] 📊 درجة السلوك غير الطبيعي: ${combinedScore.toFixed(2)} - المستوى: ${severity} `);
 
       return result;
     } catch (error) {
-      this.logger.error(`[AI] ❌ خطأ في كشف السلوك غير الطبيعي: ${ error.message } `);
+      this.logger.error(`[AI] ❌ خطأ في كشف السلوك غير الطبيعي: ${error.message} `);
 
       // العودة لنتيجة آمنة في حالة الخطأ
       return {
@@ -193,7 +192,7 @@ export class AnomalyDetectorAgent {
         analysisMethod: 'ai_hybrid'
       };
     } catch (error) {
-      this.logger.warn(`[AI] ⚠️ فشل التحليل بالذكاء الاصطناعي، استخدام المنهج الهجين: ${ error.message } `);
+      this.logger.warn(`[AI] ⚠️ فشل التحليل بالذكاء الاصطناعي، استخدام المنهج الهجين: ${error.message} `);
 
       // استخدام منهج هجين كخيار احتياطي
       return {
@@ -263,13 +262,13 @@ export class AnomalyDetectorAgent {
 
     // إرسال تنبيه فوري للمستويات الحرجة
     if (result.severity === 'CRITICAL' || result.severity === 'HIGH') {
-      this.logger.error(`[AI] 🚨 تنبيه فوري: سلوك غير طبيعي ${ result.severity } كشف للمستأجر: ${ result.tenantId } `);
+      this.logger.error(`[AI] 🚨 تنبيه فوري: سلوك غير طبيعي ${result.severity} كشف للمستأجر: ${result.tenantId} `);
       // سيتم إضافة إرسال التنبيهات الفعلية في الإصدار التالي
     }
   }
 
   async updateBaseline(tenantId: string, contextType: string, metrics: any) {
-    const key = `${ tenantId }:${ contextType } `;
+    const key = `${tenantId}:${contextType} `;
     this.baselineMetrics.set(key, {
       ...metrics,
       lastUpdated: new Date().toISOString(),
@@ -277,11 +276,11 @@ export class AnomalyDetectorAgent {
       contextType
     });
 
-    this.logger.debug(`[AI] 📈 تم تحديث خط الأساس للمستأجر: ${ tenantId } - السياق: ${ contextType } `);
+    this.logger.debug(`[AI] 📈 تم تحديث خط الأساس للمستأجر: ${tenantId} - السياق: ${contextType} `);
   }
 
   getBaseline(tenantId: string, contextType: string): any | null {
-    const key = `${ tenantId }:${ contextType } `;
+    const key = `${tenantId}:${contextType} `;
     return this.baselineMetrics.get(key) || null;
   }
 }
