@@ -96,13 +96,15 @@ export class TenantConnectionService implements OnModuleInit {
             await queryRunner.commitTransaction();
             this.initializedSchemas.add(schemaName);
 
-            this.logger.log(`[M2] ✅ تم تهيئة المخطط بنجاح: ${schemaName}`);
+            this.logger.log(`✅ [M2] تم تهيئة المخطط بنجاح: ${schemaName}`);
             return true;
 
         } catch (error) {
-            await queryRunner.rollbackTransaction();
+            if (queryRunner.isTransactionActive) {
+                await queryRunner.rollbackTransaction();
+            }
 
-            this.logger.error(`[M2] ❌ فشل تهيئة مخطط المستأجر ${tenantId}: ${error.message}`);
+            this.logger.error(`❌ [M2] فشل تهيئة مخطط المستأجر ${tenantId}: ${error.message}`);
 
             await this.auditService.logSecurityEvent('SCHEMA_INITIALIZATION_FAILURE', {
                 tenantId,
@@ -112,7 +114,7 @@ export class TenantConnectionService implements OnModuleInit {
                 timestamp: new Date().toISOString()
             });
 
-            throw new Error(`فشل في تهيئة مخطط المستأجر: ${error.message}`);
+            throw error;
         } finally {
             await queryRunner.release();
         }
