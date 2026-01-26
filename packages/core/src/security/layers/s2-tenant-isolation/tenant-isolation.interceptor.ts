@@ -1,9 +1,9 @@
-import { Injectable, NestInterceptor, ExecutionContext, CallHandler, Logger } from '@nestjs/common';
+import { Injectable, NestInterceptor, ExecutionContext, CallHandler, Logger, Scope } from '@nestjs/common';
 import { Observable, throwError } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
 import { TenantContextService } from './tenant-context.service';
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class TenantIsolationInterceptor implements NestInterceptor {
     private readonly logger = new Logger(TenantIsolationInterceptor.name);
 

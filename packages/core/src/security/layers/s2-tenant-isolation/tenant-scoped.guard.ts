@@ -1,9 +1,9 @@
-import { Injectable, CanActivate, ExecutionContext, ForbiddenException, Inject } from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext, ForbiddenException, Inject, Scope } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { TenantContextService } from './tenant-context.service';
 import { Logger } from '@nestjs/common';
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class TenantScopedGuard implements CanActivate {
   private readonly logger = new Logger(TenantScopedGuard.name);
 
