@@ -210,13 +210,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     this.logger[logLevel](`[S5] خطأ مفصل - النوع: ${errorDetails.errorType}, الرمز: ${statusCode}`);
 
-    if (process.env.NODE_ENV !== 'production') {
-      this.logger[logLevel](`التفاصيل التقنية: ${JSON.stringify({
-        name: exception.name,
-        message: exception.message,
-        stack: exception.stack?.split('\n').slice(0, 5)
-      }, null, 2)}`);
-    }
+    // في مرحلة التطوير الحالية، سنظهر التفاصيل حتى في الإنتاج للتشخيص
+    this.logger[logLevel](`التفاصيل التقنية: ${JSON.stringify({
+      name: exception.name,
+      message: exception.message,
+      stack: exception.stack?.split('\n').slice(0, 10)
+    }, null, 2)}`);
 
     this.logger[logLevel](`سياق الطلب: ${JSON.stringify({
       requestId: errorDetails.requestId,
