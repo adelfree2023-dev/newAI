@@ -1,0 +1,8 @@
+{
+    "projectType": "application",
+    "root": "src",
+    "sourceRoot": "src",
+    "compilerOptions": {
+        "deleteOutDir": true
+    }
+}
