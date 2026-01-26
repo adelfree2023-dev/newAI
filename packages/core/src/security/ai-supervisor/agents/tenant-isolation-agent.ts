@@ -191,3 +191,66 @@ export class TenantIsolationAgent {
     ];
   }
 }
+
+// 🚀 Main Execution Block for standalone testing
+if (require.main === module) {
+  const fs = require('fs');
+  const path = require('path');
+
+  async function runAgent() {
+    console.log('🤖 [AI] Apex Agent Security Check starting...');
+
+    const logsDir = path.join(process.cwd(), 'logs');
+    if (!fs.existsSync(logsDir)) {
+      fs.mkdirSync(logsDir, { recursive: true });
+    }
+
+    const reportPath = path.join(logsDir, 'agent-report.log');
+    const errorPath = path.join(logsDir, 'agent-errors.log');
+
+    const reportStream = fs.createWriteStream(reportPath, { flags: 'a' });
+    const errorStream = fs.createWriteStream(errorPath, { flags: 'a' });
+
+    const logToBoth = (msg: string) => {
+      console.log(msg);
+      reportStream.write(msg + '\n');
+    };
+
+    try {
+      logToBoth(`--- AGENT RUN: ${new Date().toISOString()} ---`);
+
+      // S1 Check
+      logToBoth('🔍 [S1] Checking Environment Security...');
+      const requiredVars = ['ENCRYPTION_MASTER_KEY', 'JWT_SECRET', 'DATABASE_URL'];
+      let allPresent = true;
+
+      for (const v of requiredVars) {
+        if (process.env[v]) {
+          logToBoth(`  ✅ ${v} is present`);
+        } else {
+          logToBoth(`  ❌ ${v} is missing`);
+          allPresent = false;
+        }
+      }
+
+      if (allPresent) {
+        logToBoth('✅ [S1] اجتازت البيئة جميع اختبارات الأمان');
+      } else {
+        logToBoth('❌ [S1] فشلت البيئة في اختبارات الأمان');
+        errorStream.write(`[ERROR] [S1] Missing critical environment variables at ${new Date().toISOString()}\n`);
+      }
+
+      logToBoth('✅ Agent Run Completed.');
+    } catch (error) {
+      console.error('❌ Agent Run Failed:', error);
+      errorStream.write(`[ERROR] Fatal Agent Error: ${error.message}\n`);
+    } finally {
+      reportStream.end();
+      errorStream.end();
+    }
+  }
+
+  runAgent().catch(err => {
+    console.error('Fatal execution error:', err);
+  });
+}
