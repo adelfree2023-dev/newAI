@@ -1,6 +1,6 @@
 import { Logger } from '@nestjs/common';
-import { AgentRuntime } from 'ai';
-import { AuditService } from '../../../layers/s4-audit-logging/audit.service';
+import { AgentRuntime } from '../../shims/ai-agent-types';
+import { AuditService } from '../../layers/s4-audit-logging/audit.service';
 import { VercelAgentFactory } from '../vercel-integration/vercel-agent-factory';
 
 export class TenantIsolationAgent {

@@ -5,7 +5,7 @@ import { ConfigService } from '@nestjs/config';
 export class EnvironmentValidatorService implements OnModuleInit {
   private readonly logger = new Logger(EnvironmentValidatorService.name);
 
-  constructor(private readonly configService: ConfigService) { }
+  constructor(private readonly configService?: ConfigService) { }
 
   async onModuleInit() {
     this.logger.log('🔐 [S1] بدء التحقق من البيئة والأمان...');
@@ -26,7 +26,7 @@ export class EnvironmentValidatorService implements OnModuleInit {
     ];
 
     for (const varName of criticalVars) {
-      const value = this.configService.get<string>(varName);
+      const value = this.configService ? this.configService.get<string>(varName) : process.env[varName];
       if (!value || value.trim() === '') {
         const errorMessage = `❌ [S1] متغير بيئي حرج مفقود: ${varName}. النظام سيرفض التشغيل.`;
         this.logger.error(errorMessage);
@@ -36,8 +36,8 @@ export class EnvironmentValidatorService implements OnModuleInit {
   }
 
   private validateSecretStrength() {
-    const masterKey = this.configService.get<string>('ENCRYPTION_MASTER_KEY');
-    const jwtSecret = this.configService.get<string>('JWT_SECRET');
+    const masterKey = this.configService ? this.configService.get<string>('ENCRYPTION_MASTER_KEY') : process.env['ENCRYPTION_MASTER_KEY'];
+    const jwtSecret = this.configService ? this.configService.get<string>('JWT_SECRET') : process.env['JWT_SECRET'];
 
     // التحقق من قوة المفاتيح
     const minKeyLength = 64; // 64 حرفاً كحد أدنى للأمان العالي
@@ -59,7 +59,7 @@ export class EnvironmentValidatorService implements OnModuleInit {
   }
 
   private validateEnvironmentMode() {
-    const nodeEnv = this.configService.get<string>('NODE_ENV', 'development');
+    const nodeEnv = this.configService ? this.configService.get<string>('NODE_ENV', 'development') : (process.env['NODE_ENV'] || 'development');
     const isProduction = nodeEnv === 'production';
 
     if (isProduction) {
@@ -74,7 +74,7 @@ export class EnvironmentValidatorService implements OnModuleInit {
       // التحقق من ضرورة وجود متغيرات الإنتاج فقط
       const prodVars = ['PRODUCTION_API_KEY', 'MONITORING_SERVICE_URL'];
       for (const varName of prodVars) {
-        if (!this.configService.get(varName)) {
+        if (this.configService ? !this.configService.get(varName) : !process.env[varName]) {
           this.logger.warn(`⚠️ [S1] متغير إنتاج مفقود في بيئة الإنتاج: ${varName}`);
         }
       }

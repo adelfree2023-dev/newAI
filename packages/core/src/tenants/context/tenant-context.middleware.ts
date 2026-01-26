@@ -85,7 +85,7 @@ export class TenantContextMiddleware implements NestMiddleware {
     const requestId = uuidv4();
     req['requestId'] = requestId;
 
-    this.logger.debug(`[M2] 🌐 بدء طلب جديد - المستأجر: ${tenantId || 'system'} - الطلب: ${reqId}`);
+    this.logger.debug(`[M2] 🌐 بدء طلب جديد - المستأجر: ${tenantId || 'system'} - الطلب: ${requestId}`);
 
     // يمكن إضافة تسجيل مفصل هنا
   }

@@ -1,12 +1,12 @@
-import { AgentRuntime } from 'ai';
-import { ZodSchema } from 'zod';
+import { AgentRuntime } from '../shims/ai-agent-types';
+import { z, ZodSchema } from 'zod';
 import { Logger } from '@nestjs/common';
 import { DatabaseIsolationSkill } from '../skills/database-isolation-skill';
 import { SecurityProtocolSkill } from '../skills/security-protocol-skill';
 import { ThreatIntelligenceSkill } from '../skills/threat-intelligence-skill';
 import { TenantIsolationAgent } from '../agents/tenant-isolation-agent';
 import { QualityAssuranceAgent } from '../agents/qa-agent';
-import { AuditService } from '../../../layers/s4-audit-logging/audit.service';
+import { AuditService } from '../../layers/s4-audit-logging/audit.service';
 
 export class VercelAgentFactory {
   private readonly logger = new Logger(VercelAgentFactory.name);
@@ -14,11 +14,11 @@ export class VercelAgentFactory {
   private runtime: AgentRuntime;
   private auditService: AuditService;
 
-  private constructor() {
+  constructor() {
     this.initializeRuntime();
   }
 
-  static getInstance(auditService: AuditService): VercelAgentFactory {
+  static getInstance(auditService: AuditService, vercelSkillMapper?: VercelSkillMapper): VercelAgentFactory {
     if (!VercelAgentFactory.instance) {
       VercelAgentFactory.instance = new VercelAgentFactory();
       VercelAgentFactory.instance.auditService = auditService;

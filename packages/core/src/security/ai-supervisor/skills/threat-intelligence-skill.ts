@@ -1,11 +1,11 @@
-import { Skill, SkillContext } from 'ai';
+import { Skill, SkillContext } from '../../shims/ai-agent-types';
 import { z } from 'zod';
 import { Logger } from '@nestjs/common';
 
 export class ThreatIntelligenceSkill extends Skill {
   private readonly logger = new Logger(ThreatIntelligenceSkill.name);
 
-  static get name(): string {
+  static get skillName(): string {
     return 'threat-intelligence';
   }
 
@@ -75,22 +75,22 @@ export class ThreatIntelligenceSkill extends Skill {
   async execute(context: SkillContext): Promise<any> {
     const { input } = context;
     const parsedInput = ThreatIntelligenceSkill.inputSchema.parse(input);
-    
+
     this.logger.log(`[AI] 🌐 تحليل معلومات التهديد: ${parsedInput.threatData.threatType}`);
-    
+
     try {
       // محاكاة تحليل معلومات التهديد
       const analysis = this.simulateThreatAnalysis(parsedInput);
-      
+
       // التحقق من النتائج
       const validationResult = ThreatIntelligenceSkill.outputSchema.parse(analysis);
-      
+
       this.logger.log(`[AI] ✅ اكتمل تحليل التهديد. درجة الصلة: ${validationResult.threatRelevanceScore} - الثقة: ${validationResult.confidenceLevel}`);
-      
+
       return validationResult;
     } catch (error) {
       this.logger.error(`[AI] ❌ خطأ في تحليل معلومات التهديد: ${error.message}`);
-      
+
       // العودة لنتيجة افتراضية آمنة
       return {
         threatRelevanceScore: 30,
@@ -126,7 +126,7 @@ export class ThreatIntelligenceSkill extends Skill {
     const affectedLayers: string[] = [];
     const immediateActions: any[] = [];
     const monitoringRecommendations: string[] = [];
-    
+
     // تقييم درجة صلة التهديد بناءً على النوع
     const threatRelevance = {
       'DDOS': 75,
@@ -139,12 +139,12 @@ export class ThreatIntelligenceSkill extends Skill {
       'RANSOMWARE': 95,
       'INSIDER_THREAT': 85
     };
-    
+
     threatRelevanceScore = threatRelevance[input.threatData.threatType as keyof typeof threatRelevance] || 50;
-    
+
     // تعديل الدرجة بناءً على الثقة
     threatRelevanceScore = Math.round(threatRelevanceScore * confidenceLevel);
-    
+
     // تحديد الطبقات المتأثرة بناءً على نوع التهديد
     switch (input.threatData.threatType) {
       case 'SQL_INJECTION':
@@ -157,7 +157,7 @@ export class ThreatIntelligenceSkill extends Skill {
             priority: 'CRITICAL',
             technicalDetails: 'تطبيق sanitization كامل لجميع مدخلات المستخدمين'
           });
-          
+
           immediateActions.push({
             action: 'فصل كامل على مستوى مخطط قاعدة البيانات',
             layer: 'S2',
@@ -165,12 +165,12 @@ export class ThreatIntelligenceSkill extends Skill {
             priority: 'CRITICAL',
             technicalDetails: 'فرض عزل المستأجرين على مستوى المخطط'
           });
-          
+
           monitoringRecommendations.push('مراقبة جميع استعلامات قاعدة البيانات غير العادية');
           monitoringRecommendations.push('تنبيه فوري عند محاولة الوصول إلى جداول النظام');
         }
         break;
-        
+
       case 'DDOS':
         affectedLayers.push('S6', 'S8');
         if (threatRelevanceScore > 70) {
@@ -181,7 +181,7 @@ export class ThreatIntelligenceSkill extends Skill {
             priority: 'CRITICAL',
             technicalDetails: 'حدود صارمة مع كشف سلوكي متقدم'
           });
-          
+
           immediateActions.push({
             action: 'تفعيل حماية DDoS على مستوى الشبكة',
             layer: 'S8',
@@ -189,17 +189,17 @@ export class ThreatIntelligenceSkill extends Skill {
             priority: 'HIGH',
             technicalDetails: 'دمج مع مقدمي خدمات الحماية من DDoS'
           });
-          
+
           monitoringRecommendations.push('مراقبة أنماط حركة المرور غير العادية');
-          monitoringRecommendations.push('تنبيه عند تجاوز عتبات الاستخدام';
+          monitoringRecommendations.push('تنبيه عند تجاوز عتبات الاستخدام');
         }
         break;
-        
+
       case 'DATA_EXFILTRATION':
       case 'RANSOMWARE':
         affectedLayers.push('S2', 'S7', 'S4');
         threatRelevanceScore = Math.max(threatRelevanceScore, 90);
-        
+
         immediateActions.push({
           action: 'إيقاف فوري لجميع واجهات برمجة التطبيقات الخارجية',
           layer: 'S8',
@@ -207,7 +207,7 @@ export class ThreatIntelligenceSkill extends Skill {
           priority: 'CRITICAL',
           technicalDetails: 'عزل كامل للنظام حتى اكتمال التحقيق'
         });
-        
+
         immediateActions.push({
           action: 'تفعيل آلية الاسترداد من النسخ الاحتياطية',
           layer: 'S4',
@@ -215,7 +215,7 @@ export class ThreatIntelligenceSkill extends Skill {
           priority: 'CRITICAL',
           technicalDetails: 'استعادة البيانات من آخر نقطة آمنة'
         });
-        
+
         immediateActions.push({
           action: 'تشفير إضافي لجميع البيانات الحساسة',
           layer: 'S7',
@@ -223,15 +223,15 @@ export class ThreatIntelligenceSkill extends Skill {
           priority: 'HIGH',
           technicalDetails: 'تطبيق تشفير طبقة إضافية لجميع الحقول الحساسة'
         });
-        
+
         monitoringRecommendations.push('مراقبة جميع عمليات التصدير والتنزيل غير العادية');
         monitoringRecommendations.push('تنبيه فوري عند محاولات تشفير كبيرة للبيانات');
         break;
-        
+
       case 'ZERO_DAY':
         affectedLayers.push('S1', 'S5', 'S8');
         threatRelevanceScore = Math.max(threatRelevanceScore, 95);
-        
+
         immediateActions.push({
           action: 'إيقاف فوري لجميع الخدمات غير الحرجة',
           layer: 'S8',
@@ -239,7 +239,7 @@ export class ThreatIntelligenceSkill extends Skill {
           priority: 'CRITICAL',
           technicalDetails: 'تقليل مساحة الهجوم بشكل عاجل'
         });
-        
+
         immediateActions.push({
           action: 'تحديث فوري لجميع التبعيات',
           layer: 'S1',
@@ -247,18 +247,18 @@ export class ThreatIntelligenceSkill extends Skill {
           priority: 'CRITICAL',
           technicalDetails: 'تثبيت آخر التصحيحات الأمنية لجميع المكتبات'
         });
-        
+
         monitoringRecommendations.push('مراقبة جميع نقاط الدخول للنظام');
-        monitoringRecommendations.push('تنبيه عند أي سلوك غير عادي في الذاكرة أو المعالج';
+        monitoringRecommendations.push('تنبيه عند أي سلوك غير عادي في الذاكرة أو المعالج');
         break;
     }
-    
+
     // تحديد المستأجرين المتأثرين
     const tenantImpact = this.assessTenantImpact(input, threatRelevanceScore);
-    
+
     // تحليل التأثير على الأعمال
     const businessImpact = this.analyzeBusinessImpact(input.threatData.threatType, threatRelevanceScore);
-    
+
     return {
       threatRelevanceScore,
       affectedLayers,
@@ -277,7 +277,7 @@ export class ThreatIntelligenceSkill extends Skill {
   private assessTenantImpact(input: z.infer<typeof ThreatIntelligenceSkill.inputSchema>, threatScore: number): any {
     const highRiskPercentage = threatScore > 80 ? 15 : threatScore > 60 ? 5 : 1;
     const mediumRiskPercentage = threatScore > 70 ? 30 : threatScore > 50 ? 15 : 5;
-    
+
     // في الإصدار الحقيقي، سيتم حساب ذلك بناءً على بيانات فعلية
     return {
       highRiskTenants: threatScore > 80 ? [input.tenantId || 'premium-tenant'] : [],
@@ -289,7 +289,7 @@ export class ThreatIntelligenceSkill extends Skill {
   private analyzeBusinessImpact(threatType: string, threatScore: number): any {
     const impactLevels = {
       'DATA_EXFILTRATION': 'CRITICAL',
-      'RANSOMWARE': 'CRITICAL', 
+      'RANSOMWARE': 'CRITICAL',
       'ZERO_DAY': 'HIGH',
       'SQL_INJECTION': 'HIGH',
       'DDOS': 'MEDIUM',
@@ -298,9 +298,9 @@ export class ThreatIntelligenceSkill extends Skill {
       'PHISHING': 'LOW',
       'INSIDER_THREAT': 'HIGH'
     };
-    
+
     const financialImpact = impactLevels[threatType as keyof typeof impactLevels] || 'MEDIUM';
-    
+
     return {
       potentialDataLoss: threatScore > 80 ? 'CRITICAL' : threatScore > 60 ? 'HIGH' : 'MEDIUM',
       systemDowntimeEstimate: threatScore > 80 ? '24-48 hours' : threatScore > 60 ? '4-12 hours' : '1-4 hours',

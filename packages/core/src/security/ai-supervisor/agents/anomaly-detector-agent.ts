@@ -1,7 +1,7 @@
 import { Logger } from '@nestjs/common';
-import { AgentRuntime } from 'ai';
-import { AuditService } from '../../../layers/s4-audit-logging/audit.service';
-import { TenantContextService } from '../../../layers/s2-tenant-isolation/tenant-context.service';
+import { AgentRuntime } from '../../shims/ai-agent-types';
+import { AuditService } from '../../layers/s4-audit-logging/audit.service';
+import { TenantContextService } from '../../layers/s2-tenant-isolation/tenant-context.service';
 
 export class AnomalyDetectorAgent {
   private readonly logger = new Logger(AnomalyDetectorAgent.name);
@@ -40,22 +40,22 @@ export class AnomalyDetectorAgent {
   async detectAnomalies(behaviorData: any) {
     try {
       this.logger.debug(`[AI] 🔍 بدء كشف السلوك غير الطبيعي: ${JSON.stringify(behaviorData)}`);
-      
+
       const tenantId = behaviorData.tenantId || this.tenantContext.getTenantId() || 'system';
       const contextType = behaviorData.contextType || 'general';
-      
+
       // 1. التحقق من الأنماط المعروفة
       const knownPatternScore = this.checkKnownPatterns(behaviorData, contextType);
-      
+
       // 2. التحليل باستخدام الذكاء الاصطناعي
       const aiAnalysis = await this.performAIAnalysis(behaviorData, tenantId, contextType);
-      
+
       // 3. دمج النتائج
-      const combinedScore = this.combineScores(knownPatternScore, aiAnalysis.anomalyScore);
-      
+      const combinedScore = this.combineScores(knownPatternScore.score, aiAnalysis.anomalyScore);
+
       // 4. تحديد مستوى الخطورة
       const severity = this.determineSeverity(combinedScore, aiAnalysis.confidence);
-      
+
       const result = {
         anomalyDetected: severity !== 'LOW',
         anomalyScore: combinedScore,
@@ -69,18 +69,18 @@ export class AnomalyDetectorAgent {
         rawData: behaviorData,
         modelVersion: 'apex-anomaly-v1.2'
       };
-      
+
       // تسجيل الحدث الأمني إذا كان السلوك غير طبيعي
       if (result.anomalyDetected && severity !== 'LOW') {
         await this.logAnomalyEvent(result);
       }
-      
+
       this.logger.log(`[AI] 📊 درجة السلوك غير الطبيعي: ${combinedScore.toFixed(2)} - المستوى: ${severity}`);
-      
+
       return result;
     } catch (error) {
       this.logger.error(`[AI] ❌ خطأ في كشف السلوك غير الطبيعي: ${error.message}`);
-      
+
       // العودة لنتيجة آمنة في حالة الخطأ
       return {
         anomalyDetected: false,
@@ -101,7 +101,7 @@ export class AnomalyDetectorAgent {
     const patterns = this.anomalyPatterns.get(contextType) || [];
     let totalScore = 0;
     const detectedPatterns: any[] = [];
-    
+
     // استخدام معايير مختلفة لكل نوع من السياقات
     const contextRules = {
       'database': {
@@ -120,22 +120,22 @@ export class AnomalyDetectorAgent {
         maxParameters: 50
       }
     };
-    
+
     const rules = contextRules[contextType as keyof typeof contextRules] || {};
-    
+
     // التحقق من القواعد الأساسية
     if (behaviorData.requestCount && rules.maxRequestsPerSecond) {
-      const rateScore = behaviorData.requestCount / rules.maxRequestsPerSecond;
+      const rateScore = behaviorData.requestCount / (rules as any).maxRequestsPerSecond;
       if (rateScore > 1.5) {
         totalScore += Math.min(1.0, rateScore * 0.3);
-        detectedPatterns.push({ 
-          type: 'excessive_rate', 
+        detectedPatterns.push({
+          type: 'excessive_rate',
           score: rateScore,
-          threshold: rules.maxRequestsPerSecond
+          threshold: (rules as any).maxRequestsPerSecond
         });
       }
     }
-    
+
     // التحقق من الأنماط المحددة مسبقاً
     for (const pattern of patterns) {
       if (this.matchesPattern(behaviorData, pattern.pattern)) {
@@ -143,7 +143,7 @@ export class AnomalyDetectorAgent {
         detectedPatterns.push(pattern);
       }
     }
-    
+
     return {
       score: Math.min(1.0, totalScore),
       patterns: detectedPatterns
@@ -152,7 +152,7 @@ export class AnomalyDetectorAgent {
 
   private matchesPattern(behaviorData: any, pattern: string): boolean {
     const lowerData = JSON.stringify(behaviorData).toLowerCase();
-    
+
     const patternMatches = {
       'cross_tenant_query': /cross.tenant|other.tenant|external.schema/i.test(lowerData),
       'system_schema_access': /system.schema|pg_catalog|information_schema/i.test(lowerData),
@@ -163,7 +163,7 @@ export class AnomalyDetectorAgent {
       'unusual_endpoint_access': /admin|debug|internal|config/i.test(lowerData),
       'parameter_tampering': /sql.injection|xss|command.injection/i.test(lowerData)
     };
-    
+
     return patternMatches[pattern as keyof typeof patternMatches] || false;
   }
 
@@ -181,9 +181,9 @@ export class AnomalyDetectorAgent {
           isolationLevel: 'SCHEMA'
         }
       };
-      
+
       const result = await this.runtime.executeSkill('anomaly-detection', context);
-      
+
       return {
         anomalyScore: result.score || 0.5,
         confidence: result.confidence || 0.8,
@@ -193,7 +193,7 @@ export class AnomalyDetectorAgent {
       };
     } catch (error) {
       this.logger.warn(`[AI] ⚠️ فشل التحليل بالذكاء الاصطناعي، استخدام المنهج الهجين: ${error.message}`);
-      
+
       // استخدام منهج هجين كخيار احتياطي
       return {
         anomalyScore: 0.3,
@@ -210,7 +210,7 @@ export class AnomalyDetectorAgent {
     // هنا نستخدم بيانات محاكاة
     const now = new Date();
     const metrics = [];
-    
+
     for (let i = 1; i <= 60; i++) {
       const timestamp = new Date(now.getTime() - i * 60000);
       metrics.push({
@@ -220,7 +220,7 @@ export class AnomalyDetectorAgent {
         anomalyScore: Math.random() * 0.3
       });
     }
-    
+
     return metrics;
   }
 
@@ -243,9 +243,9 @@ export class AnomalyDetectorAgent {
       'MEDIUM': 2,
       'LOW': 1
     };
-    
+
     const severityValue = severityLevels[result.severity as keyof typeof severityLevels] || 1;
-    
+
     await this.auditService.logSecurityEvent('ANOMALY_DETECTED', {
       tenantId: result.tenantId,
       severity: result.severity,
@@ -259,7 +259,7 @@ export class AnomalyDetectorAgent {
       modelVersion: result.modelVersion,
       timestamp: new Date().toISOString()
     });
-    
+
     // إرسال تنبيه فوري للمستويات الحرجة
     if (result.severity === 'CRITICAL' || result.severity === 'HIGH') {
       this.logger.error(`[AI] 🚨 تنبيه فوري: سلوك غير طبيعي ${result.severity} كشف للمستأجر: ${result.tenantId}`);
@@ -275,7 +275,7 @@ export class AnomalyDetectorAgent {
       tenantId,
       contextType
     });
-    
+
     this.logger.debug(`[AI] 📈 تم تحديث خط الأساس للمستأجر: ${tenantId} - السياق: ${contextType}`);
   }
 

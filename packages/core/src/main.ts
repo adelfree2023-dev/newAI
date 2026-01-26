@@ -3,7 +3,7 @@ import { AppModule } from './app.module';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
 import * as csurf from 'csurf';
-import * as rateLimit from 'express-rate-limit';
+import { rateLimit } from 'express-rate-limit';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AllExceptionsFilter } from './security/layers/s5-error-handling/exceptions/secure-exception.filter';
 import { AuditLoggerMiddleware } from './security/layers/s4-audit-logging/audit-logger.middleware';
@@ -19,7 +19,8 @@ async function bootstrap() {
   try {
     // S1: التحقق من البيئة قبل أي شيء
     logger.log('🚀 [S1] بدء التحقق من البيئة والأمان...');
-    const environmentValidator = new EnvironmentValidatorService();
+    // تمرير نسخة بسيطة من ConfigService للتحقق الأولي
+    const environmentValidator = new EnvironmentValidatorService(new ConfigService(process.env));
     await environmentValidator.onModuleInit();
     logger.log('✅ [S1] اجتازت البيئة جميع اختبارات الأمان');
 
@@ -143,7 +144,9 @@ async function bootstrap() {
     logger.log('✅ [S4 & S2] تم تفعيل تسجيل التدقيق وعزل المستأجرين');
 
     // S5: معالجة الأخطاء الآمنة
-    app.useGlobalFilters(new AllExceptionsFilter());
+    const auditService = app.get(AuditService);
+    const tenantContext = app.get(TenantContextService);
+    app.useGlobalFilters(new AllExceptionsFilter(auditService, tenantContext));
     logger.log('✅ [S5] تم تفعيل معالجة الأخطاء الآمنة');
 
     // Swagger Configuration (للتطوير فقط)

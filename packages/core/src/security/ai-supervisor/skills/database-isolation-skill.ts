@@ -1,11 +1,11 @@
-import { Skill, SkillContext } from 'ai';
+import { Skill, SkillContext } from '../../shims/ai-agent-types';
 import { z } from 'zod';
 import { Logger } from '@nestjs/common';
 
 export class DatabaseIsolationSkill extends Skill {
   private readonly logger = new Logger(DatabaseIsolationSkill.name);
 
-  static get name(): string {
+  static get skillName(): string {
     return 'database-isolation';
   }
 
