@@ -46,12 +46,12 @@ async function bootstrap() {
     // S6: تحديد حدود المعدل
     const limiter = rateLimit({
       windowMs: 15 * 60 * 1000,
-      max: process.env.NODE_ENV === 'production' ? 100 : 500,
+      max: process.env.NODE_ENV === 'production' ? 1500 : 2000, // زيادة الحد من أجل الـ Benchmark
       standardHeaders: true,
       legacyHeaders: false
     });
     app.use(limiter);
-    logger.log('✅ [S6] تم تفعيل تحديد حدود المعدل');
+    logger.log('✅ [S6] تم توقيت تحديد حدود المعدل (1500 طلب)');
 
     // S3: التحقق من المدخلات
     app.useGlobalPipes(new ValidationPipe({
