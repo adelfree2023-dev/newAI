@@ -1,4 +1,4 @@
-import { Skill, SkillContext } from '../shims/ai-agent-types';
+import { Skill, SkillContext } from '../../shims/ai-agent-types';
 import { z } from 'zod';
 import { Logger } from '@nestjs/common';
 

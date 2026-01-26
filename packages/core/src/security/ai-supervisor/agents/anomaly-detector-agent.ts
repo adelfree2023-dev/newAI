@@ -1,6 +1,6 @@
 ```typescript
 import { Logger } from '@nestjs/common';
-import { Skill, SkillContext } from '../shims/ai-agent-types';
+import { Skill, SkillContext } from '../../shims/ai-agent-types';
 import { AuditService } from '../../layers/s4-audit-logging/audit.service';
 import { TenantContextService } from '../../layers/s2-tenant-isolation/tenant-context.service';
 

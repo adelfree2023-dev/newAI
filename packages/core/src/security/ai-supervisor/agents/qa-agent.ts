@@ -1,5 +1,5 @@
 import { Logger } from '@nestjs/common';
-import { AgentRuntime } from '../shims/ai-agent-types';
+import { AgentRuntime } from '../../shims/ai-agent-types';
 import { AuditService } from '../../layers/s4-audit-logging/audit.service';
 
 /**
