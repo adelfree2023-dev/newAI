@@ -97,7 +97,7 @@ export class TenantContextService {
     return isValid;
   }
 
-  private logSecurityIncident(type: string, details: any) {
+  public logSecurityIncident(type: string, details: any) {
     const incidentId = uuidv4();
     this.logger.error(`[S2] 🔒 حادث أمني [${incidentId}] - النوع: ${type}`);
     this.logger.error(JSON.stringify({
