@@ -4,9 +4,11 @@ import { TenantContextService } from './tenant-context.service';
 
 @Injectable()
 export class TenantIsolationInterceptor implements NestInterceptor {
-    private readonly logger = new Logger(TenantIsolationInterceptor.name);
+    private logger: Logger;
 
-    constructor(private readonly tenantContext: TenantContextService) { }
+    constructor(private readonly tenantContext: TenantContextService) {
+        this.logger = new Logger(TenantIsolationInterceptor.name);
+    }
 
     async intercept(context: ExecutionContext, next: CallHandler): Promise<Observable<any>> {
         const request = context.switchToHttp().getRequest();
