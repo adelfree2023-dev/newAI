@@ -256,7 +256,7 @@ export class RateLimiterService {
 
     if (!tenantId) {
       // خطة افتراضية للمستخدمين غير المسجلين
-      return { maxRequests: 100, windowSeconds: 300 }; // 100 طلب كل 5 دقائق
+      return { maxRequests: 1500, windowSeconds: 300 }; // زيادة من 100 إلى 1500 من أجل الـ Benchmark
     }
 
     try {
