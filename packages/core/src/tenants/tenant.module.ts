@@ -14,9 +14,12 @@ import { APP_INTERCEPTOR } from '@nestjs/core';
 import { TenantContextInterceptor } from './context/tenant-context.interceptor';
 import { Scope } from '@nestjs/common';
 
+import { TenantController } from './tenant.controller';
+
 @Global()
 @Module({
   imports: [AISupervisorModule],
+  controllers: [TenantController],
   providers: [
     TenantService,
     SchemaManagerService,

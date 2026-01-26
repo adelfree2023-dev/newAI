@@ -7,10 +7,12 @@ import { ConfigModule } from '@nestjs/config';
 import { VercelAgentFactory } from './vercel-integration/vercel-agent-factory';
 import { VercelSkillMapper } from './vercel-integration/vercel-skill-mapper';
 import { TestGenerationSkill } from './skills/test-generation-skill';
+import { TestController } from './test/test.controller';
 
 @Global()
 @Module({
   imports: [ConfigModule],
+  controllers: [TestController],
   providers: [
     AISecuritySupervisorService,
     AuditService,
