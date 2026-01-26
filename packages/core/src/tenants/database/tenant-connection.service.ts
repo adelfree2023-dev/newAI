@@ -158,6 +158,11 @@ export class TenantConnectionService implements OnModuleInit {
       )
     `);
 
+        // إنشاء فهرس على اسم المنتج
+        await queryRunner.query(`
+      CREATE INDEX IF NOT EXISTS "idx_${schemaName}_products_name" ON "${schemaName}"."products" (name)
+    `);
+
         // إنشاء جدول الإعدادات
         await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS "${schemaName}"."settings" (

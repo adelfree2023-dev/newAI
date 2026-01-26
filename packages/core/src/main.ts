@@ -43,29 +43,24 @@ async function bootstrap() {
     }));
     logger.log('✅ [S8] تم تفعيل رؤوس الأمان HTTP');
 
-    // S6: تحديد حدود المعدل (Smart Rate Limiting)
+    // S6: تحديد حدود المعدل (Rate Limiting)
+    const isBenchmarkMode = process.env.BENCHMARK_MODE === 'true';
     // نسمح بطلبات إنشاء المستأجرين (Tenants) لتسهيل الـ Benchmark
     const limiter = rateLimit({
       windowMs: 15 * 60 * 1000, // 15 دقيقة
-      max: process.env.NODE_ENV === 'production' ? 100 : 1000,
+      max: isBenchmarkMode ? 10000 : (process.env.NODE_ENV === 'production' ? 100 : 1000),
       standardHeaders: true,
       legacyHeaders: false,
       // استثناء ذكي: تخطي الحد إذا كان الطلب إنشاء مستأجر جديد
       skip: (req, res) => {
-        // [Debug] تسجيل المسار للتحقق من سبب الفشل
-        // console.log(`[S6 Debug] ${req.method} ${req.path} (${req.originalUrl})`);
-
-        // التحقق من المسار بشكل أكثر مرونة
-        const isTenantCreation = (
-          req.path === '/api/tenants' ||
-          (req.originalUrl && req.originalUrl.includes('/api/tenants'))
-        ) && req.method === 'POST';
-
-        return isTenantCreation;
+        if (isBenchmarkMode && req.path === '/api/tenants' && req.method === 'POST') {
+          return true;
+        }
+        return false;
       },
       handler: (req, res, next, options) => {
-        const logger = new Logger('RateLimit');
-        logger.warn(`[S6] 🚨 تجاوز حد المعدل من IP: ${req.ip}`);
+        const rateLimitLogger = new Logger('RateLimit');
+        rateLimitLogger.warn(`[S6] 🚨 تجاوز حد المعدل من IP: ${req.ip}`);
         res.status(429).json({
           statusCode: 429,
           message: 'تم تجاوز حد الطلبات. يرجى المحاولة لاحقاً.',
@@ -75,7 +70,7 @@ async function bootstrap() {
       }
     });
     app.use(limiter);
-    logger.log('✅ [S6] تم تفعيل تحديد حدود المعدل الذكي (Smart Rate Limit)');
+    logger.log(`✅ [S6] تم تفعيل تحديد حدود المعدل ${isBenchmarkMode ? '(وضع الاختبار)' : '(الوضع العادي)'}`);
 
     // S3: التحقق من المدخلات
     app.useGlobalPipes(new ValidationPipe({
