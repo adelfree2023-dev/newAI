@@ -3,9 +3,9 @@ import { Observable, throwError } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
 import { TenantContextService } from './tenant-context.service';
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class TenantIsolationInterceptor implements NestInterceptor {
-    private readonly logger = new Logger(TenantIsolationInterceptor.name);
+    private static readonly logger = new Logger(TenantIsolationInterceptor.name);
 
     constructor(
         private readonly tenantContext: TenantContextService
@@ -17,20 +17,20 @@ export class TenantIsolationInterceptor implements NestInterceptor {
         const methodName = context.getHandler().name;
 
         try {
-            this.logger.debug(`[S2] 🔄 بدء اعتراض الطلب: ${className}.${methodName}`);
+            TenantIsolationInterceptor.logger.debug(`[S2] 🔄 بدء اعتراض الطلب: ${className}.${methodName}`);
 
             // 1. التحقق من سياق المستأجر
             const tenantId = this.tenantContext.getTenantId();
 
             if (!tenantId && !this.tenantContext.isSystemContext()) {
-                this.logger.warn(`[S2] ⚠️ سياق المستأجر غير مهيأ للطلب: ${className}.${methodName}`);
+                TenantIsolationInterceptor.logger.warn(`[S2] ⚠️ سياق المستأجر غير مهيأ للطلب: ${className}.${methodName}`);
 
                 // محاولة استخراج tenantId من الطلب
                 const extractedTenantId = this.extractTenantIdFromRequest(request, context);
 
                 if (extractedTenantId) {
                     this.tenantContext.forceTenantContext(extractedTenantId);
-                    this.logger.log(`[S2] ✅ تم إدخال سياق المستأجر تلقائياً: ${extractedTenantId}`);
+                    TenantIsolationInterceptor.logger.log(`[S2] ✅ تم إدخال سياق المستأجر تلقائياً: ${extractedTenantId}`);
                 } else if (!this.isExemptRoute(className, methodName)) {
                     return throwError(() => new Error('سياق المستأجر مطلوب لهذا الطلب'));
                 }
@@ -51,12 +51,12 @@ export class TenantIsolationInterceptor implements NestInterceptor {
                 tap(() => {
                     const executionTime = Date.now() - startTime;
                     if (executionTime > 1000) { // أكثر من ثانية
-                        this.logger.warn(`[S2] ⚠️ تنفيذ بطيء: ${className}.${methodName} - الوقت: ${executionTime}ms`);
+                        TenantIsolationInterceptor.logger.warn(`[S2] ⚠️ تنفيذ بطيء: ${className}.${methodName} - الوقت: ${executionTime}ms`);
                     }
                 }),
                 catchError(error => {
                     // 4. التعامل مع الأخطاء
-                    this.logger.error(`[S2] ❌ خطأ في ${className}.${methodName}: ${error.message}`);
+                    TenantIsolationInterceptor.logger.error(`[S2] ❌ خطأ في ${className}.${methodName}: ${error.message}`);
 
                     // تسجيل حدث أمني
                     this.tenantContext.logSecurityIncident('TENANT_OPERATION_FAILURE', {
@@ -72,7 +72,7 @@ export class TenantIsolationInterceptor implements NestInterceptor {
             );
 
         } catch (error) {
-            this.logger.error(`[S2] ❌ خطأ في اعتراض سياق المستأجر: ${error.message}`);
+            TenantIsolationInterceptor.logger.error(`[S2] ❌ خطأ في اعتراض سياق المستأجر: ${(error as any).message}`);
             throw error;
         }
     }
