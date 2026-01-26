@@ -10,6 +10,8 @@ import { Reflector } from '@nestjs/core';
   providers: [
     TenantContextService,
     Reflector,
+    TenantScopedGuard,
+    TenantIsolationInterceptor,
     {
       provide: APP_GUARD,
       useClass: TenantScopedGuard,
