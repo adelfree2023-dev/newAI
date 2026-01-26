@@ -19,7 +19,7 @@ export class AuditService {
   ) {
     this.requestStartTime = new Date();
     this.requestId = uuidv4();
-    
+
     // إنشاء مجلد السجلات إذا لم يكن موجوداً
     this.ensureAuditDirectory();
   }
@@ -35,7 +35,7 @@ export class AuditService {
   logSecurityEvent(eventType: string, eventData: any) {
     const auditEntry = this.createAuditEntry(eventType, eventData, 'SECURITY');
     this.writeAuditLog(auditEntry);
-    
+
     this.logger.log(`[S4] 🔐 حدث أمني: ${eventType}`);
     this.logger.debug(JSON.stringify(auditEntry, null, 2));
   }
@@ -43,21 +43,21 @@ export class AuditService {
   logBusinessEvent(eventType: string, eventData: any) {
     const auditEntry = this.createAuditEntry(eventType, eventData, 'BUSINESS');
     this.writeAuditLog(auditEntry);
-    
+
     this.logger.debug(`[S4] 💼 حدث تجاري: ${eventType}`);
   }
 
   logSystemEvent(eventType: string, eventData: any) {
     const auditEntry = this.createAuditEntry(eventType, eventData, 'SYSTEM');
     this.writeAuditLog(auditEntry);
-    
+
     this.logger.debug(`[S4] ⚙️ حدث نظام: ${eventType}`);
   }
 
   private createAuditEntry(eventType: string, eventData: any, category: string) {
     const currentTime = new Date();
     const processingTime = currentTime.getTime() - this.requestStartTime.getTime();
-    
+
     return {
       id: `${category.toLowerCase()}-${uuidv4()}`,
       timestamp: currentTime.toISOString(),
@@ -87,55 +87,57 @@ export class AuditService {
 
   private sanitizeEventData(data: any): any {
     if (!data) return data;
-    
+
     // إزالة البيانات الحساسة من السجلات
     const sensitiveFields = [
-      'password', 'token', 'secret', 'apiKey', 'privateKey', 
+      'password', 'token', 'secret', 'apiKey', 'privateKey',
       'creditCard', 'cvv', 'cardNumber', 'ssn', 'socialSecurityNumber'
     ];
-    
+
     if (typeof data === 'string') {
-      return data.replace(/(password|token|secret|apiKey|privateKey|creditCard|cvv|cardNumber|ssn|socialSecurityNumber)[:\s]*["']?[^"'\s]+["']?/gi, 
+      return data.replace(/(password|token|secret|apiKey|privateKey|creditCard|cvv|cardNumber|ssn|socialSecurityNumber)[:\s]*["']?[^"'\s]+["']?/gi,
         match => {
           const field = match.split(':')[0];
           return `${field}: [REDACTED]`;
         });
     }
-    
+
     if (typeof data === 'object') {
       const sanitized = Array.isArray(data) ? [...data] : { ...data };
-      
+
       for (const key of Object.keys(sanitized)) {
         const lowerKey = key.toLowerCase();
-        
+
         // إخفاء الحقول الحساسة
         if (sensitiveFields.some(field => lowerKey.includes(field))) {
           sanitized[key] = '[REDACTED]';
           continue;
         }
-        
+
         // معالجة كائنات داخلية
         if (typeof sanitized[key] === 'object' && sanitized[key] !== null) {
           sanitized[key] = this.sanitizeEventData(sanitized[key]);
         }
       }
-      
+
       return sanitized;
     }
-    
+
     return data;
   }
 
   private getUserIdFromRequest(): string | null {
-    return this.request.user?.id || 
-           this.request.headers['x-user-id']?.toString() || 
-           null;
+    const req = this.request as any;
+    return req.user?.id ||
+      req.headers['x-user-id']?.toString() ||
+      null;
   }
 
   private getUserEmailFromRequest(): string | null {
-    return this.request.user?.email || 
-           this.request.headers['x-user-email']?.toString() || 
-           null;
+    const req = this.request as any;
+    return req.user?.email ||
+      req.headers['x-user-email']?.toString() ||
+      null;
   }
 
   private getClientIp(): string {
@@ -150,10 +152,10 @@ export class AuditService {
     try {
       const dateStr = new Date().toISOString().split('T')[0];
       const logFile = join(this.auditDir, `${dateStr}-${auditEntry.category.toLowerCase()}.log`);
-      
+
       const logEntry = JSON.stringify(auditEntry) + '\n';
       await fs.appendFile(logFile, logEntry);
-      
+
       // إذا كان حدثاً خطيراً، اكتب نسخة منفصلة
       if (auditEntry.category === 'SECURITY' && ['TENANT_ISOLATION_VIOLATION', 'UNAUTHORIZED_ACCESS', 'DATA_BREACH_ATTEMPT'].includes(auditEntry.eventType)) {
         const criticalFile = join(this.auditDir, `${dateStr}-critical-security.log`);
