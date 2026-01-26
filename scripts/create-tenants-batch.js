@@ -44,7 +44,15 @@ async function createTenantsBatch() {
                     }
                 })
                     .then(() => ({ status: 'fulfilled', id: tenantId }))
-                    .catch((err) => ({ status: 'rejected', id: tenantId, error: err.message }))
+                    .catch((err) => ({
+                        status: 'rejected',
+                        id: tenantId,
+                        error: {
+                            message: err.message,
+                            status: err.response?.status || 'UNKNOWN',
+                            data: err.response?.data || 'NO_DATA'
+                        }
+                    }))
             );
         }
 
@@ -62,6 +70,16 @@ async function createTenantsBatch() {
             const logMsg = `✅ الدفعة ${Math.floor(i / batchSize) + 1}: ${successes} نجاح، ${failures} فشل`;
             console.log(logMsg);
             fs.appendFileSync(outputLog, logMsg + '\n');
+
+            // تسجيل تفاصيل الأخطاء (Detailed Error Logging)
+            if (failures > 0) {
+                const failedRequests = results.filter(r => r.status === 'rejected');
+                failedRequests.slice(0, 3).forEach(f => {
+                    const errorMsg = `❌ Error Detail: [${f.error.status}] ${JSON.stringify(f.error.data)}`;
+                    console.error(errorMsg);
+                    fs.appendFileSync(outputLog, errorMsg + '\n');
+                });
+            }
 
             // التأخير بين الدفعات لتخفيف الحمل
             if (i + batchSize < totalTenants) {
