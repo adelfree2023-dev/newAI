@@ -1,4 +1,4 @@
-export * from './ai-supervisor.service';
+export * from './ai-security-supervisor.service';
 export * from './ai-supervisor.module';
 export * from './agents/tenant-isolation-agent';
 export * from './agents/security-analyst-agent';

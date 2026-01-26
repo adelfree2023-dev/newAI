@@ -12,6 +12,7 @@ import { AISupervisorModule } from '../security/ai-supervisor/ai-supervisor.modu
 import { VercelSkillMapper } from '../security/ai-supervisor/vercel-integration/vercel-skill-mapper';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { TenantContextInterceptor } from './context/tenant-context.interceptor';
+import { Scope } from '@nestjs/common';
 
 @Global()
 @Module({
@@ -22,7 +23,7 @@ import { TenantContextInterceptor } from './context/tenant-context.interceptor';
     {
       provide: TenantDatabaseService,
       useClass: TenantDatabaseService,
-      scope: 'REQUEST'
+      scope: Scope.REQUEST
     },
     IsolationValidatorService,
     TenantContextService,
@@ -30,7 +31,7 @@ import { TenantContextInterceptor } from './context/tenant-context.interceptor';
     EncryptionService,
     {
       provide: VercelAgentFactory,
-      useFactory: (auditService: AuditService, vercelSkillMapper: VercelSkillMapper) => 
+      useFactory: (auditService: AuditService, vercelSkillMapper: VercelSkillMapper) =>
         VercelAgentFactory.getInstance(auditService, vercelSkillMapper),
       inject: [AuditService, VercelSkillMapper]
     },
@@ -51,22 +52,22 @@ export class TenantModule implements OnModuleInit {
   constructor(
     private readonly schemaManager: SchemaManagerService,
     private readonly tenantService: TenantService
-  ) {}
+  ) { }
 
   async onModuleInit() {
     try {
       this.schemaManager.logger.log('🏗️ [M2] 🔄 بدء تهيئة نظام المستأجرين...');
-      
+
       // التحقق من وجود مخطط النظام
       await this.schemaManager.ensureSystemSchemaExists();
-      
+
       // تحميل المستأجرين النشطين
       await this.tenantService.loadActiveTenants();
-      
+
       this.schemaManager.logger.log('✅ [M2] ✅ اكتملت تهيئة نظام المستأجرين بنجاح');
     } catch (error) {
       this.schemaManager.logger.error(`❌ [M2] ❌ فشل تهيئة نظام المستأجرين: ${error.message}`);
-      
+
       // في حالة الفشل، محاولة الاسترداد
       if (error.message.includes('DATABASE_CONNECTION_FAILED')) {
         this.schemaManager.logger.error('[M2] 🚨 اتصال قاعدة البيانات فاشل. النظام سيعمل في وضع آمن');

@@ -124,7 +124,7 @@ export class AnomalyDetectorAgent {
     const rules = contextRules[contextType as keyof typeof contextRules] || {};
 
     // التحقق من القواعد الأساسية
-    if (behaviorData.requestCount && rules.maxRequestsPerSecond) {
+    if (behaviorData.requestCount && (rules as any).maxRequestsPerSecond) {
       const rateScore = behaviorData.requestCount / (rules as any).maxRequestsPerSecond;
       if (rateScore > 1.5) {
         totalScore += Math.min(1.0, rateScore * 0.3);

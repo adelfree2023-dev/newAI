@@ -1,5 +1,3 @@
-import { generateText, streamText } from '../shims/ai-agent-types';
-
 export interface SkillContext {
     timestamp: string;
     [key: string]: any;

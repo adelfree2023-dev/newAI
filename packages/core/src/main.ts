@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { Logger, ValidationPipe } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
 import * as csurf from 'csurf';
 import { rateLimit } from 'express-rate-limit';
@@ -12,6 +13,7 @@ import { AISecuritySupervisorService } from './security/ai-supervisor/ai-securit
 import { EnvironmentValidatorService } from './security/layers/s1-environment-verification/environment-validator.service';
 import { TenantContextMiddleware } from './tenants/context/tenant-context.middleware';
 import { TenantService } from './tenants/tenant.service';
+import { AuditService } from './security/layers/s4-audit-logging/audit.service';
 import { VercelAgentFactory } from './security/ai-supervisor/vercel-integration/vercel-agent-factory';
 
 async function bootstrap() {

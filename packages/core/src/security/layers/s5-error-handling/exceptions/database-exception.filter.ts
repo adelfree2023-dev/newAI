@@ -7,23 +7,23 @@ import { TenantContextService } from '../../s2-tenant-isolation/tenant-context.s
 @Catch(QueryFailedError)
 export class DatabaseExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(DatabaseExceptionFilter.name);
-  
+
   constructor(
     private readonly auditService: AuditService,
     private readonly tenantContext: TenantContextService
-  ) {}
+  ) { }
 
   catch(exception: QueryFailedError, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const request = ctx.getRequest<Request>();
     const response = ctx.getResponse<Response>();
-    
+
     const requestId = request['requestId'] || 'unknown';
     const tenantId = this.tenantContext.getTenantId() || 'system';
-    
+
     // تحليل خطأ قاعدة البيانات
     const errorAnalysis = this.analyzeDatabaseError(exception, request, requestId, tenantId);
-    
+
     // تسجيل الحدث الأمني
     this.auditService.logSecurityEvent('DATABASE_ERROR', {
       errorType: errorAnalysis.errorType,
@@ -34,21 +34,21 @@ export class DatabaseExceptionFilter implements ExceptionFilter {
       details: errorAnalysis.details,
       timestamp: new Date().toISOString()
     });
-    
+
     // تحديد استجابة المستخدم
     const userResponse = this.createUserResponse(errorAnalysis, exception);
-    
+
     // تسجيل تفصيلي
     this.logDetailedError(errorAnalysis, exception);
-    
+
     // إرسال الاستجابة
     response.status(errorAnalysis.statusCode).json(userResponse);
   }
 
   private analyzeDatabaseError(
-    exception: QueryFailedError, 
-    request: Request, 
-    requestId: string, 
+    exception: QueryFailedError,
+    request: Request,
+    requestId: string,
     tenantId: string
   ) {
     // تحليل رمز الخطأ
@@ -56,7 +56,7 @@ export class DatabaseExceptionFilter implements ExceptionFilter {
     const errorType = this.determineErrorType(errorCode, exception);
     const severity = this.assessSeverity(errorType, exception);
     const statusCode = this.mapStatusCode(errorType);
-    
+
     return {
       errorCode,
       errorType,
@@ -78,22 +78,22 @@ export class DatabaseExceptionFilter implements ExceptionFilter {
 
   private extractErrorCode(exception: QueryFailedError): string {
     // استخراج رمز الخطأ من قاعدة البيانات
-    if (exception.driverError?.code) {
-      return exception.driverError.code;
+    if ((exception as any).driverError?.code) {
+      return (exception as any).driverError.code;
     }
-    
+
     if (exception['code']) {
       return exception['code'];
     }
-    
+
     if (exception.message.includes('duplicate key')) {
       return 'ER_DUP_ENTRY';
     }
-    
+
     if (exception.message.includes('violates foreign key constraint')) {
       return 'ER_FOREIGN_KEY_VIOLATION';
     }
-    
+
     return 'UNKNOWN_DB_ERROR';
   }
 
@@ -110,7 +110,7 @@ export class DatabaseExceptionFilter implements ExceptionFilter {
       'ER_DATA_TOO_LONG': 'DATA_OVERFLOW',
       '22001': 'DATA_OVERFLOW', // PostgreSQL string data right truncation
     };
-    
+
     return errorPatterns[errorCode] || 'GENERAL_DATABASE_ERROR';
   }
 
@@ -118,11 +118,11 @@ export class DatabaseExceptionFilter implements ExceptionFilter {
     const criticalErrors = ['MISSING_TABLE', 'ER_LOCK_DEADLOCK', 'DEADLOCK'];
     const highErrors = ['FOREIGN_KEY_VIOLATION', 'ER_LOCK_WAIT_TIMEOUT', 'LOCK_TIMEOUT'];
     const mediumErrors = ['DUPLICATE_ENTRY', 'DATA_OVERFLOW'];
-    
+
     if (criticalErrors.includes(errorType)) return 'CRITICAL';
     if (highErrors.includes(errorType)) return 'HIGH';
     if (mediumErrors.includes(errorType)) return 'MEDIUM';
-    
+
     return 'LOW';
   }
 
@@ -150,7 +150,7 @@ export class DatabaseExceptionFilter implements ExceptionFilter {
       timestamp: new Date().toISOString(),
       requestId: errorAnalysis.requestId
     };
-    
+
     switch (errorAnalysis.errorType) {
       case 'DUPLICATE_ENTRY':
         return {
@@ -158,21 +158,21 @@ export class DatabaseExceptionFilter implements ExceptionFilter {
           message: 'البيانات التي تحاول حفظها موجودة مسبقاً في النظام.',
           errorType: 'DUPLICATE_ENTRY'
         };
-        
+
       case 'MISSING_TABLE':
         return {
           ...baseResponse,
           message: 'نظام قاعدة البيانات يحتاج للصيانة. نعمل على حل المشكلة حالياً.',
           errorType: 'MISSING_TABLE'
         };
-        
+
       case 'FOREIGN_KEY_VIOLATION':
         return {
           ...baseResponse,
           message: 'محاولة ربط بيانات غير موجودة. يرجى التحقق من صحة البيانات المدخلة.',
           errorType: 'FOREIGN_KEY_VIOLATION'
         };
-        
+
       case 'LOCK_TIMEOUT':
       case 'DEADLOCK':
         return {
@@ -180,14 +180,14 @@ export class DatabaseExceptionFilter implements ExceptionFilter {
           message: 'نظام قاعدة البيانات مشغول حالياً. يرجى المحاولة مرة أخرى بعد قليل.',
           errorType: errorAnalysis.errorType
         };
-        
+
       case 'DATA_OVERFLOW':
         return {
           ...baseResponse,
           message: 'البيانات المدخلة طويلة جداً. يرجى اختصارها وإعادة المحاولة.',
           errorType: 'DATA_OVERFLOW'
         };
-        
+
       default:
         return {
           ...baseResponse,
@@ -199,56 +199,56 @@ export class DatabaseExceptionFilter implements ExceptionFilter {
 
   private redactSensitiveData(query: string): string {
     if (!query || typeof query !== 'string') return '[INVALID_QUERY]';
-    
+
     // إخفاء البيانات الحساسة في الاستعلام
     let redactedQuery = query;
-    
+
     // إخفاء كلمات المرور
     redactedQuery = redactedQuery.replace(
-      /password\s*=\s*['"][^'"]*['"]/gi, 
+      /password\s*=\s*['"][^'"]*['"]/gi,
       'password = \'[REDACTED]\''
     );
-    
+
     // إخفاء المفاتيح والأسرار
     redactedQuery = redactedQuery.replace(
       /(api_key|secret|token|auth_token|refresh_token)\s*=\s*['"][^'"]*['"]/gi,
       '$1 = \'[REDACTED]\''
     );
-    
+
     // إخفاء بيانات البطاقات الائتمانية
     redactedQuery = redactedQuery.replace(
       /(card_number|cvv|expiry_date)\s*=\s*['"][^'"]*['"]/gi,
       '$1 = \'[REDACTED]\''
     );
-    
+
     // إخفاء بيانات شخصية
     redactedQuery = redactedQuery.replace(
       /(email)\s*=\s*['"][^'"]+@[^'"]+\.[^'"]+['"]/gi,
       '$1 = \'[REDACTED]\''
     );
-    
+
     // قص الاستعلام الطويل جداً
     if (redactedQuery.length > 1000) {
       return redactedQuery.substring(0, 1000) + '... [TRUNCATED]';
     }
-    
+
     return redactedQuery;
   }
 
   private redactParameters(parameters: any): any {
     if (!parameters) return null;
-    
+
     const sensitiveFields = [
       'password', 'token', 'secret', 'apiKey', 'privateKey',
       'creditCard', 'cvv', 'cardNumber', 'ssn', 'socialSecurityNumber',
       'email', 'phone', 'mobile', 'iban', 'bankAccount'
     ];
-    
+
     const redacted: any = {};
-    
+
     for (const [key, value] of Object.entries(parameters)) {
       const lowerKey = key.toLowerCase();
-      
+
       if (sensitiveFields.some(field => lowerKey.includes(field))) {
         redacted[key] = '[REDACTED]';
       } else if (typeof value === 'string' && value.length > 100) {
@@ -257,17 +257,17 @@ export class DatabaseExceptionFilter implements ExceptionFilter {
         redacted[key] = value;
       }
     }
-    
+
     return redacted;
   }
 
   private logDetailedError(errorAnalysis: any, exception: QueryFailedError) {
-    const logMethod = errorAnalysis.severity === 'CRITICAL' || errorAnalysis.severity === 'HIGH' 
-      ? 'error' 
+    const logMethod = errorAnalysis.severity === 'CRITICAL' || errorAnalysis.severity === 'HIGH'
+      ? 'error'
       : 'warn';
-    
+
     this.logger[logMethod](`[S5] خطأ قاعدة بيانات - النوع: ${errorAnalysis.errorType}, الحدة: ${errorAnalysis.severity}`);
-    
+
     if (process.env.NODE_ENV !== 'production') {
       this.logger[logMethod](`التفاصيل التقنية: ${JSON.stringify({
         errorCode: errorAnalysis.errorCode,
@@ -275,7 +275,7 @@ export class DatabaseExceptionFilter implements ExceptionFilter {
         driverError: exception.driverError?.message
       }, null, 2)}`);
     }
-    
+
     this.logger[logMethod](`الاستعلام المعدّل: ${errorAnalysis.details.query}`);
     this.logger[logMethod](`السياق: ${JSON.stringify({
       tenantId: errorAnalysis.tenantId,

@@ -7,37 +7,37 @@ import { TenantContextService } from '../../s2-tenant-isolation/tenant-context.s
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
   private readonly logger = new Logger(AllExceptionsFilter.name);
-  
+
   constructor(
     private readonly auditService: AuditService,
     private readonly tenantContext: TenantContextService
-  ) {}
+  ) { }
 
   catch(exception: any, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const request = ctx.getRequest<Request>();
     const response = ctx.getResponse<Response>();
-    
+
     const requestId = request['requestId'] || uuidv4();
     const timestamp = new Date().toISOString();
-    
+
     // تحديد نوع الاستثناء
     const errorType = this.getErrorType(exception);
     const statusCode = this.getStatusCode(exception);
     const isProduction = process.env.NODE_ENV === 'production';
-    
+
     // تحليل الإستثناء وتسجيله
     const errorDetails = this.analyzeError(exception, request, requestId, isProduction);
-    
+
     // تسجيل الحدث الأمني
     this.logSecurityEvent(errorType, errorDetails, statusCode);
-    
+
     // رد آمن للمستخدم
     const safeResponse = this.createSafeResponse(exception, errorDetails, statusCode, isProduction);
-    
+
     // إرسال الرد
     response.status(statusCode).json(safeResponse);
-    
+
     // تسجيل تفصيلي في وحدة التحكم
     this.logDetailedError(exception, errorDetails, statusCode);
   }
@@ -71,11 +71,11 @@ export class AllExceptionsFilter implements ExceptionFilter {
   private analyzeError(exception: any, request: Request, requestId: string, isProduction: boolean) {
     const tenantId = this.tenantContext.getTenantId() || 'system';
     const userId = request.user?.id || 'anonymous';
-    
+
     // تحليل تفصيلي للخطأ
     let technicalDetails = {};
     let sensitiveData = {};
-    
+
     if (!isProduction) {
       technicalDetails = {
         stack: exception.stack?.split('\n').slice(0, 10),
@@ -83,7 +83,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
         message: exception.message
       };
     }
-    
+
     // تحليل الأخطاء الخاصة بقاعدة البيانات
     if (exception.code) {
       sensitiveData = {
@@ -91,19 +91,19 @@ export class AllExceptionsFilter implements ExceptionFilter {
         databaseErrorDetail: exception.detail,
         databaseErrorHint: exception.hint
       };
-      
+
       this.logger.warn(`[S5] خطأ في قاعدة البيانات: ${exception.code} - ${exception.message}`);
     }
-    
+
     // تحليل الأخطاء الخاصة بالمدخلات
     if (exception.name === 'ValidationError' || exception.name === 'ZodError') {
       sensitiveData = {
         validationErrors: exception.errors || exception.issues
       };
-      
-      this.logger.warn(`[S5] خطأ في التحقق من المدخلات: ${JSON.stringify(sensitiveData.validationErrors)}`);
+
+      this.logger.warn(`[S5] خطأ في التحقق من المدخلات: ${JSON.stringify((sensitiveData as any).validationErrors)}`);
     }
-    
+
     return {
       requestId,
       timestamp: new Date().toISOString(),
@@ -128,12 +128,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
       path: errorDetails.path,
       requestId: errorDetails.requestId
     };
-    
+
     // رسائل مخصصة لأنواع معينة من الأخطاء
     if (statusCode === HttpStatus.INTERNAL_SERVER_ERROR) {
       return {
         ...baseResponse,
-        message: isProduction 
+        message: isProduction
           ? 'حدث خطأ داخلي في الخادم. تم تسجيل المشكلة وسنقوم بإصلاحها قريباً.'
           : exception.message
       };
@@ -158,11 +158,11 @@ export class AllExceptionsFilter implements ExceptionFilter {
         message: 'تعارض في البيانات. قد تكون تحاول إنشاء عنصر موجود مسبقاً.'
       };
     }
-    
+
     // الاستجابة العامة
     return {
       ...baseResponse,
-      message: isProduction 
+      message: isProduction
         ? 'تعذر إتمام الطلب. يرجى المحاولة لاحقاً.'
         : exception.message || 'خطأ غير معروف'
     };
@@ -175,7 +175,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     if (errorDetails.databaseError) severity = 'HIGH';
     if (errorDetails.errorType === 'AUTHENTICATION_ERROR' && statusCode === 401) severity = 'MEDIUM';
     if (errorDetails.errorType === 'UNAUTHORIZED_ACCESS_ATTEMPT') severity = 'CRITICAL';
-    
+
     // تسجيل الحدث الأمني
     this.auditService.logSecurityEvent('ERROR_OCCURRENCE', {
       errorType,
@@ -184,7 +184,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       details: errorDetails,
       timestamp: new Date().toISOString()
     });
-    
+
     // إرسال تنبيه مباشر للأخطاء الحرجة
     if (severity === 'CRITICAL' || severity === 'HIGH') {
       this.sendImmediateAlert(errorType, errorDetails, severity);
@@ -200,15 +200,15 @@ export class AllExceptionsFilter implements ExceptionFilter {
       severity,
       details: errorDetails
     }, null, 2));
-    
+
     // هنا يمكن إضافة إرسال إشعارات للمشرفين عبر البريد أو SMS
   }
 
   private logDetailedError(exception: any, errorDetails: any, statusCode: number) {
     const logLevel = statusCode >= 500 ? 'error' : 'warn';
-    
+
     this.logger[logLevel](`[S5] خطأ مفصل - النوع: ${errorDetails.errorType}, الرمز: ${statusCode}`);
-    
+
     if (process.env.NODE_ENV !== 'production') {
       this.logger[logLevel](`التفاصيل التقنية: ${JSON.stringify({
         name: exception.name,
@@ -216,7 +216,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
         stack: exception.stack?.split('\n').slice(0, 5)
       }, null, 2)}`);
     }
-    
+
     this.logger[logLevel](`سياق الطلب: ${JSON.stringify({
       requestId: errorDetails.requestId,
       tenantId: errorDetails.tenantId,
@@ -229,24 +229,24 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
   private redactSensitiveData(data: any): any {
     if (!data || typeof data !== 'object') return data;
-    
+
     const sensitivePatterns = [
       'password', 'token', 'secret', 'key', 'auth', 'credential', 'credit', 'card', 'cvv',
       'social', 'security', 'ssn', 'iban', 'bank', 'account'
     ];
-    
+
     const redacted = { ...data };
-    
+
     for (const key of Object.keys(redacted)) {
       const lowerKey = key.toLowerCase();
-      
+
       if (sensitivePatterns.some(pattern => lowerKey.includes(pattern))) {
         redacted[key] = '[REDACTED]';
       } else if (typeof redacted[key] === 'object' && redacted[key] !== null) {
         redacted[key] = this.redactSensitiveData(redacted[key]);
       }
     }
-    
+
     return redacted;
   }
 

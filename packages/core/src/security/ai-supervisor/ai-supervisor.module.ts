@@ -20,7 +20,7 @@ import { TestGenerationSkill } from './skills/test-generation-skill';
     TestGenerationSkill,
     {
       provide: VercelSkillMapper,
-      useValue: VercelSkillMapper.getInstance()
+      useClass: VercelSkillMapper
     }
   ],
   exports: [AISecuritySupervisorService, VercelAgentFactory, VercelSkillMapper, TestGenerationSkill]
