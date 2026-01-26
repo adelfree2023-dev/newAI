@@ -89,6 +89,8 @@ export class SchemaManagerService implements OnModuleInit {
 
     try {
       const isolationData = {
+        protocolVersion: 'ASMP/v2.4',
+        layer: 'S2',
         tenantId: 'system',
         schemaName: this.systemSchema,
         operationType: 'VALIDATE',
