@@ -77,10 +77,7 @@ async function bootstrap() {
     // بدء الخادم
     await app.listen(port);
 
-    // M2: تهيئة مخططات المستأجرين
-    const schemaInitializer = app.get(SchemaInitializerService);
-    await schemaInitializer.onModuleInit();
-
+    // M2: تهيئة مخططات المستأجرين (تتم تلقائياً عبر Lifecycle Hooks)
     logger.log(`🚀 [SUCCEED] تم تشغيل الخادم بنجاح على المنفذ ${port}`);
     logger.log(`🌐 العنوان: http://localhost:${port}`);
     logger.log(`🔧 البيئة: ${process.env.NODE_ENV || 'development'}`);
