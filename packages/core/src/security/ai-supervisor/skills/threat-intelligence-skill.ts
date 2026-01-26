@@ -1,4 +1,4 @@
-import { Skill, SkillContext } from '@vercel/ai';
+import { Skill, SkillContext } from 'ai';
 import { z } from 'zod';
 import { Logger } from '@nestjs/common';
 

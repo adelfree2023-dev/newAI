@@ -1,13 +1,14 @@
 ## Server Details
 - **Host**: MyServer (34.16.148.154)
-- **Primary User**: dell
+- **Primary User**: newAI
 - **Identity File**: C:\Users\Dell\.ssh\gcp_key_new
 
-## AI User (Isolated Account)
+## AI User (System Account)
 - **Username**: newAI
 - **UID**: 1003
 - **GID**: 1004
 - **Home Directory**: /home/newAI
+- **Project Path**: /home/newAI/project
 
 ## Configured Ports & Services
 - **Port 3000**: Primary API Gateway / NestJS Core
@@ -18,8 +19,8 @@
 
 ## GitHub Repository
 - **URL**: https://github.com/adelfree2023-dev/newAI
-- **Branch**: master
-- **Content**: `packages` folder only
+- **Branch**: main (previously master)
+- **Content**: Full project structure
 
 ---
 *Note: This file contains confidential project access information. Treat with extreme caution.*

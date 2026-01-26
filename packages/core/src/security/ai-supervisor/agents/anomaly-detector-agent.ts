@@ -1,5 +1,5 @@
 import { Logger } from '@nestjs/common';
-import { AgentRuntime } from '@vercel/ai';
+import { AgentRuntime } from 'ai';
 import { AuditService } from '../../../layers/s4-audit-logging/audit.service';
 import { TenantContextService } from '../../../layers/s2-tenant-isolation/tenant-context.service';
 

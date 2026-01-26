@@ -1,4 +1,4 @@
-import { AgentRuntime } from '@vercel/ai';
+import { AgentRuntime } from 'ai';
 import { ZodSchema } from 'zod';
 import { Logger } from '@nestjs/common';
 import { DatabaseIsolationSkill } from '../skills/database-isolation-skill';
