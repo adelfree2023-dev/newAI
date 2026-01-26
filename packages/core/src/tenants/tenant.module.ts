@@ -35,8 +35,7 @@ import { Scope } from '@nestjs/common';
     TenantService,
     TenantDatabaseService,
     SchemaManagerService,
-    IsolationValidatorService,
-    TenantContextService
+    IsolationValidatorService
   ],
 })
 export class TenantModule implements OnModuleInit {
