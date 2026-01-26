@@ -45,6 +45,9 @@ export class RateLimiterService {
     windowSeconds: number,
     context: string = 'general'
   ): Promise<{ allowed: boolean; remaining: number; resetTime: number }> {
+    // [Debug] تسجيل الدخول للتحقق
+    console.log(`[RateLimiterService] Check: Context=${context}, Prefix=${keyPrefix}`);
+
     try {
       const ip = this.getClientIp();
       const tenantId = this.tenantContext.getTenantId() || 'system';
