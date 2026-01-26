@@ -557,8 +557,8 @@ export class AISecuritySupervisorService implements OnModuleInit {
       await this.auditService.logSystemEvent('SECURITY_PROTOCOL_FILE_GENERATED', {
         fileName,
         path: filePath,
-        complianceStatus: spcData.complianceStatus,
-        score: spcData.complianceScore
+        complianceStatus: spcData.compliance,
+        score: 0 // تم تغيير نظام النقاط في الهيكل الجديد
       });
 
       return spcData;

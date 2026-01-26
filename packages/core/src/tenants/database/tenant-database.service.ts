@@ -11,6 +11,8 @@ import { Logger } from '@nestjs/common';
 @Injectable({ scope: Scope.REQUEST })
 export class TenantDatabaseService {
   private readonly logger = new Logger(TenantDatabaseService.name);
+  private currentSchema: string;
+  private isSystemOperation = false;
   constructor(
     @Inject(REQUEST) private readonly request: Request,
     private readonly tenantContext: TenantContextService,
