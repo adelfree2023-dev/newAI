@@ -12,20 +12,8 @@ import { VercelSkillMapper } from './vercel-skill-mapper';
 @Injectable()
 export class VercelAgentFactory {
   private readonly logger = new Logger(VercelAgentFactory.name);
-  private static instance: VercelAgentFactory;
-  private runtime: AgentRuntime;
-  private auditService: AuditService;
-
-  constructor() {
+  constructor(private readonly auditService: AuditService) {
     this.initializeRuntime();
-  }
-
-  static getInstance(auditService: AuditService, vercelSkillMapper?: VercelSkillMapper): VercelAgentFactory {
-    if (!VercelAgentFactory.instance) {
-      VercelAgentFactory.instance = new VercelAgentFactory();
-      VercelAgentFactory.instance.auditService = auditService;
-    }
-    return VercelAgentFactory.instance;
   }
 
   private initializeRuntime() {
