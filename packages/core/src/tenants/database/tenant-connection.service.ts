@@ -141,7 +141,7 @@ export class TenantConnectionService implements OnModuleInit {
 
         // إنشاء فهرس على البريد الإلكتروني
         await queryRunner.query(`
-      CREATE INDEX IF NOT EXISTS idx_${schemaName}_users_email ON "${schemaName}"."users" (email)
+      CREATE INDEX IF NOT EXISTS "idx_${schemaName}_users_email" ON "${schemaName}"."users" (email)
     `);
 
         // إنشاء جدول المنتجات
