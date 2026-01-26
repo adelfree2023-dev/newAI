@@ -1,6 +1,7 @@
-import { Controller, Post, Body, Headers, Logger } from '@nestjs/common';
+import { Controller, Post, Body, Headers, Logger, Get } from '@nestjs/common';
 import { EncryptionService } from '../layers/s7-encryption/encryption.service';
 import { AuditService } from '../layers/s4-audit-logging/audit.service';
+import { AISecuritySupervisorService } from '../ai-supervisor/ai-security-supervisor.service';
 
 @Controller('api/test')
 export class TestController {
@@ -8,8 +9,20 @@ export class TestController {
 
     constructor(
         private readonly encryptionService: EncryptionService,
-        private readonly auditService: AuditService
+        private readonly auditService: AuditService,
+        private readonly aiSupervisor: AISecuritySupervisorService
     ) { }
+
+    @Get('generate-spc')
+    async forceGenerateSPC() {
+        this.logger.log('🧪 [TEST] طلب توليد ملف بروتوكول الأمان (SPC) يدوياً');
+        const spcData = await this.aiSupervisor.generateSecurityProtocolFile();
+        return {
+            success: true,
+            message: 'تم توليد ملف SPC بنجاح',
+            data: spcData
+        };
+    }
 
     @Post('encryption')
     async testEncryption(
