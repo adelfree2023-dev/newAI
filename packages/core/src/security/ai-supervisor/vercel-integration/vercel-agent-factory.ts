@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Scope } from '@nestjs/common';
 import { AgentRuntime } from '../shims/ai-agent-types';
 import { z, ZodSchema } from 'zod';
 import { DatabaseIsolationSkill } from '../skills/database-isolation-skill';
@@ -9,7 +9,7 @@ import { QualityAssuranceAgent } from '../agents/qa-agent';
 import { AuditService } from '../../layers/s4-audit-logging/audit.service';
 import { VercelSkillMapper } from './vercel-skill-mapper';
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class VercelAgentFactory {
   private readonly logger = new Logger(VercelAgentFactory.name);
   private runtime: AgentRuntime;

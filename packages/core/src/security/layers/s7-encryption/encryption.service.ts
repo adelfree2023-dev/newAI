@@ -4,8 +4,9 @@ import { createCipheriv, createDecipheriv, randomBytes, scrypt, timingSafeEqual 
 import { promisify } from 'util';
 import { AuditService } from '../s4-audit-logging/audit.service';
 import { TenantContextService } from '../s2-tenant-isolation/tenant-context.service';
+import { Scope } from '@nestjs/common';
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class EncryptionService implements OnModuleInit {
   private readonly logger = new Logger(EncryptionService.name);
   private masterKey: Buffer;

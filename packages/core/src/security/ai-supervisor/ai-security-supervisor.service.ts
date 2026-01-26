@@ -6,10 +6,11 @@ import { promptTemplates } from './prompt-templates';
 import { TenantContextService } from '../layers/s2-tenant-isolation/tenant-context.service';
 import { EncryptionService } from '../layers/s7-encryption/encryption.service';
 import { VercelAgentFactory } from './vercel-integration/vercel-agent-factory';
+import { Scope } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class AISecuritySupervisorService implements OnModuleInit {
   private readonly logger = new Logger(AISecuritySupervisorService.name);
   private redisClient: any;

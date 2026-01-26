@@ -182,19 +182,21 @@ async function bootstrap() {
     logger.log(`🔧 البيئة: ${process.env.NODE_ENV || 'development'}`);
     logger.log(`🏢 دعم متعدد المستأجرين: ${process.env.SUPPORT_MULTITENANT === 'true' ? 'مفعل' : 'معطل'}`);
 
-    // 🤖 M2: بدء المشرف الأمني بالذكاء الاصطناعي
-    const aiSupervisor = app.get(AISecuritySupervisorService);
-    // onModuleInit will be called by Nest automatically, but we can call it again if needed or just log
-    logger.log('🧠 [M2] المشرف الأمني بالذكاء الاصطناعي جاهز');
+    // 🤖 M2: بدء المشرف الأمني بالذكاء الاصطناعي (Request Scoped)
+    try {
+      // resolve handles request-scoped services by creating a transient instance
+      const aiSupervisor = await app.resolve(AISecuritySupervisorService);
+      logger.log('🧠 [M2] المشرف الأمني بالذكاء الاصطناعي جاهز (Bootstrap Mode)');
 
-    // 🔍 M2: بدء عامل عزل المستأجرين
-    const vercelAgentFactory = app.get(VercelAgentFactory);
-    const tenantIsolationAgent = vercelAgentFactory.createTenantIsolationAgent();
-    logger.log('🛡️ [M2] تم تهيئة عامل عزل المستأجرين بالذكاء الاصطناعي');
+      const vercelAgentFactory = await app.resolve(VercelAgentFactory);
+      const tenantIsolationAgent = vercelAgentFactory.createTenantIsolationAgent();
+      logger.log('🛡️ [M2] تم تهيئة عامل عزل المستأجرين بالذكاء الاصطناعي');
+    } catch (e) {
+      logger.warn('⚠️ [M2] تعذر تهيئة المشرف الأمني في وضع الـ Bootstrap (سيتم تهيئته عند أول طلب)');
+    }
 
     // ✅ M2: التحقق من حالة عزل المستأجرين
     const tenantService = app.get(TenantService);
-    // loadActiveTenants will be called by TenantModule.onModuleInit
     logger.log(`✅ [M2] نظام المستأجرين نشط ومعزول`);
 
     // إرسال تنبيه بدء التشغيل الناجح
