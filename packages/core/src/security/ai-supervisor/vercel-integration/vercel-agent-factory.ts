@@ -7,6 +7,7 @@ import { ThreatIntelligenceSkill } from '../skills/threat-intelligence-skill';
 import { TenantIsolationAgent } from '../agents/tenant-isolation-agent';
 import { QualityAssuranceAgent } from '../agents/qa-agent';
 import { AuditService } from '../../layers/s4-audit-logging/audit.service';
+import { VercelSkillMapper } from './vercel-skill-mapper';
 
 export class VercelAgentFactory {
   private readonly logger = new Logger(VercelAgentFactory.name);

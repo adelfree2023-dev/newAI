@@ -55,7 +55,7 @@ export class TenantDatabaseService {
       });
 
       this.logger.debug(`[M2] ✅ تم الحصول على مستودع ${entityClass.name} للمخطط: ${this.currentSchema}`);
-      return repository;
+      return repository as any;
     } catch (error) {
       this.logger.error(`[M2] ❌ فشل الحصول على مستودع ${entityClass.name}: ${error.message}`);
       throw new Error(`فشل في الحصول على مستودع ${entityClass.name}: ${error.message}`);
