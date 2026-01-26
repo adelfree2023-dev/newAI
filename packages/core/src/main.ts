@@ -52,7 +52,16 @@ async function bootstrap() {
       legacyHeaders: false,
       // استثناء ذكي: تخطي الحد إذا كان الطلب إنشاء مستأجر جديد
       skip: (req, res) => {
-        return req.path === '/api/tenants' && req.method === 'POST';
+        // [Debug] تسجيل المسار للتحقق من سبب الفشل
+        // console.log(`[S6 Debug] ${req.method} ${req.path} (${req.originalUrl})`);
+
+        // التحقق من المسار بشكل أكثر مرونة
+        const isTenantCreation = (
+          req.path === '/api/tenants' ||
+          (req.originalUrl && req.originalUrl.includes('/api/tenants'))
+        ) && req.method === 'POST';
+
+        return isTenantCreation;
       },
       handler: (req, res, next, options) => {
         const logger = new Logger('RateLimit');
