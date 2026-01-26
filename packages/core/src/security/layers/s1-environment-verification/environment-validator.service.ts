@@ -5,7 +5,7 @@ import { ConfigService } from '@nestjs/config';
 export class EnvironmentValidatorService implements OnModuleInit {
   private readonly logger = new Logger(EnvironmentValidatorService.name);
 
-  constructor(private readonly configService?: ConfigService) { }
+  constructor(private readonly configService: ConfigService) { }
 
   async onModuleInit() {
     this.logger.log('🔐 [S1] بدء التحقق من البيئة والأمان...');
@@ -40,9 +40,9 @@ export class EnvironmentValidatorService implements OnModuleInit {
     const jwtSecret = this.configService ? this.configService.get<string>('JWT_SECRET') : process.env['JWT_SECRET'];
 
     // التحقق من قوة المفاتيح
-    const minKeyLength = 64; // 64 حرفاً كحد أدنى للأمان العالي
-    if (masterKey.length < minKeyLength || jwtSecret.length < minKeyLength) {
-      const errorMessage = `❌ [S1] مفاتيح ضعيفة: يجب أن تكون المفاتيح 64 حرفاً على الأقل`;
+    const minKeyLength = 64;
+    if ((masterKey?.length || 0) < minKeyLength || (jwtSecret?.length || 0) < minKeyLength) {
+      const errorMessage = `❌ [S1] مفاتيح ضعيفة: يجب أن تكون المفاتيح 64 حرفاً على الأقل (الحالي مفقود أو قصير)`;
       this.logger.error(errorMessage);
       throw new Error(errorMessage);
     }
@@ -66,7 +66,8 @@ export class EnvironmentValidatorService implements OnModuleInit {
       // في بيئة الإنتاج، التحقق من عدم وجود متغيرات التطوير
       const devVars = ['DEV_ONLY_FEATURES', 'DEBUG_MODE', 'TEST_DATABASE_URL'];
       for (const varName of devVars) {
-        if (this.configService.get(varName)) {
+        const val = this.configService ? this.configService.get(varName) : process.env[varName];
+        if (val) {
           this.logger.warn(`⚠️ [S1] متغير تطوير موجود في بيئة الإنتاج: ${varName}`);
         }
       }
