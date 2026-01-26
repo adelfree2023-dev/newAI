@@ -4,6 +4,7 @@ import { z, ZodSchema } from 'zod';
 import { ThreatIntelligenceSkill } from '../skills/threat-intelligence-skill';
 import { TenantIsolationAgent } from '../agents/tenant-isolation-agent';
 import { QualityAssuranceAgent } from '../agents/qa-agent';
+import { TestGenerationSkill } from '../skills/test-generation-skill';
 import { AuditService } from '../../layers/s4-audit-logging/audit.service';
 import { VercelSkillMapper } from './vercel-skill-mapper';
 
@@ -25,7 +26,8 @@ export class VercelAgentFactory {
         temperature: 0.3,
         maxTokens: 2000,
         skills: [
-          new ThreatIntelligenceSkill()
+          new ThreatIntelligenceSkill(),
+          new TestGenerationSkill()
         ],
         systemPrompt: `
           أنت Apex AI Security Agent، مسؤول عن حماية منصة Apex متعددة المستأجرين.
