@@ -210,16 +210,9 @@ async function bootstrap() {
       error.message.includes('DATABASE_URL') ||
       error.message.includes('TENANT_ISOLATION_FAILURE')) {
       logger.error('🔒 النظام سيرفض التشغيل بسبب متغيرات بيئية مفقودة أو فشل في العزل');
-      process.exit(1);
     }
 
-    logger.warn('🔄 محاولة إعادة التشغيل بعد 5 ثوانٍ...');
-    setTimeout(() => {
-      bootstrap().catch(restartError => {
-        logger.error('❌ فشل إعادة التشغيل النهائي');
-        process.exit(1);
-      });
-    }, 5000);
+    process.exit(1);
   }
 }
 
