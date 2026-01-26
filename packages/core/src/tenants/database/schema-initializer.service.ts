@@ -4,13 +4,16 @@ import { AuditService } from '../../security/layers/s4-audit-logging/audit.servi
 
 @Injectable()
 export class SchemaInitializerService implements OnModuleInit {
-    private readonly logger = new Logger(SchemaInitializerService.name);
+    private logger = new Logger(SchemaInitializerService.name);
     private isInitialized = false;
 
     constructor(
         private readonly tenantConnection: TenantConnectionService,
         private readonly auditService: AuditService
-    ) { }
+    ) {
+        // تأكيد تهيئة اللوغر ليتجنب خطأ undefined
+        this.logger = new Logger(SchemaInitializerService.name);
+    }
 
     async onModuleInit() {
         if (this.isInitialized) return;

@@ -5,7 +5,7 @@
 
 ## AI User (System Account)
 - **Username**: `newAI`
-- **Password**: `ApexAdmin2026`
+- **Password**: `Apex2026`
 - **UID**: 1003
 - **GID**: 1004
 - **Home Directory**: `/home/newAI`
