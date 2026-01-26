@@ -43,15 +43,17 @@ async function bootstrap() {
     }));
     logger.log('✅ [S8] تم تفعيل رؤوس الأمان HTTP');
 
-    // S6: تحديد حدود المعدل
+    // S6: تحديد حدود المعدل (تعطيل مؤقت من أجل الـ Benchmark)
+    /*
     const limiter = rateLimit({
       windowMs: 15 * 60 * 1000,
-      max: process.env.NODE_ENV === 'production' ? 1500 : 2000, // زيادة الحد من أجل الـ Benchmark
+      max: process.env.NODE_ENV === 'production' ? 1500 : 2000, 
       standardHeaders: true,
       legacyHeaders: false
     });
     app.use(limiter);
-    logger.log('✅ [S6] تم توقيت تحديد حدود المعدل (1500 طلب)');
+    */
+    logger.log('⚠️ [S6] تم تعطيل تحديد حدود المعدل مؤقتاً للمعيار (Benchmark)');
 
     // S3: التحقق من المدخلات
     app.useGlobalPipes(new ValidationPipe({
