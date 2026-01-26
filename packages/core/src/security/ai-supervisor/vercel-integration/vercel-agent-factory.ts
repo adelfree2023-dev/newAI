@@ -12,6 +12,7 @@ import { VercelSkillMapper } from './vercel-skill-mapper';
 @Injectable()
 export class VercelAgentFactory {
   private readonly logger = new Logger(VercelAgentFactory.name);
+  private runtime: AgentRuntime;
   constructor(private readonly auditService: AuditService) {
     this.initializeRuntime();
   }
