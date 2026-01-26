@@ -4,11 +4,12 @@
 - **Identity File**: C:\Users\Dell\.ssh\gcp_key_new
 
 ## AI User (System Account)
-- **Username**: newAI
+- **Username**: `newAI`
+- **Password**: `ApexAdmin2026`
 - **UID**: 1003
 - **GID**: 1004
-- **Home Directory**: /home/newAI
-- **Project Path**: /home/newAI/project
+- **Home Directory**: `/home/newAI`
+- **Project Path**: `/home/newAI/project`
 
 ## Configured Ports & Services
 - **Port 3000**: Primary API Gateway / NestJS Core
@@ -30,9 +31,9 @@
 - **JWT Secret**: `AnotherVeryLongAndSecureSecretForJwtSigning1234567890abcdefghijkl`
 - **Database**:
   - **User**: `apex_user`
-  - **Password**: `ApexSecurePass2026!#`
+  - **Password**: `ApexSecure2026`
   - **Database Name**: `apex_platform`
-  - **Connection URL**: `postgresql://apex_user:ApexSecurePass2026!#@localhost:5432/apex_platform`
+  - **Connection URL**: `postgresql://apex_user:ApexSecure2026@localhost:5432/apex_platform`
 
 ---
 *Note: This file contains confidential project access information. Treat with extreme caution.*
