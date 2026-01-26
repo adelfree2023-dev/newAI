@@ -43,17 +43,28 @@ async function bootstrap() {
     }));
     logger.log('✅ [S8] تم تفعيل رؤوس الأمان HTTP');
 
-    // S6: تحديد حدود المعدل (تعطيل مؤقت من أجل الـ Benchmark)
-    /*
+    // S6: تحديد حدود المعدل
     const limiter = rateLimit({
       windowMs: 15 * 60 * 1000,
-      max: process.env.NODE_ENV === 'production' ? 1500 : 2000, 
+      max: process.env.NODE_ENV === 'production' ? 100 : 2000,
+      skip: (req) => {
+        // السماح بطلبات إنشاء المستأجرين بدون تحديد معدل من أجل الـ Benchmark
+        return req.path === '/api/tenants' && req.method === 'POST';
+      },
+      handler: (req, res) => {
+        logger.warn(`[S6] 🚨 تجاوز حد المعدل من IP: ${req.ip}`);
+        res.status(429).json({
+          statusCode: 429,
+          message: 'تم تجاوز حد الطلبات. يرجى المحاولة لاحقاً.',
+          retryAfter: 15,
+          timestamp: new Date().toISOString()
+        });
+      },
       standardHeaders: true,
       legacyHeaders: false
     });
     app.use(limiter);
-    */
-    logger.log('⚠️ [S6] تم تعطيل تحديد حدود المعدل مؤقتاً للمعيار (Benchmark)');
+    logger.log('✅ [S6] تم تفعيل تحديد حدود المعدل مع استثناء لإنشاء المستأجرين');
 
     // S3: التحقق من المدخلات
     app.useGlobalPipes(new ValidationPipe({
