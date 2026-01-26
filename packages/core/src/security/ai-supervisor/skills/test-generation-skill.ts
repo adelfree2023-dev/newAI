@@ -22,33 +22,47 @@ export class TestGenerationSkill {
 
   async execute(input: z.infer<typeof TestGenerationSkill.inputSchema>) {
     const className = input.filePath.split('/').pop()?.replace('.ts', '') || 'Service';
-    const pascalName = className.split('.').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join('');
+    const parts = className.split('.');
+    const pascalName = parts.map(s => s.charAt(0).toUpperCase() + s.slice(1)).join('');
 
-    // محاكاة تحليل الكود لتوليد اختبارات ذكية
-    const hasLog = input.content.includes('this.logger');
-    const hasAudit = input.content.includes('auditService');
+    // اكتشاف التبعيات من الـ constructor
+    const constructorMatch = input.content.match(/constructor\s*\(([^)]*)\)/s);
+    const dependencies: string[] = [];
+    const providers: string[] = [];
+
+    if (constructorMatch) {
+      const params = constructorMatch[1].split(',').map(p => p.trim());
+      for (const param of params) {
+        const typeMatch = param.match(/:\s*([A-Z][A-Za-z0-9]+)/);
+        if (typeMatch) {
+          const type = typeMatch[1];
+          if (type !== 'Logger') { // تجنب الـ Logger لأنه خاص
+            dependencies.push(type);
+            providers.push(`{ provide: ${type}, useValue: { logBusinessEvent: jest.fn(), logSecurityEvent: jest.fn(), logSystemEvent: jest.fn(), initializeNewTenant: jest.fn(), getSchemaName: jest.fn() } }`);
+          }
+        }
+      }
+    }
 
     return {
       success: true,
       specContent: `
 import { Test, TestingModule } from '@nestjs/testing';
 import { ${pascalName} } from './${className}';
-${hasAudit ? "import { AuditService } from '../security/layers/s4-audit-logging/audit.service';" : ""}
+${dependencies.map(d => `// Auto-detected dependency: ${d}`).join('\n')}
 
 describe('${pascalName}', () => {
   let service: ${pascalName};
-  ${hasAudit ? "let auditService: AuditService;" : ""}
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ${pascalName},
-        ${hasAudit ? "{ provide: AuditService, useValue: { logBusinessEvent: jest.fn(), logSecurityEvent: jest.fn(), logSystemEvent: jest.fn() } }" : ""}
+        ${providers.join(',\n        ')}
       ],
     }).compile();
 
     service = module.get<${pascalName}>(${pascalName});
-    ${hasAudit ? "auditService = module.get<AuditService>(AuditService);" : ""}
   });
 
   it('should be defined', () => {
