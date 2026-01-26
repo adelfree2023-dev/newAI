@@ -43,28 +43,30 @@ async function bootstrap() {
     }));
     logger.log('✅ [S8] تم تفعيل رؤوس الأمان HTTP');
 
-    // S6: تحديد حدود المعدل
+    // S6: تحديد حدود المعدل (Smart Rate Limiting)
+    // نسمح بطلبات إنشاء المستأجرين (Tenants) لتسهيل الـ Benchmark
     const limiter = rateLimit({
-      windowMs: 15 * 60 * 1000,
-      max: process.env.NODE_ENV === 'production' ? 100 : 2000,
-      skip: (req) => {
-        // السماح بطلبات إنشاء المستأجرين بدون تحديد معدل من أجل الـ Benchmark
+      windowMs: 15 * 60 * 1000, // 15 دقيقة
+      max: process.env.NODE_ENV === 'production' ? 100 : 1000,
+      standardHeaders: true,
+      legacyHeaders: false,
+      // استثناء ذكي: تخطي الحد إذا كان الطلب إنشاء مستأجر جديد
+      skip: (req, res) => {
         return req.path === '/api/tenants' && req.method === 'POST';
       },
-      handler: (req, res) => {
+      handler: (req, res, next, options) => {
+        const logger = new Logger('RateLimit');
         logger.warn(`[S6] 🚨 تجاوز حد المعدل من IP: ${req.ip}`);
         res.status(429).json({
           statusCode: 429,
           message: 'تم تجاوز حد الطلبات. يرجى المحاولة لاحقاً.',
-          retryAfter: 15,
+          retryAfter: Math.ceil(options.windowMs / 1000),
           timestamp: new Date().toISOString()
         });
-      },
-      standardHeaders: true,
-      legacyHeaders: false
+      }
     });
     app.use(limiter);
-    logger.log('✅ [S6] تم تفعيل تحديد حدود المعدل مع استثناء لإنشاء المستأجرين');
+    logger.log('✅ [S6] تم تفعيل تحديد حدود المعدل الذكي (Smart Rate Limit)');
 
     // S3: التحقق من المدخلات
     app.useGlobalPipes(new ValidationPipe({

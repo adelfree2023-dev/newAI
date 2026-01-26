@@ -1,17 +1,24 @@
 const axios = require('axios');
+const fs = require('fs');
+
+// دالة مساعدة للتأخير (Delay Helper)
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 async function createTenantsBatch() {
     const batchSize = 50; // 50 مستأجر في كل دفعة
     const totalTenants = 1000;
     const delayBetweenBatches = 2000; // 2 ثانية بين كل دفعة
+    const outputLog = '/tmp/benchmark_final_log.txt';
+
+    // URL الخادم (يمكن تغييره حسب البيئة)
+    const baseUrl = 'http://localhost:3000/api/tenants';
 
     console.log(`🚀 بدء إنشاء ${totalTenants} مستأجر...`);
-    console.log(`📦 حجم الدفعة: ${batchSize} | ⏱️ التأخير: ${delayBetweenBatches}ms`);
+    fs.writeFileSync(outputLog, `Starting Benchmark at ${new Date().toISOString()}\n`);
 
-    const startTime = Date.now();
     let totalSuccess = 0;
-    let totalFailure = 0;
+    let totalFailures = 0;
+    const startTime = Date.now();
 
     for (let i = 0; i < totalTenants; i += batchSize) {
         const batchPromises = [];
@@ -19,48 +26,46 @@ async function createTenantsBatch() {
         // إنشاء دفعة من المستأجرين
         for (let j = 0; j < batchSize && (i + j) < totalTenants; j++) {
             const tenantNumber = i + j + 1;
+            const tenantId = `tenant-${tenantNumber.toString().padStart(4, '0')}`;
+
             batchPromises.push(
-                axios.post('http://localhost:3000/api/tenants', {
-                    id: `tenant-stress-${tenantNumber.toString().padStart(4, '0')}`,
-                    name: `متجر ضغط رقم ${tenantNumber}`,
-                    domain: `stress-store-${tenantNumber}`,
+                axios.post(baseUrl, {
+                    id: tenantId,
+                    name: `متجر رقم ${tenantNumber}`,
+                    domain: `store${tenantNumber}`,
                     businessType: 'RETAIL',
-                    contactEmail: `admin-stress-${tenantNumber}@example.com`,
-                    contactPhone: `+96650000000${tenantNumber % 10}`,
+                    contactEmail: `admin${tenantNumber}@example.com`,
+                    contactPhone: `+966500000${tenantNumber.toString().padStart(3, '0')}`,
                     address: {
-                        street: `شارع الضغط ${tenantNumber}`,
+                        street: `شارع ${tenantNumber}`,
                         city: 'الرياض',
                         country: 'السعودية',
                         postalCode: '12345'
                     }
-                }).catch(err => {
-                    // نلتقط الخطأ هنا حتى لا يوقف Promise.allSettled العملية بالكامل إذا استخدمنا Promise.all مستقبلاً
-                    // ولكن مع allSettled الأمر أسهل. هذا فقط للتوضيح.
-                    throw err;
                 })
+                    .then(() => ({ status: 'fulfilled', id: tenantId }))
+                    .catch((err) => ({ status: 'rejected', id: tenantId, error: err.message }))
             );
         }
 
         try {
-            const results = await Promise.allSettled(batchPromises);
+            // انتظار اكتمال الدفعة الحالية
+            const results = await Promise.all(batchPromises);
 
-            // حساب النجاحات والفشل
+            // حساب النجاحات والفشل في هذه الدفعة
             const successes = results.filter(r => r.status === 'fulfilled').length;
             const failures = results.filter(r => r.status === 'rejected').length;
 
             totalSuccess += successes;
-            totalFailure += failures;
+            totalFailures += failures;
 
-            console.log(`✅ الدفعة ${Math.floor(i / batchSize) + 1}: ${successes} نجاح، ${failures} فشل`);
+            const logMsg = `✅ الدفعة ${Math.floor(i / batchSize) + 1}: ${successes} نجاح، ${failures} فشل`;
+            console.log(logMsg);
+            fs.appendFileSync(outputLog, logMsg + '\n');
 
-            // تسجيل الأخطاء إن وجدت
-            if (failures > 0) {
-                const errors = results.filter(r => r.status === 'rejected').map(r => r.reason.message);
-                console.warn(`⚠️ عينات من الأخطاء: ${errors.slice(0, 3).join(', ')}`);
-            }
-
-            // التأخير بين الدفعات
+            // التأخير بين الدفعات لتخفيف الحمل
             if (i + batchSize < totalTenants) {
+                // console.log(`⏳ انتظار ${delayBetweenBatches}ms...`);
                 await delay(delayBetweenBatches);
             }
         } catch (error) {
@@ -71,14 +76,17 @@ async function createTenantsBatch() {
     const endTime = Date.now();
     const duration = (endTime - startTime) / 1000;
 
-    console.log('--------------------------------------------------');
-    console.log('🎉 اكتملت عملية الإنشاء!');
-    console.log(`📊 الإجمالي: ${totalTenants}`);
-    console.log(`✅ نجاح: ${totalSuccess}`);
-    console.log(`❌ فشل: ${totalFailure}`);
-    console.log(`⏱️ الزمن المستغرق: ${duration.toFixed(2)} ثانية`);
-    console.log(`🚀 المعدل: ${(totalSuccess / duration).toFixed(2)} مستأجر/ثانية`);
-    console.log('--------------------------------------------------');
+    const summary = `
+--- 📊 النتائج النهائية (Final Results) ---
+✅ النجاح: ${totalSuccess}
+❌ الفشل: ${totalFailures}
+⏱️ الزمن الكلي: ${duration.toFixed(2)} ثانية
+🚀 المعدل: ${(totalSuccess / duration).toFixed(2)} مستأجر/ثانية
+-------------------------------------------
+`;
+
+    console.log(summary);
+    fs.appendFileSync(outputLog, summary);
 }
 
 createTenantsBatch();
