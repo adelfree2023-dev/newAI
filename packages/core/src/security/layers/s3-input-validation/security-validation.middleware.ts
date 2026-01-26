@@ -1,9 +1,9 @@
-import { Injectable, NestMiddleware, Logger, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable, NestMiddleware, Logger, HttpException, HttpStatus, Scope } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import { AISecuritySupervisorService } from '../../ai-supervisor/ai-security-supervisor.service';
 import { AuditService } from '../s4-audit-logging/audit.service';
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class SecurityValidationMiddleware implements NestMiddleware {
     private readonly logger = new Logger(SecurityValidationMiddleware.name);
 

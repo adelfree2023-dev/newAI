@@ -1,9 +1,9 @@
-import { Injectable, NestMiddleware, Logger } from '@nestjs/common';
+import { Injectable, NestMiddleware, Logger, Scope } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import { TenantContextService } from '../../security/layers/s2-tenant-isolation/tenant-context.service';
 import { v4 as uuidv4 } from 'uuid';
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class TenantContextMiddleware implements NestMiddleware {
   private readonly logger = new Logger(TenantContextMiddleware.name);
 

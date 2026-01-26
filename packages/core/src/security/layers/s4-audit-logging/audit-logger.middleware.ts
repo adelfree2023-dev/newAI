@@ -1,10 +1,10 @@
-import { Injectable, NestMiddleware, Logger } from '@nestjs/common';
+import { Injectable, NestMiddleware, Logger, Scope } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { AuditService } from './audit.service';
 import { TenantContextService } from '../s2-tenant-isolation/tenant-context.service';
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class AuditLoggerMiddleware implements NestMiddleware {
   private readonly logger = new Logger(AuditLoggerMiddleware.name);
 
