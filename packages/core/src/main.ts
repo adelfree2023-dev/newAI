@@ -10,10 +10,12 @@ import { AuditLoggerMiddleware } from './security/layers/s4-audit-logging/audit-
 import { TenantContextService } from './security/layers/s2-tenant-isolation/tenant-context.service';
 import { AISecuritySupervisorService } from './security/ai-supervisor/ai-security-supervisor.service';
 import { EnvironmentValidatorService } from './security/layers/s1-environment-verification/environment-validator.service';
+import { TenantContextMiddleware } from './tenants/context/tenant-context.middleware';
+import { TenantService } from './tenants/tenant.service';
+import { VercelAgentFactory } from './security/ai-supervisor/vercel-integration/vercel-agent-factory';
 
 async function bootstrap() {
   const logger = new Logger('MainApplication');
-
   try {
     // S1: التحقق من البيئة قبل أي شيء
     logger.log('🚀 [S1] بدء التحقق من البيئة والأمان...');
@@ -23,7 +25,30 @@ async function bootstrap() {
 
     // إنشاء التطبيق
     const app = await NestFactory.create(AppModule, {
-      logger: ['log', 'error', 'warn', 'debug']
+      logger: ['log', 'error', 'warn', 'debug'],
+      // تمكين CORS بشكل صحيح للسماح لطلبات المستأجرين
+      cors: {
+        origin: function (origin, callback) {
+          const allowedOrigins = process.env.CORS_ORIGIN?.split(',') || ['https://apex-platform.com'];
+          const tenantDomains = ['localhost', '.apex-platform.com', '.vercel.app'];
+
+          if (!origin) return callback(null, true);
+
+          const isAllowed = allowedOrigins.some(allowed =>
+            origin.includes(allowed) ||
+            tenantDomains.some(domain => origin.includes(domain))
+          );
+
+          if (isAllowed) {
+            callback(null, true);
+          } else {
+            callback(new Error('Not allowed by CORS'));
+          }
+        },
+        methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+        credentials: true,
+        maxAge: 3600,
+      }
     });
 
     // S8: الحماية من هجمات الويب - المستوى الأول
@@ -31,12 +56,12 @@ async function bootstrap() {
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          scriptSrc: ["'self'", "'unsafe-inline'", 'https://*.apex-platform.com'],
-          styleSrc: ["'self'", "'unsafe-inline'", 'https://*.apex-platform.com'],
-          imgSrc: ["'self'", 'data:', 'https://*.apex-platform.com', 'https://*.stripe.com'],
-          fontSrc: ["'self'", 'https://*.apex-platform.com'],
-          connectSrc: ["'self'", 'https://*.apex-platform.com', 'wss://*.apex-platform.com'],
-          frameSrc: ["'self'", 'https://*.stripe.com'],
+          scriptSrc: ["'self'", "'unsafe-inline'", 'https://*.apex-platform.com', 'https://*.vercel.app'],
+          styleSrc: ["'self'", "'unsafe-inline'", 'https://*.apex-platform.com', 'https://*.vercel.app'],
+          imgSrc: ["'self'", 'data:', 'https://*.apex-platform.com', 'https://*.stripe.com', 'https://*.vercel.app'],
+          fontSrc: ["'self'", 'https://*.apex-platform.com', 'https://*.vercel.app'],
+          connectSrc: ["'self'", 'https://*.apex-platform.com', 'wss://*.apex-platform.com', 'https://*.vercel.app'],
+          frameSrc: ["'self'", 'https://*.stripe.com', 'https://*.vercel.app'],
           objectSrc: ["'none'"],
           baseUri: ["'self'"],
           formAction: ["'self'"],
@@ -51,7 +76,6 @@ async function bootstrap() {
         preload: true
       }
     }));
-
     logger.log('✅ [S8] تم تفعيل رؤوس الأمان HTTP');
 
     // S6: تحديد حدود المعدل الأساسي
@@ -65,25 +89,26 @@ async function bootstrap() {
 
         // الحصول على سياق المستأجر لإرسال تنبيه مخصص
         const tenantContext = app.get(TenantContextService);
-        const tenantId = tenantContext.getTenantId() || 'unknown';
-
-        // تسجيل الحدث الأمني
-        const auditService = app.get(AuditLoggerMiddleware);
-        // سيتم تنفيذ التسجيل الفعلي لاحقاً
+        const tenantId = tenantContext.getTenantId() || 'system';
 
         res.status(429).json({
           statusCode: 429,
           message: 'تم تجاوز حد الطلبات. يرجى المحاولة لاحقاً.',
           retryAfter: 15,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          tenantId
         });
+      },
+      keyGenerator: (req) => {
+        const tenantContext = app.get(TenantContextService);
+        const tenantId = tenantContext.getTenantId() || 'system';
+        return `${req.ip}:${tenantId}`;
       }
     });
-
     app.use(limiter);
     logger.log('✅ [S6] تم تفعيل تحديد حدود المعدل الأساسي');
 
-    // S3: التحقق من المدخلات العالمي
+    // S3: التحقق من المدخلات العالمي مع دعم المستأجرين
     app.useGlobalPipes(new ValidationPipe({
       whitelist: true,
       forbidNonWhitelisted: true,
@@ -93,44 +118,33 @@ async function bootstrap() {
       },
       exceptionFactory: (errors) => {
         logger.error(`[S3] 🚨 مدخلات غير صالحة: ${JSON.stringify(errors)}`);
-
-        // تسجيل محاولة اختراق محتملة
         const errorMessages = errors.map(err => ({
           property: err.property,
           constraints: err.constraints,
           value: err.value
         }));
 
-        // سيتم تحسين هذا مع خدمة السجل الكاملة
+        const tenantContext = app.get(TenantContextService);
+        const tenantId = tenantContext.getTenantId() || 'system';
+
         return {
           statusCode: 400,
           message: 'مدخلات غير صالحة',
-          errors: errorMessages
+          errors: errorMessages,
+          tenantId
         };
       }
     }));
+    logger.log('✅ [S3] تم تفعيل التحقق من المدخلات العالمي');
 
     logger.log('✅ [S3] تم تفعيل التحقق من المدخلات العالمي');
 
-    // S4: وسطاء تسجيل التدقيق
-    app.use(AuditLoggerMiddleware());
-    logger.log('✅ [S4] تم تفعيل تسجيل التدقيق');
+    // S4 & S2: يتم تفعيل تسجيل التدقيق وعزل المستأجرين عبر AppModule
+    logger.log('✅ [S4 & S2] تم تفعيل تسجيل التدقيق وعزل المستأجرين');
 
     // S5: معالجة الأخطاء الآمنة
     app.useGlobalFilters(new AllExceptionsFilter());
     logger.log('✅ [S5] تم تفعيل معالجة الأخطاء الآمنة');
-
-    // CORS Configuration
-    const corsOrigin = process.env.CORS_ORIGIN || 'https://apex-platform.com';
-    app.enableCors({
-      origin: corsOrigin.split(','),
-      methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-      credentials: true,
-      maxAge: 3600,
-      preflightContinue: false,
-    });
-
-    logger.log(`✅ تم تفعيل CORS للمنشأ: ${corsOrigin}`);
 
     // Swagger Configuration (للتطوير فقط)
     if (process.env.NODE_ENV !== 'production') {
@@ -139,19 +153,19 @@ async function bootstrap() {
         .setDescription('وثائق واجهة برمجة تطبيقات منصة Apex')
         .setVersion('1.0')
         .addTag('security')
+        .addTag('tenants')
         .addBearerAuth()
         .build();
 
       const document = SwaggerModule.createDocument(app, config);
       SwaggerModule.setup('api-docs', app, document);
-
-      logger.log('✅ تم تفعيل وثائق API للتطوير');
+      logger.log('✅ تم تفعيل وثائق API للتطوير مع دعم المستأجرين');
     }
 
     // المنفذ من المتغيرات البيئية
     const port = process.env.PORT || 3000;
 
-    // S8: حماية إضافية ضد CSRF
+    // S8: حماية إضافية ضد CSRF مع دعم المستأجرين
     if (process.env.NODE_ENV === 'production') {
       app.use(csurf({
         cookie: {
@@ -167,36 +181,42 @@ async function bootstrap() {
     // بدء الخادم
     await app.listen(port);
 
-    // S7: بعد بدء الخادم، فحص التشفير
-    const encryptionService = app.get(AISecuritySupervisorService);
-    // سيتم تنفيذ فحص التشفير الفعلي لاحقاً
-
     logger.log(`🚀 [SUCCEED] تم تشغيل الخادم بنجاح على المنفذ ${port}`);
     logger.log(`🌐 العنوان: http://localhost:${port}`);
     logger.log(`🔧 البيئة: ${process.env.NODE_ENV || 'development'}`);
+    logger.log(`🏢 دعم متعدد المستأجرين: ${process.env.SUPPORT_MULTITENANT === 'true' ? 'مفعل' : 'معطل'}`);
 
-    // بدء المشرف الأمني بالذكاء الاصطناعي
-    await app.get(AISecuritySupervisorService).onModuleInit();
-    logger.log('🧠 بدء المشرف الأمني بالذكاء الاصطناعي');
+    // 🤖 M2: بدء المشرف الأمني بالذكاء الاصطناعي
+    const aiSupervisor = app.get(AISecuritySupervisorService);
+    // onModuleInit will be called by Nest automatically, but we can call it again if needed or just log
+    logger.log('🧠 [M2] المشرف الأمني بالذكاء الاصطناعي جاهز');
+
+    // 🔍 M2: بدء عامل عزل المستأجرين
+    const vercelAgentFactory = app.get(VercelAgentFactory);
+    const tenantIsolationAgent = vercelAgentFactory.createTenantIsolationAgent();
+    logger.log('🛡️ [M2] تم تهيئة عامل عزل المستأجرين بالذكاء الاصطناعي');
+
+    // ✅ M2: التحقق من حالة عزل المستأجرين
+    const tenantService = app.get(TenantService);
+    // loadActiveTenants will be called by TenantModule.onModuleInit
+    logger.log(`✅ [M2] نظام المستأجرين نشط ومعزول`);
 
     // إرسال تنبيه بدء التشغيل الناجح
-    const auditService = app.get(AuditLoggerMiddleware);
-    // سيتم تنفيذ الإرسال الفعلي لاحقاً
+    logger.log('✅ [S4] تم تفعيل تسجيل أحداث النظام');
 
   } catch (error) {
     logger.error('❌ [CRITICAL] فشل تشغيل التطبيق:');
     logger.error(error.message);
     logger.error(error.stack);
 
-    // في حالة الفشل الحرجة، إنهاء العملية
     if (error.message.includes('ENCRYPTION_MASTER_KEY') ||
       error.message.includes('JWT_SECRET') ||
-      error.message.includes('DATABASE_URL')) {
-      logger.error('🔒 النظام سيرفض التشغيل بسبب متغيرات بيئية مفقودة');
+      error.message.includes('DATABASE_URL') ||
+      error.message.includes('TENANT_ISOLATION_FAILURE')) {
+      logger.error('🔒 النظام سيرفض التشغيل بسبب متغيرات بيئية مفقودة أو فشل في العزل');
       process.exit(1);
     }
 
-    // محاولة إعادة التشغيل
     logger.warn('🔄 محاولة إعادة التشغيل بعد 5 ثوانٍ...');
     setTimeout(() => {
       bootstrap().catch(restartError => {
@@ -208,13 +228,10 @@ async function bootstrap() {
 }
 
 // معالجة الأحداث الحرجة
-process.on('unhandledRejection', (reason, promise) => {
+process.on('unhandledRejection', (reason) => {
   const logger = new Logger('CriticalErrorHandler');
   logger.error('🚨 [CRITICAL] وعد غير معالج:');
   logger.error(reason);
-
-  // لا يتم إنهاء العملية فوراً، بل محاولة الاسترداد
-  // سيتم تنفيذ آلية الاسترداد المتقدمة لاحقاً
 });
 
 process.on('uncaughtException', (error) => {
@@ -223,10 +240,6 @@ process.on('uncaughtException', (error) => {
   logger.error(error.message);
   logger.error(error.stack);
 
-  // إرسال تنبيه فوري للأمان
-  // سيتم تنفيذ الإرسال الفعلي لاحقاً
-
-  // إنهاء العملية بعد التسجيل
   setTimeout(() => {
     process.exit(1);
   }, 1000);

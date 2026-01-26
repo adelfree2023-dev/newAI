@@ -11,31 +11,31 @@ export class AuditLoggerMiddleware implements NestMiddleware {
   constructor(
     private readonly auditService: AuditService,
     private readonly tenantContext: TenantContextService
-  ) {}
+  ) { }
 
   use(req: Request, res: Response, next: NextFunction) {
     const requestId = uuidv4();
     const startTime = Date.now();
-    
+
     // تخزين requestId في الطلب
     req['requestId'] = requestId;
-    
+
     // تسجيل بداية الطلب
     this.logRequestStart(req, requestId);
-    
+
     // تتبُّع انتهاء الطلب
     res.on('finish', () => {
       const processingTime = Date.now() - startTime;
       this.logRequestEnd(req, res, processingTime, requestId);
     });
-    
+
     next();
   }
 
   private logRequestStart(req: Request, requestId: string) {
     const tenantId = this.tenantContext.getTenantId() || 'system';
     const userId = req.user?.id || 'anonymous';
-    
+
     this.auditService.logSystemEvent('REQUEST_STARTED', {
       requestId,
       method: req.method,
@@ -53,7 +53,7 @@ export class AuditLoggerMiddleware implements NestMiddleware {
   private logRequestEnd(req: Request, res: Response, processingTime: number, requestId: string) {
     const status = res.statusCode;
     const tenantId = this.tenantContext.getTenantId() || 'system';
-    
+
     // تسجيل حدث بناءً على حالة الاستجابة
     if (status >= 400 && status < 500) {
       this.auditService.logSecurityEvent('CLIENT_ERROR', {
@@ -94,7 +94,7 @@ export class AuditLoggerMiddleware implements NestMiddleware {
         success: true
       });
     }
-    
+
     // تسجيل محاولات الوصول غير المصرح بها
     if (status === 401 || status === 403) {
       this.auditService.logSecurityEvent('UNAUTHORIZED_ACCESS_ATTEMPT', {
@@ -121,7 +121,7 @@ export class AuditLoggerMiddleware implements NestMiddleware {
   private sanitizeHeaders(headers: Record<string, any>): Record<string, string> {
     const sensitiveHeaders = ['authorization', 'cookie', 'x-api-key'];
     const sanitized: Record<string, string> = {};
-    
+
     for (const [key, value] of Object.entries(headers)) {
       const lowerKey = key.toLowerCase();
       if (sensitiveHeaders.some(sh => lowerKey.includes(sh))) {
@@ -130,19 +130,19 @@ export class AuditLoggerMiddleware implements NestMiddleware {
         sanitized[key] = typeof value === 'string' ? value.substring(0, 100) : JSON.stringify(value).substring(0, 100);
       }
     }
-    
+
     return sanitized;
   }
 
   private sanitizeRequestBody(body: any): any {
     if (!body || typeof body !== 'object') return body;
-    
+
     const sensitiveFields = ['password', 'token', 'secret', 'apiKey', 'privateKey', 'creditCard', 'cvv'];
     const sanitized = { ...body };
-    
+
     for (const key of Object.keys(sanitized)) {
       const lowerKey = key.toLowerCase();
-      
+
       if (sensitiveFields.some(field => lowerKey.includes(field))) {
         sanitized[key] = '[REDACTED]';
       } else if (typeof sanitized[key] === 'object' && sanitized[key] !== null) {
@@ -151,11 +151,7 @@ export class AuditLoggerMiddleware implements NestMiddleware {
         sanitized[key] = sanitized[key].substring(0, 500) + '... [TRUNCATED]';
       }
     }
-    
+
     return sanitized;
   }
-}
-
-export function AuditLoggerMiddleware() {
-  return new AuditLoggerMiddleware();
 }

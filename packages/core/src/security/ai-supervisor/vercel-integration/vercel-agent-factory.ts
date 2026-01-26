@@ -5,6 +5,7 @@ import { DatabaseIsolationSkill } from '../skills/database-isolation-skill';
 import { SecurityProtocolSkill } from '../skills/security-protocol-skill';
 import { ThreatIntelligenceSkill } from '../skills/threat-intelligence-skill';
 import { TenantIsolationAgent } from '../agents/tenant-isolation-agent';
+import { QualityAssuranceAgent } from '../agents/qa-agent';
 import { AuditService } from '../../../layers/s4-audit-logging/audit.service';
 
 export class VercelAgentFactory {
@@ -28,7 +29,7 @@ export class VercelAgentFactory {
   private initializeRuntime() {
     try {
       this.logger.log('🤖 [AI] تهيئة بيئة تشغيل الذكاء الاصطناعي من Vercel...');
-      
+
       // إنشاء بيئة التشغيل مع المهارات الأساسية
       this.runtime = new AgentRuntime({
         model: process.env.AI_MODEL || 'gpt-4o',
@@ -55,7 +56,7 @@ export class VercelAgentFactory {
           - سجل كل حدث أمني مهما كان صغيراً
         `
       });
-      
+
       this.logger.log('✅ [AI] تم تهيئة بيئة الذكاء الاصطناعي بنجاح');
     } catch (error) {
       this.logger.error(`❌ [AI] فشل تهيئة بيئة الذكاء الاصطناعي: ${error.message}`);
@@ -67,6 +68,10 @@ export class VercelAgentFactory {
     return new TenantIsolationAgent(this.runtime, this.auditService);
   }
 
+  createQualityAssuranceAgent() {
+    return new QualityAssuranceAgent(this.runtime, this.auditService);
+  }
+
   async executeSkill<T extends ZodSchema>(
     skillName: string,
     input: any,
@@ -74,17 +79,17 @@ export class VercelAgentFactory {
   ): Promise<z.infer<T>> {
     try {
       this.logger.debug(`[AI] 🎯 تنفيذ المهارة: ${skillName}`);
-      
+
       const result = await this.runtime.executeSkill(skillName, input);
-      
+
       // التحقق من صحة النتيجة باستخدام Zod
       const parsedResult = schema.parse(result);
-      
+
       this.logger.debug(`[AI] ✅ نجاح تنفيذ المهارة: ${skillName}`);
       return parsedResult;
     } catch (error) {
       this.logger.error(`[AI] ❌ فشل تنفيذ المهارة ${skillName}: ${error.message}`);
-      
+
       // تسجيل حدث أمني
       await this.auditService.logSecurityEvent('AI_SKILL_EXECUTION_FAILURE', {
         skillName,
@@ -92,7 +97,7 @@ export class VercelAgentFactory {
         input,
         timestamp: new Date().toISOString()
       });
-      
+
       throw error;
     }
   }
