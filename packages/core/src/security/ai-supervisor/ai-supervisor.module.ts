@@ -23,6 +23,14 @@ import { TestGenerationSkill } from './skills/test-generation-skill';
       useClass: VercelSkillMapper
     }
   ],
-  exports: [AISecuritySupervisorService, VercelAgentFactory, VercelSkillMapper, TestGenerationSkill]
+  exports: [
+    AISecuritySupervisorService,
+    VercelAgentFactory,
+    VercelSkillMapper,
+    TestGenerationSkill,
+    AuditService,
+    TenantContextService,
+    EncryptionService
+  ]
 })
 export class AISupervisorModule { }
