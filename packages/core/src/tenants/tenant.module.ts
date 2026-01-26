@@ -14,15 +14,12 @@ import { TypeOrmModule } from '@nestjs/typeorm';
   providers: [
     TenantService,
     TenantConnectionService,
-    SchemaInitializerService,
-    TenantContextService,
-    AuditService
+    SchemaInitializerService
   ],
   exports: [
     TenantService,
     TenantConnectionService,
-    SchemaInitializerService,
-    TenantContextService
+    SchemaInitializerService
   ],
 })
 export class TenantModule { }

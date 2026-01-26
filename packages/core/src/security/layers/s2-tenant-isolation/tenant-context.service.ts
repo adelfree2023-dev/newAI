@@ -17,8 +17,8 @@ export class TenantContextService {
   private initializeFromRequest() {
     // استخراج tenantId من عدة مصادر
     this.tenantId =
-      this.request.headers['x-tenant-id']?.toString() ||
-      this.request.subdomains[0] ||
+      this.request?.headers?.['x-tenant-id']?.toString() ||
+      this.request?.subdomains?.[0] ||
       this.extractFromHost() ||
       this.extractFromPath();
 
@@ -88,8 +88,8 @@ export class TenantContextService {
       this.logSecurityIncident('TENANT_ISOLATION_VIOLATION', {
         currentTenant: this.tenantId,
         attemptedAccess: requestedTenantId,
-        ip: this.request.ip,
-        userAgent: this.request.get('User-Agent'),
+        ip: this.request?.ip,
+        userAgent: (this.request && typeof this.request.get === 'function') ? this.request.get('User-Agent') : 'unknown',
         timestamp: new Date().toISOString()
       });
     }

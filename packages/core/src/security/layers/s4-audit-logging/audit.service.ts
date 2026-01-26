@@ -71,9 +71,9 @@ export class AuditService {
         userId: this.getUserIdFromRequest(),
         userEmail: this.getUserEmailFromRequest(),
         ipAddress: this.getClientIp(),
-        userAgent: this.request.get('User-Agent'),
-        method: this.request.method,
-        url: this.request.originalUrl,
+        userAgent: (this.request && typeof this.request.get === 'function') ? this.request.get('User-Agent') : 'unknown',
+        method: this.request?.method || 'unknown',
+        url: this.request?.originalUrl || 'unknown',
         processingTimeMs: processingTime
       },
       server: {

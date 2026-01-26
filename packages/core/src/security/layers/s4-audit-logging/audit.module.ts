@@ -4,7 +4,7 @@ import { TenantContextService } from '../s2-tenant-isolation/tenant-context.serv
 
 @Global()
 @Module({
-  providers: [AuditService, TenantContextService],
+  providers: [AuditService],
   exports: [AuditService],
 })
-export class AuditModule {}
+export class AuditModule { }
