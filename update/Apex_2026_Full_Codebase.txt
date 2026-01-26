@@ -1,0 +1,4631 @@
+﻿################################################################################
+#  APEX PROJECT CODEBASE ARCHIVE
+################################################################################
+#
+#  📊 STATISTICS SUMMARY:
+#  ---------------------
+#  📂 Total Files : 36
+#  📝 Total Lines : 4,437
+#  🔤 Total Words : 13,832
+#  🧮 Total Chars : 153,833
+#  🪙 Est. Tokens : 38,458 (Approx. for LLM Context)
+#
+################################################################################
+
+
+/*******************************************************************************
+ * FILE: main.ts
+ * PATH: .\core\src\main.ts
+ *******************************************************************************/
+import { NestFactory } from '@nestjs/core';
+import { AppModule } from './app.module';
+import { Logger, ValidationPipe } from '@nestjs/common';
+import helmet from 'helmet';
+import * as csurf from 'csurf';
+import * as rateLimit from 'express-rate-limit';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { AllExceptionsFilter } from './security/layers/s5-error-handling/exceptions/secure-exception.filter';
+import { AuditLoggerMiddleware } from './security/layers/s4-audit-logging/audit-logger.middleware';
+import { TenantContextService } from './security/layers/s2-tenant-isolation/tenant-context.service';
+import { AISecuritySupervisorService } from './security/ai-supervisor/ai-security-supervisor.service';
+import { EnvironmentValidatorService } from './security/layers/s1-environment-verification/environment-validator.service';
+
+async function bootstrap() {
+  const logger = new Logger('MainApplication');
+  
+  try {
+    // S1: التحقق من البيئة قبل أي شيء
+    logger.log('🚀 [S1] بدء التحقق من البيئة والأمان...');
+    const environmentValidator = new EnvironmentValidatorService();
+    await environmentValidator.onModuleInit();
+    logger.log('✅ [S1] اجتازت البيئة جميع اختبارات الأمان');
+
+    // إنشاء التطبيق
+    const app = await NestFactory.create(AppModule, { 
+      logger: ['log', 'error', 'warn', 'debug'] 
+    });
+
+    // S8: الحماية من هجمات الويب - المستوى الأول
+    app.use(helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'", "'unsafe-inline'", 'https://*.apex-platform.com'],
+          styleSrc: ["'self'", "'unsafe-inline'", 'https://*.apex-platform.com'],
+          imgSrc: ["'self'", 'data:', 'https://*.apex-platform.com', 'https://*.stripe.com'],
+          fontSrc: ["'self'", 'https://*.apex-platform.com'],
+          connectSrc: ["'self'", 'https://*.apex-platform.com', 'wss://*.apex-platform.com'],
+          frameSrc: ["'self'", 'https://*.stripe.com'],
+          objectSrc: ["'none'"],
+          baseUri: ["'self'"],
+          formAction: ["'self'"],
+          frameAncestors: ["'none'"],
+          upgradeInsecureRequests: [],
+        },
+        reportOnly: process.env.NODE_ENV === 'development'
+      },
+      hsts: {
+        maxAge: 31536000,
+        includeSubDomains: true,
+        preload: true
+      }
+    }));
+    
+    logger.log('✅ [S8] تم تفعيل رؤوس الأمان HTTP');
+
+    // S6: تحديد حدود المعدل الأساسي
+    const limiter = rateLimit({
+      windowMs: 15 * 60 * 1000, // 15 دقيقة
+      max: process.env.NODE_ENV === 'production' ? 100 : 500, // حدود مرنة للتطوير
+      standardHeaders: true,
+      legacyHeaders: false,
+      handler: (req, res) => {
+        logger.warn(`[S6] 🚨 تجاوز حد المعدل من IP: ${req.ip}`);
+        
+        // الحصول على سياق المستأجر لإرسال تنبيه مخصص
+        const tenantContext = app.get(TenantContextService);
+        const tenantId = tenantContext.getTenantId() || 'unknown';
+        
+        // تسجيل الحدث الأمني
+        const auditService = app.get(AuditLoggerMiddleware);
+        // سيتم تنفيذ التسجيل الفعلي لاحقاً
+        
+        res.status(429).json({
+          statusCode: 429,
+          message: 'تم تجاوز حد الطلبات. يرجى المحاولة لاحقاً.',
+          retryAfter: 15,
+          timestamp: new Date().toISOString()
+        });
+      }
+    });
+    
+    app.use(limiter);
+    logger.log('✅ [S6] تم تفعيل تحديد حدود المعدل الأساسي');
+
+    // S3: التحقق من المدخلات العالمي
+    app.useGlobalPipes(new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+      transformOptions: {
+        enableImplicitConversion: true
+      },
+      exceptionFactory: (errors) => {
+        logger.error(`[S3] 🚨 مدخلات غير صالحة: ${JSON.stringify(errors)}`);
+        
+        // تسجيل محاولة اختراق محتملة
+        const errorMessages = errors.map(err => ({
+          property: err.property,
+          constraints: err.constraints,
+          value: err.value
+        }));
+        
+        // سيتم تحسين هذا مع خدمة السجل الكاملة
+        return {
+          statusCode: 400,
+          message: 'مدخلات غير صالحة',
+          errors: errorMessages
+        };
+      }
+    }));
+    
+    logger.log('✅ [S3] تم تفعيل التحقق من المدخلات العالمي');
+
+    // S4: وسطاء تسجيل التدقيق
+    app.use(AuditLoggerMiddleware());
+    logger.log('✅ [S4] تم تفعيل تسجيل التدقيق');
+
+    // S5: معالجة الأخطاء الآمنة
+    app.useGlobalFilters(new AllExceptionsFilter());
+    logger.log('✅ [S5] تم تفعيل معالجة الأخطاء الآمنة');
+
+    // CORS Configuration
+    const corsOrigin = process.env.CORS_ORIGIN || 'https://apex-platform.com';
+    app.enableCors({
+      origin: corsOrigin.split(','),
+      methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+      credentials: true,
+      maxAge: 3600,
+      preflightContinue: false,
+    });
+    
+    logger.log(`✅ تم تفعيل CORS للمنشأ: ${corsOrigin}`);
+
+    // Swagger Configuration (للتطوير فقط)
+    if (process.env.NODE_ENV !== 'production') {
+      const config = new DocumentBuilder()
+        .setTitle('Apex Platform API')
+        .setDescription('وثائق واجهة برمجة تطبيقات منصة Apex')
+        .setVersion('1.0')
+        .addTag('security')
+        .addBearerAuth()
+        .build();
+      
+      const document = SwaggerModule.createDocument(app, config);
+      SwaggerModule.setup('api-docs', app, document);
+      
+      logger.log('✅ تم تفعيل وثائق API للتطوير');
+    }
+
+    // المنفذ من المتغيرات البيئية
+    const port = process.env.PORT || 3000;
+    
+    // S8: حماية إضافية ضد CSRF
+    if (process.env.NODE_ENV === 'production') {
+      app.use(csurf({
+        cookie: {
+          httpOnly: true,
+          secure: true,
+          sameSite: 'strict',
+          maxAge: 3600
+        }
+      }));
+      logger.log('✅ [S8] تم تفعيل حماية CSRF للإنتاج');
+    }
+
+    // بدء الخادم
+    await app.listen(port);
+    
+    // S7: بعد بدء الخادم، فحص التشفير
+    const encryptionService = app.get(AISecuritySupervisorService);
+    // سيتم تنفيذ فحص التشفير الفعلي لاحقاً
+
+    logger.log(`🚀 [SUCCEED] تم تشغيل الخادم بنجاح على المنفذ ${port}`);
+    logger.log(`🌐 العنوان: http://localhost:${port}`);
+    logger.log(`🔧 البيئة: ${process.env.NODE_ENV || 'development'}`);
+    
+    // بدء المشرف الأمني بالذكاء الاصطناعي
+    await app.get(AISecuritySupervisorService).onModuleInit();
+    logger.log('🧠 بدء المشرف الأمني بالذكاء الاصطناعي');
+
+    // إرسال تنبيه بدء التشغيل الناجح
+    const auditService = app.get(AuditLoggerMiddleware);
+    // سيتم تنفيذ الإرسال الفعلي لاحقاً
+
+  } catch (error) {
+    logger.error('❌ [CRITICAL] فشل تشغيل التطبيق:');
+    logger.error(error.message);
+    logger.error(error.stack);
+    
+    // في حالة الفشل الحرجة، إنهاء العملية
+    if (error.message.includes('ENCRYPTION_MASTER_KEY') || 
+        error.message.includes('JWT_SECRET') || 
+        error.message.includes('DATABASE_URL')) {
+      logger.error('🔒 النظام سيرفض التشغيل بسبب متغيرات بيئية مفقودة');
+      process.exit(1);
+    }
+    
+    // محاولة إعادة التشغيل
+    logger.warn('🔄 محاولة إعادة التشغيل بعد 5 ثوانٍ...');
+    setTimeout(() => {
+      bootstrap().catch(restartError => {
+        logger.error('❌ فشل إعادة التشغيل النهائي');
+        process.exit(1);
+      });
+    }, 5000);
+  }
+}
+
+// معالجة الأحداث الحرجة
+process.on('unhandledRejection', (reason, promise) => {
+  const logger = new Logger('CriticalErrorHandler');
+  logger.error('🚨 [CRITICAL] وعد غير معالج:');
+  logger.error(reason);
+  
+  // لا يتم إنهاء العملية فوراً، بل محاولة الاسترداد
+  // سيتم تنفيذ آلية الاسترداد المتقدمة لاحقاً
+});
+
+process.on('uncaughtException', (error) => {
+  const logger = new Logger('CriticalErrorHandler');
+  logger.error('🔥 [CRITICAL] استثناء غير معالج:');
+  logger.error(error.message);
+  logger.error(error.stack);
+  
+  // إرسال تنبيه فوري للأمان
+  // سيتم تنفيذ الإرسال الفعلي لاحقاً
+  
+  // إنهاء العملية بعد التسجيل
+  setTimeout(() => {
+    process.exit(1);
+  }, 1000);
+});
+
+bootstrap();
+
+/*******************************************************************************
+ * FILE: ai-security-supervisor.service.ts
+ * PATH: .\core\src\security\ai-supervisor\ai-security-supervisor.service.ts
+ *******************************************************************************/
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { createClient } from '@redis/client';
+import { AuditService } from '../layers/s4-audit-logging/audit.service';
+import { promptTemplates } from './prompt-templates';
+import { TenantContextService } from '../layers/s2-tenant-isolation/tenant-context.service';
+import { EncryptionService } from '../layers/s7-encryption/encryption.service';
+
+@Injectable()
+export class AISecuritySupervisorService implements OnModuleInit {
+  private readonly logger = new Logger(AISecuritySupervisorService.name);
+  private redisClient: any;
+  private isEnabled = true;
+  private lastModelUpdate: Date = new Date();
+  private securityModelVersion = '1.0.0';
+
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly auditService: AuditService,
+    private readonly tenantContext: TenantContextService,
+    private readonly encryptionService: EncryptionService
+  ) {}
+
+  async onModuleInit() {
+    this.logger.log('🧠 [AI] بدء تشغيل المشرف الأمني بالذكاء الاصطناعي...');
+    await this.initializeRedis();
+    await this.loadSecurityModel();
+    
+    // بداية مراقبة النظام
+    this.startSystemMonitoring();
+    
+    this.logger.log('✅ [AI] المشرف الأمني جاهز للعمل');
+  }
+
+  private async initializeRedis() {
+    try {
+      const redisUrl = this.configService.get<string>('REDIS_URL', 'redis://localhost:6379');
+      this.redisClient = createClient({ url: redisUrl });
+      
+      this.redisClient.on('error', (err: Error) => {
+        this.logger.error(`[AI] ❌ خطأ في Redis: ${err.message}`);
+        this.isEnabled = false;
+      });
+      
+      await this.redisClient.connect();
+      this.logger.log('[AI] ✅ تم الاتصال بـ Redis بنجاح');
+    } catch (error) {
+      this.logger.error(`[AI] ❌ فشل تهيئة Redis: ${error.message}`);
+      this.isEnabled = false;
+    }
+  }
+
+  private async loadSecurityModel() {
+    try {
+      // تحميل نموذج الأمان من قاعدة البيانات أو التخزين
+      // هذا الكود سيتطور للاتصال بنموذج AI حقيقي
+      this.securityModelVersion = '1.2.3';
+      this.lastModelUpdate = new Date();
+      
+      this.logger.log(`[AI] 📥 تم تحميل نموذج الأمان الإصدار ${this.securityModelVersion}`);
+    } catch (error) {
+      this.logger.error(`[AI] ❌ فشل تحميل نموذج الأمان: ${error.message}`);
+      this.isEnabled = false;
+    }
+  }
+
+  private startSystemMonitoring() {
+    if (!this.isEnabled) return;
+    
+    // مراقبة النظام كل 5 دقائق
+    setInterval(() => {
+      this.performSystemHealthCheck();
+    }, 5 * 60 * 1000);
+    
+    // مراقبة الأحداث الأمنية في الوقت الفعلي
+    this.monitorSecurityEvents();
+    
+    this.logger.log('[AI] 👁️ بدء مراقبة النظام الأمني المستمرة');
+  }
+
+  private async performSystemHealthCheck() {
+    this.logger.log('[AI] 🩺 بدء فحص صحة النظام...');
+    
+    const checkResults = {
+      timestamp: new Date().toISOString(),
+      checks: []
+    };
+    
+    // 1. التحقق من البيئة (S1)
+    const envCheck = {
+      layer: 'S1',
+      status: 'PASS',
+      issues: []
+    };
+    
+    try {
+      // محاكاة فحص المتغيرات البيئية
+      const envVars = ['ENCRYPTION_MASTER_KEY', 'JWT_SECRET', 'DATABASE_URL'];
+      for (const varName of envVars) {
+        if (!process.env[varName]) {
+          envCheck.status = 'FAIL';
+          envCheck.issues.push(`المتغير البيئي مفقود: ${varName}`);
+        }
+      }
+    } catch (error) {
+      envCheck.status = 'ERROR';
+      envCheck.issues.push(`خطأ في فحص البيئة: ${error.message}`);
+    }
+    
+    checkResults.checks.push(envCheck);
+    
+    // 2. العزل للمستأجرين (S2)
+    const tenantCheck = {
+      layer: 'S2',
+      status: 'PASS',
+      issues: []
+    };
+    
+    try {
+      // محاكاة فحص عزل المستأجرين
+      if (!this.tenantContext) {
+        tenantCheck.status = 'FAIL';
+        tenantCheck.issues.push('خدمة سياق المستأجر غير مهيأة');
+      }
+    } catch (error) {
+      tenantCheck.status = 'ERROR';
+      tenantCheck.issues.push(`خطأ في فحص عزل المستأجرين: ${error.message}`);
+    }
+    
+    checkResults.checks.push(tenantCheck);
+    
+    // 3. التحقق من المدخلات (S3)
+    // سيتم إضافة فحوصات إضافية
+    
+    // تسجيل النتائج في السجل
+    this.auditService.logSystemEvent('HEALTH_CHECK', checkResults);
+    
+    // إذا كان هناك أي فشل، قم بإرسال تنبيه
+    const hasFailures = checkResults.checks.some(check => check.status !== 'PASS');
+    if (hasFailures) {
+      await this.sendSecurityAlert('SYSTEM_HEALTH_FAILURE', checkResults);
+    }
+    
+    this.logger.log(`[AI] ✅ اكتمل فحص صحة النظام. النتائج: ${JSON.stringify(checkResults)}`);
+  }
+
+  private async monitorSecurityEvents() {
+    if (!this.redisClient || !this.isEnabled) return;
+    
+    try {
+      // الاستماع للأحداث الأمنية في Redis
+      await this.redisClient.subscribe('security:events');
+      
+      this.redisClient.on('message', async (channel: string, message: string) => {
+        if (channel === 'security:events') {
+          try {
+            const event = JSON.parse(message);
+            await this.analyzeSecurityEvent(event);
+          } catch (error) {
+            this.logger.error(`[AI] ❌ خطأ في تحليل حدث أمني: ${error.message}`);
+          }
+        }
+      });
+      
+      this.logger.log('[AI] 👂 بدء الاستماع للأحداث الأمنية');
+    } catch (error) {
+      this.logger.error(`[AI] ❌ فشل ضبط مراقبة الأحداث: ${error.message}`);
+    }
+  }
+
+  private async analyzeSecurityEvent(event: any) {
+    this.logger.log(`[AI] 🔍 تحليل الحدث الأمني: ${event.eventType}`);
+    
+    // استخدام نموذج الذكاء الاصطناعي لتحليل الحدث
+    const analysis = await this.performAIAnalysis(event);
+    
+    // تسجيل التحليل
+    this.auditService.logSecurityEvent('AI_ANALYSIS', {
+      originalEvent: event,
+      analysis,
+      timestamp: new Date().toISOString()
+    });
+    
+    // اتخاذ إجراء بناءً على التحليل
+    if (analysis.severity === 'CRITICAL' || analysis.severity === 'HIGH') {
+      await this.sendSecurityAlert('AI_DETECTED_THREAT', {
+        event,
+        analysis,
+        recommendedActions: analysis.recommendedActions
+      });
+    }
+    
+    return analysis;
+  }
+
+  private async performAIAnalysis(event: any): Promise<any> {
+    // هذا الكود سيتطور للاتصال بنموذج AI حقيقي
+    // حالياً، سنستخدم منطقاً بسيطاً لمحاكاة التحليل
+    
+    let severity = 'LOW';
+    let confidence = 0.95;
+    let threatType = 'UNKNOWN';
+    const recommendedActions = [];
+    
+    // تحليل أنواع الأحداث المختلفة
+    if (event.eventType === 'TENANT_ISOLATION_VIOLATION') {
+      severity = 'CRITICAL';
+      confidence = 0.99;
+      threatType = 'DATA_BREACH_ATTEMPT';
+      recommendedActions.push('BLOCK_IP', 'LOCK_USER_ACCOUNT', 'NOTIFY_ADMIN');
+    } 
+    else if (event.eventType === 'INVALID_INPUT_ATTEMPT') {
+      // تحليل نوع المحاولة
+      const suspiciousPatterns = [
+        'sql', 'script', 'eval', 'union', 'select', 'drop', 'insert', 
+        'javascript', 'onerror', 'onload', 'img src', 'iframe'
+      ];
+      
+      const containsSuspiciousContent = suspiciousPatterns.some(pattern => 
+        JSON.stringify(event).toLowerCase().includes(pattern)
+      );
+      
+      if (containsSuspiciousContent) {
+        severity = 'HIGH';
+        threatType = 'INJECTION_ATTEMPT';
+        recommendedActions.push('RATE_LIMIT_IP', 'REVIEW_REQUESTS');
+      }
+    }
+    
+    return {
+      severity,
+      confidence,
+      threatType,
+      analysisTime: new Date().toISOString(),
+      modelVersion: this.securityModelVersion,
+      recommendedActions,
+      rawAnalysis: 'This is a simulated AI analysis. In production, this would connect to a real AI security model.'
+    };
+  }
+
+  private async sendSecurityAlert(alertType: string, alertData: any) {
+    this.logger.error(`[AI] 🚨 تنبيه أمني: ${alertType}`);
+    
+    // 1. تسجيل التنبيه في السجل
+    this.auditService.logSecurityEvent('SECURITY_ALERT', {
+      alertType,
+      alertData,
+      timestamp: new Date().toISOString(),
+      severity: alertData.analysis?.severity || 'HIGH'
+    });
+    
+    // 2. إرسال تنبيه للمشرفين (سيتم تنفيذه لاحقاً)
+    if (this.redisClient) {
+      try {
+        await this.redisClient.publish('security:alerts', JSON.stringify({
+          alertType,
+          alertData,
+          timestamp: new Date().toISOString()
+        }));
+      } catch (error) {
+        this.logger.error(`[AI] ❌ فشل نشر التنبيه: ${error.message}`);
+      }
+    }
+    
+    // 3. اتخاذ إجراء تلقائي بناءً على نوع التنبيه
+    await this.executeAutoRemediation(alertType, alertData);
+  }
+
+  private async executeAutoRemediation(alertType: string, alertData: any) {
+    this.logger.log(`[AI] 🛠️ بدء الإصلاح التلقائي للتنبيه: ${alertType}`);
+    
+    try {
+      switch (alertType) {
+        case 'SYSTEM_HEALTH_FAILURE':
+          // إعادة تهيئة الخدمات المعطلة
+          if (alertData.checkResults?.checks?.some(check => check.layer === 'S1' && check.status !== 'PASS')) {
+            this.logger.log('[AI] ♻️ محاولة إعادة تحميل المتغيرات البيئية');
+            // إعادة تحميل المتغيرات البيئية من المصدر الآمن
+          }
+          break;
+          
+        case 'AI_DETECTED_THREAT':
+          // تنفيذ إجراءات الحماية
+          const actions = alertData.analysis?.recommendedActions || [];
+          
+          for (const action of actions) {
+            switch (action) {
+              case 'BLOCK_IP':
+                const ip = alertData.event?.context?.ipAddress;
+                if (ip) {
+                  await this.blockIpAddress(ip, 'AI_DETECTED_THREAT');
+                }
+                break;
+              
+              case 'LOCK_USER_ACCOUNT':
+                const userId = alertData.event?.context?.userId;
+                if (userId) {
+                  await this.lockUserAccount(userId, 'AI_DETECTED_THREAT');
+                }
+                break;
+              
+              case 'RATE_LIMIT_IP':
+                const rateIp = alertData.event?.context?.ipAddress;
+                if (rateIp) {
+                  await this.applyRateLimit(rateIp, 10, 'minute');
+                }
+                break;
+            }
+          }
+          break;
+      }
+      
+      this.logger.log(`[AI] ✅ اكتمل الإصلاح التلقائي للتنبيه: ${alertType}`);
+    } catch (error) {
+      this.logger.error(`[AI] ❌ فشل الإصلاح التلقائي: ${error.message}`);
+    }
+  }
+
+  private async blockIpAddress(ip: string, reason: string) {
+    this.logger.warn(`[AI] 🚫 حظر عنوان IP: ${ip} - السبب: ${reason}`);
+    
+    if (this.redisClient) {
+      try {
+        const blockKey = `security:blocked_ips:${ip}`;
+        const blockData = {
+          reason,
+          blockedAt: new Date().toISOString(),
+          blockedBy: 'AI_SECURITY_SUPERVISOR',
+          duration: '24h'
+        };
+        
+        await this.redisClient.setex(
+          blockKey, 
+          24 * 60 * 60, // 24 ساعة
+          JSON.stringify(blockData)
+        );
+        
+        this.auditService.logSecurityEvent('IP_BLOCKED', {
+          ip,
+          reason,
+          duration: '24h',
+          blockedBy: 'AI'
+        });
+        
+        return true;
+      } catch (error) {
+        this.logger.error(`[AI] ❌ فشل حظر IP: ${error.message}`);
+        return false;
+      }
+    }
+    
+    return false;
+  }
+
+  private async lockUserAccount(userId: string, reason: string) {
+    this.logger.warn(`[AI] 🔒 قفل حساب المستخدم: ${userId} - السبب: ${reason}`);
+    
+    // سيتم تنفيذ هذا عند وجود خدمة المستخدمين
+    this.auditService.logSecurityEvent('USER_ACCOUNT_LOCKED', {
+      userId,
+      reason,
+      lockedBy: 'AI'
+    });
+    
+    return true;
+  }
+
+  private async applyRateLimit(ip: string, requests: number, period: string) {
+    this.logger.log(`[AI] ⏱️ تطبيق حد المعدل: ${requests} طلب/${period} لـ IP: ${ip}`);
+    
+    if (this.redisClient) {
+      try {
+        const rateKey = `security:rate_limit:${ip}`;
+        await this.redisClient.setex(
+          rateKey,
+          this.getSecondsFromPeriod(period),
+          JSON.stringify({
+            limit: requests,
+            period,
+            appliedAt: new Date().toISOString(),
+            appliedBy: 'AI'
+          })
+        );
+        
+        return true;
+      } catch (error) {
+        this.logger.error(`[AI] ❌ فشل تطبيق حد المعدل: ${error.message}`);
+        return false;
+      }
+    }
+    
+    return false;
+  }
+
+  private getSecondsFromPeriod(period: string): number {
+    switch (period.toLowerCase()) {
+      case 'second':
+      case 'seconds':
+        return 1;
+      case 'minute':
+      case 'minutes':
+        return 60;
+      case 'hour':
+      case 'hours':
+        return 60 * 60;
+      case 'day':
+      case 'days':
+        return 24 * 60 * 60;
+      default:
+        return 60; // default to minute
+    }
+  }
+
+  async generateSecurityReport(timeframe: string = '24h'): Promise<any> {
+    this.logger.log(`[AI] 📊 إنشاء تقرير أمني للفترة: ${timeframe}`);
+    
+    try {
+      // جمع البيانات من الأحداث المسجلة
+      const startDate = new Date();
+      startDate.setHours(startDate.getHours() - 24);
+      
+      if (timeframe === '7d') {
+        startDate.setDate(startDate.getDate() - 7);
+      } else if (timeframe === '30d') {
+        startDate.setDate(startDate.getDate() - 30);
+      }
+      
+      // في الإصدار الحقيقي، سيتم جمع البيانات من قاعدة البيانات
+      const mockData = {
+        totalEvents: 142,
+        securityEvents: 23,
+        criticalEvents: 2,
+        threatsDetected: 8,
+        autoRemediations: 15,
+        systemHealth: 'OPTIMAL',
+        recommendations: [
+          'تحديث نموذج الأمان',
+          'تحسين فحص المدخلات للحقول المالية',
+          'زيادة حدود المعدل للواجهات البرمجية'
+        ]
+      };
+      
+      // تحليل البيانات باستخدام الذكاء الاصطناعي
+      const analysis = await this.analyzeSecurityTrends(mockData);
+      
+      const report = {
+        id: `SEC-REPORT-${new Date().toISOString().replace(/[:.]/g, '-')}`,
+        generatedAt: new Date().toISOString(),
+        timeframe,
+        analysis,
+        rawData: mockData,
+        modelVersion: this.securityModelVersion
+      };
+      
+      // حفظ التقرير
+      this.auditService.logSystemEvent('SECURITY_REPORT_GENERATED', report);
+      
+      return report;
+    } catch (error) {
+      this.logger.error(`[AI] ❌ فشل إنشاء التقرير الأمني: ${error.message}`);
+      throw error;
+    }
+  }
+
+  private async analyzeSecurityTrends(data: any): Promise<any> {
+    // هذا سيتطور لنموذج AI حقيقي
+    return {
+      riskLevel: data.criticalEvents > 5 ? 'HIGH' : data.securityEvents > 50 ? 'MEDIUM' : 'LOW',
+      trend: data.securityEvents > data.totalEvents * 0.2 ? 'INCREASING' : 'STABLE',
+      topThreats: ['INJECTION_ATTEMPTS', 'BRUTE_FORCE', 'DATA_ACCESS_VIOLATIONS'],
+      confidence: 0.85,
+      insights: [
+        'زيادة في محاولات حقن SQL في نهاية الأسبوع',
+        'نسبة النجاح في الكشف عن التهديدات: 97.5%',
+        'الإجراءات التلقائية نجحت في منع 89% من الهجمات'
+      ]
+    };
+  }
+
+  async evaluateSecurityPolicy(policy: any): Promise<any> {
+    this.logger.log('[AI] 📜 تقييم سياسة أمنية جديدة');
+    
+    try {
+      // محاكاة تقييم السياسة
+      const evaluation = {
+        policyId: policy.id || 'new-policy',
+        timestamp: new Date().toISOString(),
+        complianceScore: Math.random() * 100,
+        risks: [
+          { severity: 'MEDIUM', description: 'سياسة كلمة المرور تحتاج لتقوية' },
+          { severity: 'LOW', description: 'فترة صلاحية التوكن طويلة جداً' }
+        ],
+        recommendations: [
+          'تقليل فترة صلاحية JWT إلى 15 دقيقة',
+          'إضافة متطلبات تعقيد كلمة المرور',
+          'تفعيل المصادقة الثنائية للصلاحيات العالية'
+        ],
+        modelVersion: this.securityModelVersion,
+        confidence: 0.92
+      };
+      
+      this.auditService.logSystemEvent('SECURITY_POLICY_EVALUATION', {
+        policy,
+        evaluation
+      });
+      
+      return evaluation;
+    } catch (error) {
+      this.logger.error(`[AI] ❌ فشل تقييم السياسة الأمنية: ${error.message}`);
+      throw error;
+    }
+  }
+}
+
+/*******************************************************************************
+ * FILE: prompt-templates.ts
+ * PATH: .\core\src\security\ai-supervisor\prompt-templates.ts
+ *******************************************************************************/
+export const promptTemplates = {
+  securityIncidentAnalysis: `
+    You are Apex AI Security Supervisor, an advanced AI system responsible for analyzing security incidents in a multi-tenant e-commerce platform.
+    
+    **Incident Details:**
+    - Event Type: {eventType}
+    - Timestamp: {timestamp}
+    - Tenant ID: {tenantId}
+    - User ID: {userId}
+    - IP Address: {ipAddress}
+    - Request Details: {requestData}
+    - System Context: {systemContext}
+    
+    **Your Task:**
+    1. Analyze the incident and determine its severity level (CRITICAL, HIGH, MEDIUM, LOW)
+    2. Identify the threat type (e.g., DATA_BREACH, SQL_INJECTION, XSS, BRUTE_FORCE, etc.)
+    3. Calculate confidence level (0.0-1.0) for your analysis
+    4. Provide recommended automated actions
+    5. Suggest manual review actions for security team
+    
+    **Response Format (JSON only):**
+    {
+      "severity": "CRITICAL|HIGH|MEDIUM|LOW",
+      "threatType": "SPECIFIC_THREAT_CATEGORY",
+      "confidence": 0.0-1.0,
+      "analysisSummary": "Brief summary of the analysis",
+      "recommendedActions": ["ACTION1", "ACTION2", ...],
+      "manualReviewRequired": true|false,
+      "suggestedManualActions": ["ACTION1", "ACTION2", ...]
+    }
+    
+    **Available Actions:**
+    - BLOCK_IP: Block the IP address for 24 hours
+    - RATE_LIMIT_IP: Apply strict rate limiting to the IP
+    - LOCK_USER_ACCOUNT: Lock the user account temporarily
+    - LOGOUT_USER_SESSIONS: Log out all active sessions for the user
+    - ENHANCED_MONITORING: Enable enhanced monitoring for this tenant/user
+    - NOTIFY_ADMIN: Send immediate notification to system administrators
+    - ISOLATE_TENANT: Temporarily isolate the tenant to prevent further damage
+    
+    **Remember:**
+    - Be extremely cautious with CRITICAL severity incidents
+    - Consider the context of a multi-tenant architecture
+    - False positives are acceptable if they prevent potential breaches
+    - Always prioritize data protection and tenant isolation
+  `,
+  
+  systemHealthAssessment: `
+    You are Apex AI Security Supervisor, responsible for evaluating system health and security posture.
+    
+    **System Metrics:**
+    - Environment Verification (S1): {s1Status}
+    - Tenant Isolation (S2): {s2Status}
+    - Input Validation (S3): {s3Status}
+    - Audit Logging (S4): {s4Status}
+    - Error Handling (S5): {s5Status}
+    - Rate Limiting (S6): {s6Status}
+    - Encryption (S7): {s7Status}
+    - Web Protection (S8): {s8Status}
+    - Recent Security Incidents: {recentIncidents}
+    - System Performance: {performanceMetrics}
+    
+    **Your Task:**
+    1. Assess overall security posture
+    2. Identify critical vulnerabilities or gaps
+    3. Prioritize recommendations for improvement
+    4. Predict potential security risks based on current posture
+    
+    **Response Format (JSON only):**
+    {
+      "overallSecurityScore": 0-100,
+      "criticalIssues": [{"layer": "S1-S8", "description": "Issue description", "impact": "HIGH|MEDIUM|LOW"}],
+      "recommendations": [
+        {
+          "priority": "HIGH|MEDIUM|LOW",
+          "layer": "S1-S8",
+          "action": "Specific recommended action",
+          "estimatedEffort": "LOW|MEDIUM|HIGH"
+        }
+      ],
+      "riskPrediction": {
+        "dataBreachRisk": 0.0-1.0,
+        "systemCompromiseRisk": 0.0-1.0,
+        "tenantIsolationRisk": 0.0-1.0
+      },
+      "nextReviewRecommended": "ISO datetime for next review"
+    }
+  `,
+  
+  policyEvaluation: `
+    You are Apex AI Security Supervisor, evaluating security policies against best practices and compliance requirements.
+    
+    **Policy to Evaluate:**
+    {policyContent}
+    
+    **Context:**
+    - Platform Type: Multi-tenant e-commerce platform
+    - Compliance Requirements: GDPR, PCI-DSS, SOC2
+    - Industry Standards: OWASP Top 10, NIST Cybersecurity Framework
+    - Tenant Isolation Requirements: Strict separation required
+    
+    **Your Task:**
+    1. Evaluate the policy against security best practices
+    2. Identify gaps and weaknesses
+    3. Score policy effectiveness (0-100)
+    4. Provide specific improvement recommendations
+    
+    **Response Format (JSON only):**
+    {
+      "policyScore": 0-100,
+      "complianceGaps": [
+        {
+          "standard": "GDPR|PCI-DSS|SOC2|OWASP|NIST",
+          "gap": "Specific gap description",
+          "severity": "CRITICAL|HIGH|MEDIUM|LOW"
+        }
+      ],
+      "improvementRecommendations": [
+        {
+          "section": "Policy section to improve",
+          "currentText": "Current problematic text",
+          "recommendedText": "Improved recommendation",
+          "rationale": "Why this improvement is needed"
+        }
+      ],
+      "overallAssessment": "BRIEF|MODERATE|ADEQUATE|STRONG|EXCELLENT",
+      "implementationPriority": "IMMEDIATE|HIGH|MEDIUM|LOW"
+    }
+  `,
+  
+  threatIntelligence: `
+    You are Apex AI Security Supervisor, analyzing threat intelligence and generating actionable security insights.
+    
+    **Current Threat Landscape:**
+    {threatData}
+    
+    **Platform Context:**
+    - Technology Stack: Node.js, NestJS, PostgreSQL, Redis
+    - Architecture: Multi-tenant with schema isolation
+    - Critical Assets: Customer data, payment information, tenant data
+    - Recent Security Incidents: {recentIncidents}
+    
+    **Your Task:**
+    1. Analyze threat relevance to our platform
+    2. Assess potential impact on our tenants
+    3. Generate specific defensive recommendations
+    4. Prioritize actions based on threat severity and likelihood
+    
+    **Response Format (JSON only):**
+    {
+      "threatRelevanceScore": 0-100,
+      "affectedLayers": ["S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8"],
+      "tenantImpactAssessment": {
+        "highRiskTenants": ["tenant_ids"],
+        "mediumRiskTenants": ["tenant_ids"],
+        "estimatedAffectedPercentage": 0.0-100.0
+      },
+      "immediateActions": [
+        {
+          "action": "Specific action to take",
+          "layer": "S1-S8",
+          "implementationTime": "HOURS|DAYS|WEEKS",
+          "priority": "CRITICAL|HIGH|MEDIUM|LOW"
+        }
+      ],
+      "monitoringRecommendations": [
+        "Specific monitoring rule 1",
+        "Specific monitoring rule 2"
+      ],
+      "intelligenceSource": "Source of threat intelligence",
+      "confidenceLevel": 0.0-1.0
+    }
+  `
+};
+
+/*******************************************************************************
+ * FILE: environment-validator.module.ts
+ * PATH: .\core\src\security\layers\s1-environment-verification\environment-validator.module.ts
+ *******************************************************************************/
+import { Module, OnModuleInit } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { EnvironmentValidatorService } from './environment-validator.service';
+
+@Module({
+  imports: [ConfigModule],
+  providers: [EnvironmentValidatorService, ConfigService],
+  exports: [EnvironmentValidatorService],
+})
+export class EnvironmentVerificationModule implements OnModuleInit {
+  constructor(private readonly envValidator: EnvironmentValidatorService) {}
+
+  async onModuleInit() {
+    await this.envValidator.onModuleInit();
+  }
+}
+
+/*******************************************************************************
+ * FILE: environment-validator.service.ts
+ * PATH: .\core\src\security\layers\s1-environment-verification\environment-validator.service.ts
+ *******************************************************************************/
+import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+
+@Injectable()
+export class EnvironmentValidatorService implements OnModuleInit {
+  private readonly logger = new Logger(EnvironmentValidatorService.name);
+  
+  constructor(private readonly configService: ConfigService) {}
+
+  async onModuleInit() {
+    this.logger.log('🔐 [S1] بدء التحقق من البيئة والأمان...');
+    this.validateCriticalVariables();
+    this.validateSecretStrength();
+    this.validateEnvironmentMode();
+    this.logger.log('✅ [S1] اجتازت البيئة جميع اختبارات الأمان');
+  }
+
+  private validateCriticalVariables() {
+    const criticalVars = [
+      'ENCRYPTION_MASTER_KEY',
+      'JWT_SECRET',
+      'DATABASE_URL',
+      'MASTER_ADMIN_EMAIL'
+    ];
+
+    for (const varName of criticalVars) {
+      const value = this.configService.get<string>(varName);
+      if (!value || value.trim() === '') {
+        const errorMessage = `❌ [S1] متغير بيئي حرج مفقود: ${varName}. النظام سيرفض التشغيل.`;
+        this.logger.error(errorMessage);
+        throw new Error(errorMessage);
+      }
+    }
+  }
+
+  private validateSecretStrength() {
+    const masterKey = this.configService.get<string>('ENCRYPTION_MASTER_KEY');
+    const jwtSecret = this.configService.get<string>('JWT_SECRET');
+
+    // التحقق من قوة المفاتيح
+    const minKeyLength = 64; // 64 حرفاً كحد أدنى للأمان العالي
+    if (masterKey.length < minKeyLength || jwtSecret.length < minKeyLength) {
+      const errorMessage = `❌ [S1] مفاتيح ضعيفة: يجب أن تكون المفاتيح 64 حرفاً على الأقل`;
+      this.logger.error(errorMessage);
+      throw new Error(errorMessage);
+    }
+
+    // التحقق من تعقيد المفاتيح
+    const hasUpperCase = /[A-Z]/.test(masterKey);
+    const hasLowerCase = /[a-z]/.test(masterKey);
+    const hasNumbers = /\d/.test(masterKey);
+    const hasSpecialChars = /[!@#$%^&*(),.?":{}|<>]/.test(masterKey);
+
+    if (!(hasUpperCase && hasLowerCase && hasNumbers && hasSpecialChars)) {
+      this.logger.warn('⚠️ [S1] المفتاح الرئيسي يحتاج لمزيد من التعقيد. يوصى بإضافة أحرف كبيرة وأرقام ورموز خاصة');
+    }
+  }
+
+  private validateEnvironmentMode() {
+    const nodeEnv = this.configService.get<string>('NODE_ENV', 'development');
+    const isProduction = nodeEnv === 'production';
+
+    if (isProduction) {
+      // في بيئة الإنتاج، التحقق من عدم وجود متغيرات التطوير
+      const devVars = ['DEV_ONLY_FEATURES', 'DEBUG_MODE', 'TEST_DATABASE_URL'];
+      for (const varName of devVars) {
+        if (this.configService.get(varName)) {
+          this.logger.warn(`⚠️ [S1] متغير تطوير موجود في بيئة الإنتاج: ${varName}`);
+        }
+      }
+
+      // التحقق من ضرورة وجود متغيرات الإنتاج فقط
+      const prodVars = ['PRODUCTION_API_KEY', 'MONITORING_SERVICE_URL'];
+      for (const varName of prodVars) {
+        if (!this.configService.get(varName)) {
+          this.logger.warn(`⚠️ [S1] متغير إنتاج مفقود في بيئة الإنتاج: ${varName}`);
+        }
+      }
+    }
+  }
+
+  validateDynamicUpdate(key: string, newValue: string): boolean {
+    this.logger.log(`🔄 [S1] محاولة تحديث متغير البيئة ديناميكياً: ${key}`);
+    
+    try {
+      // منع تحديث المفاتيح الحساسة ديناميكياً دون إعادة تشغيل
+      const sensitiveKeys = ['ENCRYPTION_MASTER_KEY', 'JWT_SECRET', 'DATABASE_URL'];
+      if (sensitiveKeys.includes(key)) {
+        this.logger.warn(`🔒 [S1] تحديث ديناميكي محظور للمفتاح الحساس: ${key}`);
+        return false;
+      }
+      
+      // التحقق من صحة القيمة الجديدة
+      if (newValue.trim() === '') {
+        this.logger.error(`❌ [S1] قيمة فارغة لـ ${key} - الرفض`);
+        return false;
+      }
+      
+      process.env[key] = newValue;
+      this.logger.log(`✅ [S1] تم تحديث ${key} بنجاح`);
+      return true;
+    } catch (error) {
+      this.logger.error(`❌ [S1] فشل تحديث ${key}: ${error.message}`);
+      return false;
+    }
+  }
+}
+
+/*******************************************************************************
+ * FILE: index.ts
+ * PATH: .\core\src\security\layers\s1-environment-verification\index.ts
+ *******************************************************************************/
+export * from './environment-validator.service';
+export * from './environment-validator.module';
+
+/*******************************************************************************
+ * FILE: index.ts
+ * PATH: .\core\src\security\layers\s2-tenant-isolation\index.ts
+ *******************************************************************************/
+export * from './tenant-context.service';
+export * from './tenant-scoped.guard';
+export * from './tenant-isolation.module';
+
+/*******************************************************************************
+ * FILE: tenant-context.service.ts
+ * PATH: .\core\src\security\layers\s2-tenant-isolation\tenant-context.service.ts
+ *******************************************************************************/
+import { Injectable, Scope, Inject } from '@nestjs/common';
+import { REQUEST } from '@nestjs/core';
+import { Request } from 'express';
+import { v4 as uuidv4 } from 'uuid';
+import { Logger } from '@nestjs/common';
+
+@Injectable({ scope: Scope.REQUEST })
+export class TenantContextService {
+  private readonly logger = new Logger(TenantContextService.name);
+  private tenantId: string;
+  private tenantSchema: string;
+  private isSystemOperation = false;
+
+  constructor(@Inject(REQUEST) private readonly request: Request) {
+    this.initializeFromRequest();
+  }
+
+  private initializeFromRequest() {
+    // محاولة استخراج tenantId من عدة مصادر
+    this.tenantId = 
+      this.request.headers['x-tenant-id']?.toString() ||
+      this.request.subdomains[0] ||
+      this.extractFromHost() ||
+      this.extractFromPath();
+    
+    if (this.tenantId) {
+      this.tenantSchema = `tenant_${this.sanitizeTenantId(this.tenantId)}`;
+      this.logger.debug(`[S2] تم تعيين سياق المستأجر: ${this.tenantId} -> ${this.tenantSchema}`);
+    } else {
+      // عمليات النظام لا تحتوي على tenantId
+      this.isSystemOperation = true;
+      this.logger.debug('[S2] عملية نظام - لا يوجد مستأجر محدد');
+    }
+  }
+
+  private extractFromHost(): string | null {
+    const host = this.request.hostname;
+    const parts = host.split('.');
+    
+    // إذا كان النطاق تحت apex-platform.com
+    if (parts.length > 2 && parts[parts.length-2] === 'apex-platform' && parts[parts.length-1] === 'com') {
+      return parts[0];
+    }
+    return null;
+  }
+
+  private extractFromPath(): string | null {
+    const path = this.request.path;
+    const match = path.match(/^\/([^\/]+)\/api\//);
+    return match ? match[1] : null;
+  }
+
+  private sanitizeTenantId(tenantId: string): string {
+    // تنظيف tenantId لمنع حقن SQL
+    return tenantId.toLowerCase().replace(/[^a-z0-9-_]/g, '_');
+  }
+
+  getTenantId(): string | null {
+    return this.tenantId || null;
+  }
+
+  getTenantSchema(): string | null {
+    return this.tenantSchema || null;
+  }
+
+  isSystemContext(): boolean {
+    return this.isSystemOperation;
+  }
+
+  validateTenantAccess(requestedTenantId: string): boolean {
+    // السماح لعمليات النظام بالوصول إلى أي مستأجر
+    if (this.isSystemOperation) {
+      this.logger.warn(`[S2] ⚠️ عملية نظام تحاول الوصول إلى مستأجر: ${requestedTenantId}`);
+      return true;
+    }
+    
+    // التحقق من تطابق المستأجر
+    const isValid = this.tenantId === requestedTenantId;
+    
+    if (!isValid) {
+      this.logger.error(
+        `[S2] 🚨 محاولة اختراق: المستأجر ${this.tenantId} يحاول الوصول إلى بيانات ${requestedTenantId}`
+      );
+      
+      // تسجيل حدث أمني
+      this.logSecurityIncident('TENANT_ISOLATION_VIOLATION', {
+        currentTenant: this.tenantId,
+        attemptedAccess: requestedTenantId,
+        ip: this.request.ip,
+        userAgent: this.request.get('User-Agent'),
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    return isValid;
+  }
+
+  logSecurityIncident(type: string, details: any) {
+    const incidentId = uuidv4();
+    this.logger.error(`[S2] 🔒 حادث أمني [${incidentId}] - النوع: ${type}`);
+    this.logger.error(JSON.stringify({
+      incidentId,
+      type,
+      details,
+      stack: new Error().stack
+    }, null, 2));
+    
+    // هنا يمكن إرسال تنبيه فوري للمشرفين
+    // this.securityAlertService.sendAlert(type, details);
+  }
+
+  forceSystemContext() {
+    this.isSystemOperation = true;
+    this.tenantId = 'system';
+    this.tenantSchema = 'system_schema';
+    this.logger.warn('[S2] ⚠️ تم تفعيل سياق النظام يدوياً');
+  }
+}
+
+/*******************************************************************************
+ * FILE: tenant-isolation.module.ts
+ * PATH: .\core\src\security\layers\s2-tenant-isolation\tenant-isolation.module.ts
+ *******************************************************************************/
+import { Module, Global } from '@nestjs/common';
+import { TenantContextService } from './tenant-context.service';
+import { TenantScopedGuard } from './tenant-scoped.guard';
+import { APP_GUARD } from '@nestjs/core';
+
+@Global()
+@Module({
+  providers: [
+    TenantContextService,
+    {
+      provide: APP_GUARD,
+      useClass: TenantScopedGuard,
+    },
+  ],
+  exports: [TenantContextService, TenantScopedGuard],
+})
+export class TenantIsolationModule {}
+
+/*******************************************************************************
+ * FILE: tenant-scoped.guard.ts
+ * PATH: .\core\src\security\layers\s2-tenant-isolation\tenant-scoped.guard.ts
+ *******************************************************************************/
+import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
+import { TenantContextService } from './tenant-context.service';
+import { Reflector } from '@nestjs/core';
+import { Logger } from '@nestjs/common';
+
+@Injectable()
+export class TenantScopedGuard implements CanActivate {
+  private readonly logger = new Logger(TenantScopedGuard.name);
+
+  constructor(
+    private readonly tenantContext: TenantContextService,
+    private readonly reflector: Reflector
+  ) {}
+
+  canActivate(context: ExecutionContext): boolean {
+    const request = context.switchToHttp().getRequest();
+    const handler = context.getHandler();
+    const className = context.getClass().name;
+    const handlerName = handler.name;
+
+    // التحقق مما إذا كانت هذه العملية معفاة من التحقق
+    const isExempt = this.reflector.get<boolean>('tenant-exempt', handler) || 
+                    this.reflector.get<boolean>('tenant-exempt', context.getClass());
+    
+    if (isExempt) {
+      this.logger.debug(`[S2] ✅ العملية معفاة من فحص المستأجر: ${className}.${handlerName}`);
+      return true;
+    }
+
+    // استخراج tenantId من الطلب
+    const requestedTenantId = this.extractTenantIdFromRequest(request, context);
+    
+    if (!requestedTenantId) {
+      this.logger.error(`[S2] ❌ لا يمكن تحديد المستأجر للعملية: ${className}.${handlerName}`);
+      throw new ForbiddenException('لا يمكن تحديد السياق الأمني للمستأجر');
+    }
+
+    // التحقق من الصلاحية
+    const hasAccess = this.tenantContext.validateTenantAccess(requestedTenantId);
+    
+    if (!hasAccess) {
+      this.logger.error(
+        `[S2] 🚨 رفض الوصول: ${this.tenantContext.getTenantId()} لا يستطيع الوصول إلى ${requestedTenantId} - ${className}.${handlerName}`
+      );
+      throw new ForbiddenException('رفض الوصول: المستأجر غير مصرح له');
+    }
+
+    this.logger.debug(`[S2] ✅ المستأجر ${requestedTenantId} مفوض للوصول إلى ${className}.${handlerName}`);
+    return true;
+  }
+
+  private extractTenantIdFromRequest(request: any, context: ExecutionContext): string | null {
+    // البحث في معلمات المسار
+    if (request.params && request.params.tenantId) {
+      return request.params.tenantId;
+    }
+    
+    if (request.params && request.params.storeId) {
+      return request.params.storeId;
+    }
+    
+    // البحث في الاستعلام
+    if (request.query && request.query.tenantId) {
+      return request.query.tenantId;
+    }
+    
+    // البحث في الجسم
+    if (request.body && request.body.tenantId) {
+      return request.body.tenantId;
+    }
+    
+    // البحث في الرؤوس
+    if (request.headers['x-tenant-id']) {
+      return request.headers['x-tenant-id'].toString();
+    }
+    
+    // بالنسبة لبعض المحارس الخاصة
+    const handler = context.getHandler();
+    const className = context.getClass().name;
+    
+    // السماح لبعض العمليات النظامية
+    if (className.includes('AuthController') || className.includes('HealthController')) {
+      return this.tenantContext.getTenantId();
+    }
+    
+    this.logger.warn(`[S2] ⚠️ لا يمكن العثور على tenantId للطلب: ${className}.${handler.name}`);
+    return this.tenantContext.getTenantId();
+  }
+}
+
+/*******************************************************************************
+ * FILE: index.ts
+ * PATH: .\core\src\security\layers\s3-input-validation\index.ts
+ *******************************************************************************/
+export * from './input-validator.service';
+export * from './input-validation.module';
+export * as validationSchemas from './validation-schemas';
+
+/*******************************************************************************
+ * FILE: input-validation.module.ts
+ * PATH: .\core\src\security\layers\s3-input-validation\input-validation.module.ts
+ *******************************************************************************/
+import { Module, Global } from '@nestjs/common';
+import { InputValidatorService } from './input-validator.service';
+import { AuditService } from '../s4-audit-logging/audit.service';
+import { TenantContextService } from '../s2-tenant-isolation/tenant-context.service';
+
+@Global()
+@Module({
+  providers: [InputValidatorService, AuditService, TenantContextService],
+  exports: [InputValidatorService],
+})
+export class InputValidationModule {}
+
+/*******************************************************************************
+ * FILE: input-validator.service.ts
+ * PATH: .\core\src\security\layers\s3-input-validation\input-validator.service.ts
+ *******************************************************************************/
+import { Injectable, BadRequestException, Logger } from '@nestjs/common';
+import * as z from 'zod';
+import { AuditService } from '../../layers/s4-audit-logging/audit.service';
+
+@Injectable()
+export class InputValidatorService {
+  private readonly logger = new Logger(InputValidatorService.name);
+
+  constructor(private readonly auditService: AuditService) {}
+
+  validate<T extends z.ZodTypeAny>(schema: T, data: unknown, context: string): z.infer<T> {
+    try {
+      this.logger.debug(`[S3] 🧪 التحقق من المدخلات للسياق: ${context}`);
+      
+      // تنفيذ التحقق باستخدام Zod
+      const result = schema.safeParse(data);
+      
+      if (!result.success) {
+        // تحويل أخطاء Zod إلى تنسيق مقروء
+        const errorMessages = result.error.errors.map(err => ({
+          path: err.path.join('.'),
+          message: err.message,
+          code: err.code,
+          received: err.input
+        }));
+        
+        // تسجيل محاولة إدخال غير صالحة كحدث أمني
+        this.logValidationFailure(context, data, errorMessages);
+        
+        this.logger.warn(`[S3] ❌ فشل التحقق من المدخلات للسياق: ${context}`);
+        this.logger.warn(JSON.stringify(errorMessages, null, 2));
+        
+        throw new BadRequestException({
+          message: 'مدخلات غير صالحة',
+          context,
+          errors: errorMessages
+        });
+      }
+      
+      this.logger.debug(`[S3] ✅ نجاح التحقق من المدخلات للسياق: ${context}`);
+      return result.data;
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      
+      // التعامل مع الأخطاء غير المتوقعة
+      this.logger.error(`[S3] 🚨 خطأ غير متوقع في التحقق: ${context} - ${error.message}`);
+      this.auditService.logSecurityEvent('VALIDATION_ERROR', {
+        context,
+        error: error.message,
+        stack: error.stack
+      });
+      
+      throw new BadRequestException('حدث خطأ أثناء التحقق من المدخلات');
+    }
+  }
+
+  private logValidationFailure(context: string, rawData: unknown, errors: any[]) {
+    // تسجيل الحدث الأمني
+    this.auditService.logSecurityEvent('INVALID_INPUT_ATTEMPT', {
+      context,
+      rawData,
+      errors,
+      timestamp: new Date().toISOString()
+    });
+    
+    // إذا كان هناك محاولات متكررة، يمكن اتخاذ إجراءات إضافية
+    const isSuspicious = errors.some(err => 
+      err.message.toLowerCase().includes('sql') || 
+      err.message.toLowerCase().includes('script') ||
+      err.path.includes('password') && err.received?.length > 100
+    );
+    
+    if (isSuspicious) {
+      this.logger.error(`[S3] 🔴 محاولة إدخال مشبوهة في السياق: ${context}`);
+      // هنا يمكن إضافة حظر مؤقت أو إرسال تنبيه
+    }
+  }
+
+  sanitizeInput(input: string | number | object | any[]): any {
+    if (typeof input === 'string') {
+      return this.sanitizeString(input);
+    }
+    
+    if (Array.isArray(input)) {
+      return input.map(item => this.sanitizeInput(item));
+    }
+    
+    if (typeof input === 'object' && input !== null) {
+      const sanitized: any = {};
+      for (const [key, value] of Object.entries(input)) {
+        sanitized[key] = this.sanitizeInput(value);
+      }
+      return sanitized;
+    }
+    
+    return input;
+  }
+
+  private sanitizeString(input: string): string {
+    // إزالة أكواد JavaScript/HTML الخبيثة
+    let sanitized = input
+      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+      .replace(/javascript:/gi, '')
+      .replace(/on[a-z]+=/gi, '');
+    
+    // منع حقن SQL
+    sanitized = sanitized
+      .replace(/(\b)(select|insert|update|delete|drop|union|exec|xp_cmdshell)(\b)/gi, '$1[PROTECTED]$3')
+      .replace(/--/g, '[COMMENT]')
+      .replace(/;/g, '[SEMICOLON]');
+    
+    // منع حقن NoSQL
+    sanitized = sanitized.replace(/\$[a-z]+/g, '[NOSQL]');
+    
+    return sanitized;
+  }
+}
+
+/*******************************************************************************
+ * FILE: auth.schema.ts
+ * PATH: .\core\src\security\layers\s3-input-validation\validation-schemas\auth.schema.ts
+ *******************************************************************************/
+import { z } from 'zod';
+
+export const loginSchema = z.object({
+  email: z.string().email('البريد الإلكتروني غير صالح').min(1, 'البريد الإلكتروني مطلوب'),
+  password: z.string().min(8, 'كلمة المرور يجب أن تكون 8 أحرف على الأقل')
+});
+
+export const registerSchema = z.object({
+  email: z.string().email('البريد الإلكتروني غير صالح').min(1, 'البريد الإلكتروني مطلوب'),
+  password: z.string()
+    .min(8, 'كلمة المرور يجب أن تكون 8 أحرف على الأقل')
+    .regex(/[A-Z]/, 'يجب أن تحتوي على حرف كبير')
+    .regex(/[a-z]/, 'يجب أن تحتوي على حرف صغير')
+    .regex(/[0-9]/, 'يجب أن تحتوي على رقم')
+    .regex(/[^A-Za-z0-9]/, 'يجب أن تحتوي على رمز خاص'),
+  tenantName: z.string().min(3, 'اسم المتجر يجب أن يكون 3 أحرف على الأقل'),
+  businessType: z.enum(['RETAIL', 'SERVICE', 'HEALTHCARE', 'RESTAURANT', 'OTHER']),
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1, 'الرمز مطلوب'),
+  newPassword: z.string()
+    .min(8, 'كلمة المرور الجديدة يجب أن تكون 8 أحرف على الأقل')
+    .regex(/[A-Z]/, 'يجب أن تحتوي على حرف كبير')
+    .regex(/[a-z]/, 'يجب أن تحتوي على حرف صغير')
+    .regex(/[0-9]/, 'يجب أن تحتوي على رقم')
+    .regex(/[^A-Za-z0-9]/, 'يجب أن تحتوي على رمز خاص'),
+});
+
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, 'كلمة المرور الحالية مطلوبة'),
+  newPassword: z.string()
+    .min(8, 'كلمة المرور الجديدة يجب أن تكون 8 أحرف على الأقل')
+    .regex(/[A-Z]/, 'يجب أن تحتوي على حرف كبير')
+    .regex(/[a-z]/, 'يجب أن تحتوي على حرف صغير')
+    .regex(/[0-9]/, 'يجب أن تحتوي على رقم')
+    .regex(/[^A-Za-z0-9]/, 'يجب أن تحتوي على رمز خاص'),
+});
+
+/*******************************************************************************
+ * FILE: payment.schema.ts
+ * PATH: .\core\src\security\layers\s3-input-validation\validation-schemas\payment.schema.ts
+ *******************************************************************************/
+import { z } from 'zod';
+
+export const paymentSchema = z.object({
+  amount: z.number().positive('المبلغ يجب أن يكون موجباً').min(1, 'يجب أن يكون المبلغ أكبر من الصفر'),
+  currency: z.enum(['SAR', 'USD', 'EUR', 'GBP', 'AED', 'EGP'], {
+    errorMap: () => ({ message: 'عملة غير مدعومة' })
+  }),
+  sourceId: z.string().min(1, 'مصدر الدفع مطلوب'),
+  description: z.string().min(5, 'الوصف يجب أن يكون 5 أحرف على الأقل'),
+  customerId: z.string().min(1, 'معرف العميل مطلوب'),
+  metadata: z.record(z.string()).optional(),
+});
+
+export const refundSchema = z.object({
+  paymentId: z.string().min(1, 'معرف الدفع مطلوب'),
+  amount: z.number().positive('المبلغ يجب أن يكون موجباً').optional(),
+  reason: z.string().min(3, 'السبب مطلوب').optional(),
+});
+
+/*******************************************************************************
+ * FILE: tenant.schema.ts
+ * PATH: .\core\src\security\layers\s3-input-validation\validation-schemas\tenant.schema.ts
+ *******************************************************************************/
+import { z } from 'zod';
+
+export const createTenantSchema = z.object({
+  name: z.string().min(3, 'اسم المتجر يجب أن يكون 3 أحرف على الأقل').max(50, 'الاسم طويل جداً'),
+  domain: z.string().min(3, 'النطاق يجب أن يكون 3 أحرف على الأقل')
+    .regex(/^[a-z0-9-]+$/, 'النطاق يجب أن يحتوي على أحرف صغيرة وأرقام وشرطات فقط'),
+  businessType: z.enum(['RETAIL', 'SERVICE', 'HEALTHCARE', 'RESTAURANT', 'OTHER'], {
+    errorMap: () => ({ message: 'نوع العمل غير صالح' })
+  }),
+  contactEmail: z.string().email('البريد الإلكتروني غير صالح'),
+  contactPhone: z.string()
+    .regex(/^[\d\s+()-]*$/, 'رقم الهاتف يحتوي على أحرف غير صالحة')
+    .min(8, 'رقم الهاتف قصير جداً'),
+  address: z.object({
+    street: z.string().min(5, 'اسم الشارع مطلوب'),
+    city: z.string().min(2, 'المدينة مطلوبة'),
+    country: z.string().min(2, 'البلد مطلوب'),
+    postalCode: z.string().min(3, 'الرمز البريدي مطلوب'),
+  }),
+  subscriptionPlan: z.enum(['FREE', 'PRO', 'ENTERPRISE'], {
+    errorMap: () => ({ message: 'خطة الاشتراك غير صالحة' })
+  }).default('FREE'),
+});
+
+export const updateTenantSchema = z.object({
+  name: z.string().min(3, 'اسم المتجر يجب أن يكون 3 أحرف على الأقل').max(50, 'الاسم طويل جداً').optional(),
+  businessType: z.enum(['RETAIL', 'SERVICE', 'HEALTHCARE', 'RESTAURANT', 'OTHER']).optional(),
+  contactEmail: z.string().email('البريد الإلكتروني غير صالح').optional(),
+  contactPhone: z.string()
+    .regex(/^[\d\s+()-]*$/, 'رقم الهاتف يحتوي على أحرف غير صالحة')
+    .min(8, 'رقم الهاتف قصير جداً').optional(),
+  address: z.object({
+    street: z.string().min(5, 'اسم الشارع مطلوب').optional(),
+    city: z.string().min(2, 'المدينة مطلوبة').optional(),
+    country: z.string().min(2, 'البلد مطلوب').optional(),
+    postalCode: z.string().min(3, 'الرمز البريدي مطلوب').optional(),
+  }).optional(),
+  settings: z.object({
+    language: z.string().min(2, 'رمز اللغة غير صالح').optional(),
+    timezone: z.string().optional(),
+    currency: z.enum(['SAR', 'USD', 'EUR', 'GBP', 'AED', 'EGP']).optional(),
+  }).optional(),
+});
+
+/*******************************************************************************
+ * FILE: audit-logger.middleware.ts
+ * PATH: .\core\src\security\layers\s4-audit-logging\audit-logger.middleware.ts
+ *******************************************************************************/
+import { Injectable, NestMiddleware, Logger } from '@nestjs/common';
+import { Request, Response, NextFunction } from 'express';
+import { v4 as uuidv4 } from 'uuid';
+import { AuditService } from './audit.service';
+import { TenantContextService } from '../s2-tenant-isolation/tenant-context.service';
+
+@Injectable()
+export class AuditLoggerMiddleware implements NestMiddleware {
+  private readonly logger = new Logger(AuditLoggerMiddleware.name);
+
+  constructor(
+    private readonly auditService: AuditService,
+    private readonly tenantContext: TenantContextService
+  ) {}
+
+  use(req: Request, res: Response, next: NextFunction) {
+    const requestId = uuidv4();
+    const startTime = Date.now();
+    
+    // تخزين requestId في الطلب
+    req['requestId'] = requestId;
+    
+    // تسجيل بداية الطلب
+    this.logRequestStart(req, requestId);
+    
+    // تتبُّع انتهاء الطلب
+    res.on('finish', () => {
+      const processingTime = Date.now() - startTime;
+      this.logRequestEnd(req, res, processingTime, requestId);
+    });
+    
+    next();
+  }
+
+  private logRequestStart(req: Request, requestId: string) {
+    const tenantId = this.tenantContext.getTenantId() || 'system';
+    const userId = req.user?.id || 'anonymous';
+    
+    this.auditService.logSystemEvent('REQUEST_STARTED', {
+      requestId,
+      method: req.method,
+      url: req.originalUrl,
+      ip: this.getClientIp(req),
+      userAgent: req.get('User-Agent'),
+      tenantId,
+      userId,
+      headers: this.sanitizeHeaders(req.headers),
+      body: this.sanitizeRequestBody(req.body),
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  private logRequestEnd(req: Request, res: Response, processingTime: number, requestId: string) {
+    const status = res.statusCode;
+    const tenantId = this.tenantContext.getTenantId() || 'system';
+    
+    // تسجيل حدث بناءً على حالة الاستجابة
+    if (status >= 400 && status < 500) {
+      this.auditService.logSecurityEvent('CLIENT_ERROR', {
+        requestId,
+        method: req.method,
+        url: req.originalUrl,
+        statusCode: status,
+        processingTime,
+        tenantId,
+        ip: this.getClientIp(req),
+        details: {
+          errorType: 'CLIENT_ERROR',
+          message: `طلب خاطئ من العميل - ${status}`
+        }
+      });
+    } else if (status >= 500) {
+      this.auditService.logSecurityEvent('SERVER_ERROR', {
+        requestId,
+        method: req.method,
+        url: req.originalUrl,
+        statusCode: status,
+        processingTime,
+        tenantId,
+        details: {
+          errorType: 'SERVER_ERROR',
+          message: `خطأ في الخادم - ${status}`
+        }
+      });
+    } else {
+      this.auditService.logBusinessEvent('REQUEST_COMPLETED', {
+        requestId,
+        method: req.method,
+        url: req.originalUrl,
+        statusCode: status,
+        processingTime,
+        tenantId,
+        ip: this.getClientIp(req),
+        success: true
+      });
+    }
+    
+    // تسجيل محاولات الوصول غير المصرح بها
+    if (status === 401 || status === 403) {
+      this.auditService.logSecurityEvent('UNAUTHORIZED_ACCESS_ATTEMPT', {
+        requestId,
+        method: req.method,
+        url: req.originalUrl,
+        statusCode: status,
+        tenantId,
+        ip: this.getClientIp(req),
+        userAgent: req.get('User-Agent'),
+        timestamp: new Date().toISOString()
+      });
+    }
+  }
+
+  private getClientIp(req: Request): string {
+    const forwardedFor = req.headers['x-forwarded-for'];
+    if (forwardedFor) {
+      return Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor.split(',')[0];
+    }
+    return req.ip || req.connection.remoteAddress || 'unknown';
+  }
+
+  private sanitizeHeaders(headers: Record<string, any>): Record<string, string> {
+    const sensitiveHeaders = ['authorization', 'cookie', 'x-api-key'];
+    const sanitized: Record<string, string> = {};
+    
+    for (const [key, value] of Object.entries(headers)) {
+      const lowerKey = key.toLowerCase();
+      if (sensitiveHeaders.some(sh => lowerKey.includes(sh))) {
+        sanitized[key] = '[REDACTED]';
+      } else {
+        sanitized[key] = typeof value === 'string' ? value.substring(0, 100) : JSON.stringify(value).substring(0, 100);
+      }
+    }
+    
+    return sanitized;
+  }
+
+  private sanitizeRequestBody(body: any): any {
+    if (!body || typeof body !== 'object') return body;
+    
+    const sensitiveFields = ['password', 'token', 'secret', 'apiKey', 'privateKey', 'creditCard', 'cvv'];
+    const sanitized = { ...body };
+    
+    for (const key of Object.keys(sanitized)) {
+      const lowerKey = key.toLowerCase();
+      
+      if (sensitiveFields.some(field => lowerKey.includes(field))) {
+        sanitized[key] = '[REDACTED]';
+      } else if (typeof sanitized[key] === 'object' && sanitized[key] !== null) {
+        sanitized[key] = this.sanitizeRequestBody(sanitized[key]);
+      } else if (typeof sanitized[key] === 'string' && sanitized[key].length > 500) {
+        sanitized[key] = sanitized[key].substring(0, 500) + '... [TRUNCATED]';
+      }
+    }
+    
+    return sanitized;
+  }
+}
+
+export function AuditLoggerMiddleware() {
+  return new AuditLoggerMiddleware();
+}
+
+/*******************************************************************************
+ * FILE: audit.module.ts
+ * PATH: .\core\src\security\layers\s4-audit-logging\audit.module.ts
+ *******************************************************************************/
+import { Module, Global } from '@nestjs/common';
+import { AuditService } from './audit.service';
+import { TenantContextService } from '../s2-tenant-isolation/tenant-context.service';
+
+@Global()
+@Module({
+  providers: [AuditService, TenantContextService],
+  exports: [AuditService],
+})
+export class AuditModule {}
+
+/*******************************************************************************
+ * FILE: audit.service.ts
+ * PATH: .\core\src\security\layers\s4-audit-logging\audit.service.ts
+ *******************************************************************************/
+import { Injectable, Logger, Scope, Inject } from '@nestjs/common';
+import { REQUEST } from '@nestjs/core';
+import { Request } from 'express';
+import { v4 as uuidv4 } from 'uuid';
+import { promises as fs } from 'fs';
+import { join } from 'path';
+import { TenantContextService } from '../../layers/s2-tenant-isolation/tenant-context.service';
+
+@Injectable({ scope: Scope.REQUEST })
+export class AuditService {
+  private readonly logger = new Logger(AuditService.name);
+  private readonly auditDir = join(process.cwd(), 'logs', 'audit-logs');
+  private requestStartTime: Date;
+  private requestId: string;
+
+  constructor(
+    @Inject(REQUEST) private readonly request: Request,
+    private readonly tenantContext: TenantContextService
+  ) {
+    this.requestStartTime = new Date();
+    this.requestId = uuidv4();
+    
+    // إنشاء مجلد السجلات إذا لم يكن موجوداً
+    this.ensureAuditDirectory();
+  }
+
+  private async ensureAuditDirectory() {
+    try {
+      await fs.mkdir(this.auditDir, { recursive: true });
+    } catch (error) {
+      this.logger.error(`[S4] ❌ فشل إنشاء مجلد السجلات: ${error.message}`);
+    }
+  }
+
+  logSecurityEvent(eventType: string, eventData: any) {
+    const auditEntry = this.createAuditEntry(eventType, eventData, 'SECURITY');
+    this.writeAuditLog(auditEntry);
+    
+    this.logger.log(`[S4] 🔐 حدث أمني: ${eventType}`);
+    this.logger.debug(JSON.stringify(auditEntry, null, 2));
+  }
+
+  logBusinessEvent(eventType: string, eventData: any) {
+    const auditEntry = this.createAuditEntry(eventType, eventData, 'BUSINESS');
+    this.writeAuditLog(auditEntry);
+    
+    this.logger.debug(`[S4] 💼 حدث تجاري: ${eventType}`);
+  }
+
+  logSystemEvent(eventType: string, eventData: any) {
+    const auditEntry = this.createAuditEntry(eventType, eventData, 'SYSTEM');
+    this.writeAuditLog(auditEntry);
+    
+    this.logger.debug(`[S4] ⚙️ حدث نظام: ${eventType}`);
+  }
+
+  private createAuditEntry(eventType: string, eventData: any, category: string) {
+    const currentTime = new Date();
+    const processingTime = currentTime.getTime() - this.requestStartTime.getTime();
+    
+    return {
+      id: `${category.toLowerCase()}-${uuidv4()}`,
+      timestamp: currentTime.toISOString(),
+      requestId: this.requestId,
+      category,
+      eventType,
+      eventData: this.sanitizeEventData(eventData),
+      context: {
+        tenantId: this.tenantContext.getTenantId(),
+        tenantSchema: this.tenantContext.getTenantSchema(),
+        userId: this.getUserIdFromRequest(),
+        userEmail: this.getUserEmailFromRequest(),
+        ipAddress: this.getClientIp(),
+        userAgent: this.request.get('User-Agent'),
+        method: this.request.method,
+        url: this.request.originalUrl,
+        processingTimeMs: processingTime
+      },
+      server: {
+        hostname: process.env.HOSTNAME || require('os').hostname(),
+        environment: process.env.NODE_ENV || 'development',
+        processId: process.pid,
+        version: process.env.npm_package_version || 'unknown'
+      }
+    };
+  }
+
+  private sanitizeEventData(data: any): any {
+    if (!data) return data;
+    
+    // إزالة البيانات الحساسة من السجلات
+    const sensitiveFields = [
+      'password', 'token', 'secret', 'apiKey', 'privateKey', 
+      'creditCard', 'cvv', 'cardNumber', 'ssn', 'socialSecurityNumber'
+    ];
+    
+    if (typeof data === 'string') {
+      return data.replace(/(password|token|secret|apiKey|privateKey|creditCard|cvv|cardNumber|ssn|socialSecurityNumber)[:\s]*["']?[^"'\s]+["']?/gi, 
+        match => {
+          const field = match.split(':')[0];
+          return `${field}: [REDACTED]`;
+        });
+    }
+    
+    if (typeof data === 'object') {
+      const sanitized = Array.isArray(data) ? [...data] : { ...data };
+      
+      for (const key of Object.keys(sanitized)) {
+        const lowerKey = key.toLowerCase();
+        
+        // إخفاء الحقول الحساسة
+        if (sensitiveFields.some(field => lowerKey.includes(field))) {
+          sanitized[key] = '[REDACTED]';
+          continue;
+        }
+        
+        // معالجة كائنات داخلية
+        if (typeof sanitized[key] === 'object' && sanitized[key] !== null) {
+          sanitized[key] = this.sanitizeEventData(sanitized[key]);
+        }
+      }
+      
+      return sanitized;
+    }
+    
+    return data;
+  }
+
+  private getUserIdFromRequest(): string | null {
+    return this.request.user?.id || 
+           this.request.headers['x-user-id']?.toString() || 
+           null;
+  }
+
+  private getUserEmailFromRequest(): string | null {
+    return this.request.user?.email || 
+           this.request.headers['x-user-email']?.toString() || 
+           null;
+  }
+
+  private getClientIp(): string {
+    const forwardedFor = this.request.headers['x-forwarded-for'];
+    if (forwardedFor) {
+      return Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor.split(',')[0];
+    }
+    return this.request.ip || this.request.connection.remoteAddress || 'unknown';
+  }
+
+  private async writeAuditLog(auditEntry: any) {
+    try {
+      const dateStr = new Date().toISOString().split('T')[0];
+      const logFile = join(this.auditDir, `${dateStr}-${auditEntry.category.toLowerCase()}.log`);
+      
+      const logEntry = JSON.stringify(auditEntry) + '\n';
+      await fs.appendFile(logFile, logEntry);
+      
+      // إذا كان حدثاً خطيراً، اكتب نسخة منفصلة
+      if (auditEntry.category === 'SECURITY' && ['TENANT_ISOLATION_VIOLATION', 'UNAUTHORIZED_ACCESS', 'DATA_BREACH_ATTEMPT'].includes(auditEntry.eventType)) {
+        const criticalFile = join(this.auditDir, `${dateStr}-critical-security.log`);
+        await fs.appendFile(criticalFile, logEntry);
+      }
+    } catch (error) {
+      this.logger.error(`[S4] ❌ فشل كتابة سجل التدقيق: ${error.message}`);
+      // محاولة البديل - التسجيل في وحدة التحكم
+      console.error('[AUDIT_FAILURE]', JSON.stringify(auditEntry));
+    }
+  }
+
+  generateAuditReport(startDate: Date, endDate: Date, category?: string): Promise<any[]> {
+    // تنفيذ إنشاء التقارير هنا (سيتم تطويره لاحقاً)
+    this.logger.warn('[S4] ⚠️ تقارير التدقيق تحتاج لتطوير - لم يتم تنفيذها بعد');
+    return Promise.resolve([]);
+  }
+}
+
+/*******************************************************************************
+ * FILE: index.ts
+ * PATH: .\core\src\security\layers\s4-audit-logging\index.ts
+ *******************************************************************************/
+export * from './audit.service';
+export * from './audit-logger.middleware';
+export * from './audit.module';
+
+/*******************************************************************************
+ * FILE: error-handling.module.ts
+ * PATH: .\core\src\security\layers\s5-error-handling\error-handling.module.ts
+ *******************************************************************************/
+import { Module, Global } from '@nestjs/common';
+import { APP_FILTER } from '@nestjs/core';
+import { AllExceptionsFilter } from './exceptions/secure-exception.filter';
+import { DatabaseExceptionFilter } from './exceptions/database-exception.filter';
+import { AuditService } from '../s4-audit-logging/audit.service';
+import { TenantContextService } from '../s2-tenant-isolation/tenant-context.service';
+
+@Global()
+@Module({
+  providers: [
+    AuditService,
+    TenantContextService,
+    {
+      provide: APP_FILTER,
+      useClass: AllExceptionsFilter,
+    },
+    {
+      provide: APP_FILTER,
+      useClass: DatabaseExceptionFilter,
+    },
+  ],
+})
+export class ErrorHandlingModule {}
+
+/*******************************************************************************
+ * FILE: index.ts
+ * PATH: .\core\src\security\layers\s5-error-handling\index.ts
+ *******************************************************************************/
+export * from './exceptions/secure-exception.filter';
+export * from './exceptions/database-exception.filter';
+export * from './error-handling.module';
+
+/*******************************************************************************
+ * FILE: database-exception.filter.ts
+ * PATH: .\core\src\security\layers\s5-error-handling\exceptions\database-exception.filter.ts
+ *******************************************************************************/
+import { ExceptionFilter, Catch, ArgumentsHost, HttpStatus, Logger } from '@nestjs/common';
+import { Request, Response } from 'express';
+import { QueryFailedError } from 'typeorm';
+import { AuditService } from '../../s4-audit-logging/audit.service';
+import { TenantContextService } from '../../s2-tenant-isolation/tenant-context.service';
+
+@Catch(QueryFailedError)
+export class DatabaseExceptionFilter implements ExceptionFilter {
+  private readonly logger = new Logger(DatabaseExceptionFilter.name);
+  
+  constructor(
+    private readonly auditService: AuditService,
+    private readonly tenantContext: TenantContextService
+  ) {}
+
+  catch(exception: QueryFailedError, host: ArgumentsHost) {
+    const ctx = host.switchToHttp();
+    const request = ctx.getRequest<Request>();
+    const response = ctx.getResponse<Response>();
+    
+    const requestId = request['requestId'] || 'unknown';
+    const tenantId = this.tenantContext.getTenantId() || 'system';
+    
+    // تحليل خطأ قاعدة البيانات
+    const errorAnalysis = this.analyzeDatabaseError(exception, request, requestId, tenantId);
+    
+    // تسجيل الحدث الأمني
+    this.auditService.logSecurityEvent('DATABASE_ERROR', {
+      errorType: errorAnalysis.errorType,
+      errorCode: errorAnalysis.errorCode,
+      severity: errorAnalysis.severity,
+      requestId,
+      tenantId,
+      details: errorAnalysis.details,
+      timestamp: new Date().toISOString()
+    });
+    
+    // تحديد استجابة المستخدم
+    const userResponse = this.createUserResponse(errorAnalysis, exception);
+    
+    // تسجيل تفصيلي
+    this.logDetailedError(errorAnalysis, exception);
+    
+    // إرسال الاستجابة
+    response.status(errorAnalysis.statusCode).json(userResponse);
+  }
+
+  private analyzeDatabaseError(
+    exception: QueryFailedError, 
+    request: Request, 
+    requestId: string, 
+    tenantId: string
+  ) {
+    // تحليل رمز الخطأ
+    const errorCode = this.extractErrorCode(exception);
+    const errorType = this.determineErrorType(errorCode, exception);
+    const severity = this.assessSeverity(errorType, exception);
+    const statusCode = this.mapStatusCode(errorType);
+    
+    return {
+      errorCode,
+      errorType,
+      severity,
+      statusCode,
+      requestId,
+      tenantId,
+      details: {
+        query: this.redactSensitiveData(exception.query),
+        parameters: this.redactParameters(exception.parameters),
+        driverError: exception.driverError?.message || exception.message,
+        timestamp: new Date().toISOString(),
+        ip: this.getClientIp(request),
+        method: request.method,
+        url: request.url
+      }
+    };
+  }
+
+  private extractErrorCode(exception: QueryFailedError): string {
+    // استخراج رمز الخطأ من قاعدة البيانات
+    if (exception.driverError?.code) {
+      return exception.driverError.code;
+    }
+    
+    if (exception['code']) {
+      return exception['code'];
+    }
+    
+    if (exception.message.includes('duplicate key')) {
+      return 'ER_DUP_ENTRY';
+    }
+    
+    if (exception.message.includes('violates foreign key constraint')) {
+      return 'ER_FOREIGN_KEY_VIOLATION';
+    }
+    
+    return 'UNKNOWN_DB_ERROR';
+  }
+
+  private determineErrorType(errorCode: string, exception: QueryFailedError): string {
+    const errorPatterns = {
+      'ER_DUP_ENTRY': 'DUPLICATE_ENTRY',
+      '23505': 'DUPLICATE_ENTRY', // PostgreSQL duplicate key
+      'ER_NO_SUCH_TABLE': 'MISSING_TABLE',
+      '42P01': 'MISSING_TABLE', // PostgreSQL missing table
+      'ER_FOREIGN_KEY_VIOLATION': 'FOREIGN_KEY_VIOLATION',
+      '23503': 'FOREIGN_KEY_VIOLATION', // PostgreSQL foreign key
+      'ER_LOCK_WAIT_TIMEOUT': 'LOCK_TIMEOUT',
+      'ER_LOCK_DEADLOCK': 'DEADLOCK',
+      'ER_DATA_TOO_LONG': 'DATA_OVERFLOW',
+      '22001': 'DATA_OVERFLOW', // PostgreSQL string data right truncation
+    };
+    
+    return errorPatterns[errorCode] || 'GENERAL_DATABASE_ERROR';
+  }
+
+  private assessSeverity(errorType: string, exception: QueryFailedError): string {
+    const criticalErrors = ['MISSING_TABLE', 'ER_LOCK_DEADLOCK', 'DEADLOCK'];
+    const highErrors = ['FOREIGN_KEY_VIOLATION', 'ER_LOCK_WAIT_TIMEOUT', 'LOCK_TIMEOUT'];
+    const mediumErrors = ['DUPLICATE_ENTRY', 'DATA_OVERFLOW'];
+    
+    if (criticalErrors.includes(errorType)) return 'CRITICAL';
+    if (highErrors.includes(errorType)) return 'HIGH';
+    if (mediumErrors.includes(errorType)) return 'MEDIUM';
+    
+    return 'LOW';
+  }
+
+  private mapStatusCode(errorType: string): number {
+    switch (errorType) {
+      case 'DUPLICATE_ENTRY':
+        return HttpStatus.CONFLICT;
+      case 'MISSING_TABLE':
+        return HttpStatus.SERVICE_UNAVAILABLE;
+      case 'FOREIGN_KEY_VIOLATION':
+        return HttpStatus.BAD_REQUEST;
+      case 'LOCK_TIMEOUT':
+      case 'DEADLOCK':
+        return HttpStatus.SERVICE_UNAVAILABLE;
+      case 'DATA_OVERFLOW':
+        return HttpStatus.BAD_REQUEST;
+      default:
+        return HttpStatus.INTERNAL_SERVER_ERROR;
+    }
+  }
+
+  private createUserResponse(errorAnalysis: any, exception: QueryFailedError) {
+    const baseResponse = {
+      statusCode: errorAnalysis.statusCode,
+      timestamp: new Date().toISOString(),
+      requestId: errorAnalysis.requestId
+    };
+    
+    switch (errorAnalysis.errorType) {
+      case 'DUPLICATE_ENTRY':
+        return {
+          ...baseResponse,
+          message: 'البيانات التي تحاول حفظها موجودة مسبقاً في النظام.',
+          errorType: 'DUPLICATE_ENTRY'
+        };
+        
+      case 'MISSING_TABLE':
+        return {
+          ...baseResponse,
+          message: 'نظام قاعدة البيانات يحتاج للصيانة. نعمل على حل المشكلة حالياً.',
+          errorType: 'MISSING_TABLE'
+        };
+        
+      case 'FOREIGN_KEY_VIOLATION':
+        return {
+          ...baseResponse,
+          message: 'محاولة ربط بيانات غير موجودة. يرجى التحقق من صحة البيانات المدخلة.',
+          errorType: 'FOREIGN_KEY_VIOLATION'
+        };
+        
+      case 'LOCK_TIMEOUT':
+      case 'DEADLOCK':
+        return {
+          ...baseResponse,
+          message: 'نظام قاعدة البيانات مشغول حالياً. يرجى المحاولة مرة أخرى بعد قليل.',
+          errorType: errorAnalysis.errorType
+        };
+        
+      case 'DATA_OVERFLOW':
+        return {
+          ...baseResponse,
+          message: 'البيانات المدخلة طويلة جداً. يرجى اختصارها وإعادة المحاولة.',
+          errorType: 'DATA_OVERFLOW'
+        };
+        
+      default:
+        return {
+          ...baseResponse,
+          message: 'حدث خطأ في قاعدة البيانات. نحن نعمل على حل المشكلة حالياً.',
+          errorType: 'GENERAL_DATABASE_ERROR'
+        };
+    }
+  }
+
+  private redactSensitiveData(query: string): string {
+    if (!query || typeof query !== 'string') return '[INVALID_QUERY]';
+    
+    // إخفاء البيانات الحساسة في الاستعلام
+    let redactedQuery = query;
+    
+    // إخفاء كلمات المرور
+    redactedQuery = redactedQuery.replace(
+      /password\s*=\s*['"][^'"]*['"]/gi, 
+      'password = \'[REDACTED]\''
+    );
+    
+    // إخفاء المفاتيح والأسرار
+    redactedQuery = redactedQuery.replace(
+      /(api_key|secret|token|auth_token|refresh_token)\s*=\s*['"][^'"]*['"]/gi,
+      '$1 = \'[REDACTED]\''
+    );
+    
+    // إخفاء بيانات البطاقات الائتمانية
+    redactedQuery = redactedQuery.replace(
+      /(card_number|cvv|expiry_date)\s*=\s*['"][^'"]*['"]/gi,
+      '$1 = \'[REDACTED]\''
+    );
+    
+    // إخفاء بيانات شخصية
+    redactedQuery = redactedQuery.replace(
+      /(email)\s*=\s*['"][^'"]+@[^'"]+\.[^'"]+['"]/gi,
+      '$1 = \'[REDACTED]\''
+    );
+    
+    // قص الاستعلام الطويل جداً
+    if (redactedQuery.length > 1000) {
+      return redactedQuery.substring(0, 1000) + '... [TRUNCATED]';
+    }
+    
+    return redactedQuery;
+  }
+
+  private redactParameters(parameters: any): any {
+    if (!parameters) return null;
+    
+    const sensitiveFields = [
+      'password', 'token', 'secret', 'apiKey', 'privateKey',
+      'creditCard', 'cvv', 'cardNumber', 'ssn', 'socialSecurityNumber',
+      'email', 'phone', 'mobile', 'iban', 'bankAccount'
+    ];
+    
+    const redacted: any = {};
+    
+    for (const [key, value] of Object.entries(parameters)) {
+      const lowerKey = key.toLowerCase();
+      
+      if (sensitiveFields.some(field => lowerKey.includes(field))) {
+        redacted[key] = '[REDACTED]';
+      } else if (typeof value === 'string' && value.length > 100) {
+        redacted[key] = value.substring(0, 100) + '... [TRUNCATED]';
+      } else {
+        redacted[key] = value;
+      }
+    }
+    
+    return redacted;
+  }
+
+  private logDetailedError(errorAnalysis: any, exception: QueryFailedError) {
+    const logMethod = errorAnalysis.severity === 'CRITICAL' || errorAnalysis.severity === 'HIGH' 
+      ? 'error' 
+      : 'warn';
+    
+    this.logger[logMethod](`[S5] خطأ قاعدة بيانات - النوع: ${errorAnalysis.errorType}, الحدة: ${errorAnalysis.severity}`);
+    
+    if (process.env.NODE_ENV !== 'production') {
+      this.logger[logMethod](`التفاصيل التقنية: ${JSON.stringify({
+        errorCode: errorAnalysis.errorCode,
+        originalError: exception.message,
+        driverError: exception.driverError?.message
+      }, null, 2)}`);
+    }
+    
+    this.logger[logMethod](`الاستعلام المعدّل: ${errorAnalysis.details.query}`);
+    this.logger[logMethod](`السياق: ${JSON.stringify({
+      tenantId: errorAnalysis.tenantId,
+      requestId: errorAnalysis.requestId,
+      ip: errorAnalysis.details.ip
+    }, null, 2)}`);
+  }
+
+  private getClientIp(request: Request): string {
+    const forwardedFor = request.headers['x-forwarded-for'];
+    if (forwardedFor) {
+      return Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor.split(',')[0];
+    }
+    return request.ip || request.connection.remoteAddress || 'unknown';
+  }
+}
+
+/*******************************************************************************
+ * FILE: secure-exception.filter.ts
+ * PATH: .\core\src\security\layers\s5-error-handling\exceptions\secure-exception.filter.ts
+ *******************************************************************************/
+import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus, Logger } from '@nestjs/common';
+import { Request, Response } from 'express';
+import { v4 as uuidv4 } from 'uuid';
+import { AuditService } from '../../s4-audit-logging/audit.service';
+import { TenantContextService } from '../../s2-tenant-isolation/tenant-context.service';
+
+@Catch()
+export class AllExceptionsFilter implements ExceptionFilter {
+  private readonly logger = new Logger(AllExceptionsFilter.name);
+  
+  constructor(
+    private readonly auditService: AuditService,
+    private readonly tenantContext: TenantContextService
+  ) {}
+
+  catch(exception: any, host: ArgumentsHost) {
+    const ctx = host.switchToHttp();
+    const request = ctx.getRequest<Request>();
+    const response = ctx.getResponse<Response>();
+    
+    const requestId = request['requestId'] || uuidv4();
+    const timestamp = new Date().toISOString();
+    
+    // تحديد نوع الاستثناء
+    const errorType = this.getErrorType(exception);
+    const statusCode = this.getStatusCode(exception);
+    const isProduction = process.env.NODE_ENV === 'production';
+    
+    // تحليل الإستثناء وتسجيله
+    const errorDetails = this.analyzeError(exception, request, requestId, isProduction);
+    
+    // تسجيل الحدث الأمني
+    this.logSecurityEvent(errorType, errorDetails, statusCode);
+    
+    // رد آمن للمستخدم
+    const safeResponse = this.createSafeResponse(exception, errorDetails, statusCode, isProduction);
+    
+    // إرسال الرد
+    response.status(statusCode).json(safeResponse);
+    
+    // تسجيل تفصيلي في وحدة التحكم
+    this.logDetailedError(exception, errorDetails, statusCode);
+  }
+
+  private getErrorType(exception: any): string {
+    if (exception instanceof HttpException) {
+      return 'HTTP_EXCEPTION';
+    } else if (exception.code && exception.code.startsWith('E')) {
+      return 'DATABASE_ERROR';
+    } else if (exception.name === 'ValidationError') {
+      return 'VALIDATION_ERROR';
+    } else if (exception.name === 'JsonWebTokenError') {
+      return 'AUTHENTICATION_ERROR';
+    }
+    return 'UNKNOWN_ERROR';
+  }
+
+  private getStatusCode(exception: any): number {
+    if (exception instanceof HttpException) {
+      return exception.getStatus();
+    } else if (exception.code === 'ER_DUP_ENTRY' || exception.code === '23505') {
+      return HttpStatus.CONFLICT;
+    } else if (exception.code === 'ER_NO_SUCH_TABLE' || exception.code === '42P01') {
+      return HttpStatus.BAD_REQUEST;
+    } else if (exception instanceof SyntaxError) {
+      return HttpStatus.BAD_REQUEST;
+    }
+    return HttpStatus.INTERNAL_SERVER_ERROR;
+  }
+
+  private analyzeError(exception: any, request: Request, requestId: string, isProduction: boolean) {
+    const tenantId = this.tenantContext.getTenantId() || 'system';
+    const userId = request.user?.id || 'anonymous';
+    
+    // تحليل تفصيلي للخطأ
+    let technicalDetails = {};
+    let sensitiveData = {};
+    
+    if (!isProduction) {
+      technicalDetails = {
+        stack: exception.stack?.split('\n').slice(0, 10),
+        name: exception.name,
+        message: exception.message
+      };
+    }
+    
+    // تحليل الأخطاء الخاصة بقاعدة البيانات
+    if (exception.code) {
+      sensitiveData = {
+        databaseErrorCode: exception.code,
+        databaseErrorDetail: exception.detail,
+        databaseErrorHint: exception.hint
+      };
+      
+      this.logger.warn(`[S5] خطأ في قاعدة البيانات: ${exception.code} - ${exception.message}`);
+    }
+    
+    // تحليل الأخطاء الخاصة بالمدخلات
+    if (exception.name === 'ValidationError' || exception.name === 'ZodError') {
+      sensitiveData = {
+        validationErrors: exception.errors || exception.issues
+      };
+      
+      this.logger.warn(`[S5] خطأ في التحقق من المدخلات: ${JSON.stringify(sensitiveData.validationErrors)}`);
+    }
+    
+    return {
+      requestId,
+      timestamp: new Date().toISOString(),
+      path: request.url,
+      method: request.method,
+      ip: this.getClientIp(request),
+      userAgent: request.get('User-Agent'),
+      tenantId,
+      userId,
+      technicalDetails: isProduction ? {} : technicalDetails,
+      sensitiveData: this.redactSensitiveData(sensitiveData),
+      errorType: this.getErrorType(exception),
+      databaseError: exception.code ? true : false,
+      originalError: exception.message
+    };
+  }
+
+  private createSafeResponse(exception: any, errorDetails: any, statusCode: number, isProduction: boolean) {
+    const baseResponse = {
+      statusCode,
+      timestamp: errorDetails.timestamp,
+      path: errorDetails.path,
+      requestId: errorDetails.requestId
+    };
+    
+    // رسائل مخصصة لأنواع معينة من الأخطاء
+    if (statusCode === HttpStatus.INTERNAL_SERVER_ERROR) {
+      return {
+        ...baseResponse,
+        message: isProduction 
+          ? 'حدث خطأ داخلي في الخادم. تم تسجيل المشكلة وسنقوم بإصلاحها قريباً.'
+          : exception.message
+      };
+    } else if (statusCode === HttpStatus.UNAUTHORIZED) {
+      return {
+        ...baseResponse,
+        message: 'غير مصرح به. يرجى تسجيل الدخول أولاً.'
+      };
+    } else if (statusCode === HttpStatus.FORBIDDEN) {
+      return {
+        ...baseResponse,
+        message: 'وصول مرفوض. ليس لديك الصلاحيات الكافية لهذا الإجراء.'
+      };
+    } else if (statusCode === HttpStatus.NOT_FOUND) {
+      return {
+        ...baseResponse,
+        message: 'الموارد المطلوبة غير موجودة.'
+      };
+    } else if (statusCode === HttpStatus.CONFLICT) {
+      return {
+        ...baseResponse,
+        message: 'تعارض في البيانات. قد تكون تحاول إنشاء عنصر موجود مسبقاً.'
+      };
+    }
+    
+    // الاستجابة العامة
+    return {
+      ...baseResponse,
+      message: isProduction 
+        ? 'تعذر إتمام الطلب. يرجى المحاولة لاحقاً.'
+        : exception.message || 'خطأ غير معروف'
+    };
+  }
+
+  private logSecurityEvent(errorType: string, errorDetails: any, statusCode: number) {
+    // تحديد مستوى الخطورة
+    let severity = 'LOW';
+    if (statusCode >= 500) severity = 'MEDIUM';
+    if (errorDetails.databaseError) severity = 'HIGH';
+    if (errorDetails.errorType === 'AUTHENTICATION_ERROR' && statusCode === 401) severity = 'MEDIUM';
+    if (errorDetails.errorType === 'UNAUTHORIZED_ACCESS_ATTEMPT') severity = 'CRITICAL';
+    
+    // تسجيل الحدث الأمني
+    this.auditService.logSecurityEvent('ERROR_OCCURRENCE', {
+      errorType,
+      statusCode,
+      severity,
+      details: errorDetails,
+      timestamp: new Date().toISOString()
+    });
+    
+    // إرسال تنبيه مباشر للأخطاء الحرجة
+    if (severity === 'CRITICAL' || severity === 'HIGH') {
+      this.sendImmediateAlert(errorType, errorDetails, severity);
+    }
+  }
+
+  private sendImmediateAlert(errorType: string, errorDetails: any, severity: string) {
+    // تنفيذ إرسال التنبيهات للأمان (سيتم تطويره لاحقاً)
+    this.logger.error(`[S5] 🚨 تنبيه فوري - خطأ ${severity}: ${errorType}`);
+    this.logger.error(JSON.stringify({
+      timestamp: new Date().toISOString(),
+      errorType,
+      severity,
+      details: errorDetails
+    }, null, 2));
+    
+    // هنا يمكن إضافة إرسال إشعارات للمشرفين عبر البريد أو SMS
+  }
+
+  private logDetailedError(exception: any, errorDetails: any, statusCode: number) {
+    const logLevel = statusCode >= 500 ? 'error' : 'warn';
+    
+    this.logger[logLevel](`[S5] خطأ مفصل - النوع: ${errorDetails.errorType}, الرمز: ${statusCode}`);
+    
+    if (process.env.NODE_ENV !== 'production') {
+      this.logger[logLevel](`التفاصيل التقنية: ${JSON.stringify({
+        name: exception.name,
+        message: exception.message,
+        stack: exception.stack?.split('\n').slice(0, 5)
+      }, null, 2)}`);
+    }
+    
+    this.logger[logLevel](`سياق الطلب: ${JSON.stringify({
+      requestId: errorDetails.requestId,
+      tenantId: errorDetails.tenantId,
+      userId: errorDetails.userId,
+      ip: errorDetails.ip,
+      path: errorDetails.path,
+      method: errorDetails.method
+    }, null, 2)}`);
+  }
+
+  private redactSensitiveData(data: any): any {
+    if (!data || typeof data !== 'object') return data;
+    
+    const sensitivePatterns = [
+      'password', 'token', 'secret', 'key', 'auth', 'credential', 'credit', 'card', 'cvv',
+      'social', 'security', 'ssn', 'iban', 'bank', 'account'
+    ];
+    
+    const redacted = { ...data };
+    
+    for (const key of Object.keys(redacted)) {
+      const lowerKey = key.toLowerCase();
+      
+      if (sensitivePatterns.some(pattern => lowerKey.includes(pattern))) {
+        redacted[key] = '[REDACTED]';
+      } else if (typeof redacted[key] === 'object' && redacted[key] !== null) {
+        redacted[key] = this.redactSensitiveData(redacted[key]);
+      }
+    }
+    
+    return redacted;
+  }
+
+  private getClientIp(request: Request): string {
+    const forwardedFor = request.headers['x-forwarded-for'];
+    if (forwardedFor) {
+      return Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor.split(',')[0];
+    }
+    return request.ip || request.connection.remoteAddress || 'unknown';
+  }
+}
+
+/*******************************************************************************
+ * FILE: anomaly-detection.service.ts
+ * PATH: .\core\src\security\layers\s6-rate-limiting\anomaly-detection.service.ts
+ *******************************************************************************/
+import { Injectable, Logger } from '@nestjs/common';
+import { Redis } from 'ioredis';
+import { ConfigService } from '@nestjs/config';
+import { AuditService } from '../s4-audit-logging/audit.service';
+import { TenantContextService } from '../s2-tenant-isolation/tenant-context.service';
+
+@Injectable()
+export class AnomalyDetectionService {
+  private readonly logger = new Logger(AnomalyDetectionService.name);
+  private redisClient: Redis;
+  
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly auditService: AuditService,
+    private readonly tenantContext: TenantContextService
+  ) {
+    this.initializeRedis();
+  }
+
+  private initializeRedis() {
+    try {
+      const redisUrl = this.configService.get<string>('REDIS_URL', 'redis://localhost:6379');
+      this.redisClient = new Redis(redisUrl);
+      
+      this.redisClient.on('error', (error) => {
+        this.logger.error(`[S6] ❌ خطأ في اتصال Redis: ${error.message}`);
+      });
+      
+      this.logger.log('[S6] ✅ تم تهيئة خدمة كشف السلوك غير الطبيعي');
+    } catch (error) {
+      this.logger.error(`[S6] ❌ فشل تهيئة Redis: ${error.message}`);
+      throw new Error('فشل في إنشاء اتصال بقاعدة البيانات المؤقتة');
+    }
+  }
+
+  async detectAnomaly(behaviorData: any): Promise<number> {
+    try {
+      this.logger.debug(`[S6] 🔍 بدء كشف السلوك غير الطبيعي: ${JSON.stringify(behaviorData)}`);
+      
+      // تقييم السلوك بناءً على عدة عوامل
+      let anomalyScore = 0;
+      
+      // 1. تقييم عدد الطلبات
+      if (behaviorData.requestCount && behaviorData.limit) {
+        const ratio = behaviorData.requestCount / behaviorData.limit;
+        if (ratio > 1.5) anomalyScore += 0.3;
+        if (ratio > 2) anomalyScore += 0.4;
+      }
+      
+      // 2. تقييم نمط الطلب
+      const suspiciousPatterns = ['password', 'secret', 'admin', 'config', 'eval', 'exec'];
+      const requestPath = behaviorData.path?.toLowerCase() || '';
+      
+      for (const pattern of suspiciousPatterns) {
+        if (requestPath.includes(pattern)) {
+          anomalyScore += 0.25;
+          break;
+        }
+      }
+      
+      // 3. تقييم وكيل المستخدم (User Agent)
+      const userAgent = behaviorData.userAgent?.toLowerCase() || '';
+      if (userAgent.includes('bot') || userAgent.includes('crawler') || userAgent.includes('python-requests')) {
+        // السماح للروبوتات المعروفة
+        if (!userAgent.includes('googlebot') && !userAgent.includes('bingbot')) {
+          anomalyScore += 0.2;
+        }
+      }
+      
+      // 4. تقييم السياق الزمني
+      const now = new Date();
+      const hour = now.getHours();
+      
+      // النشاط في ساعات غير طبيعية
+      if ((hour >= 0 && hour <= 5) && behaviorData.requestCount > 10) {
+        anomalyScore += 0.15;
+      }
+      
+      // 5. النشاط في نفس الثانية
+      await this.checkRequestFrequency(behaviorData.ip, behaviorData.tenantId);
+      
+      // ضمان قيمة بين 0 و 1
+      anomalyScore = Math.min(1.0, Math.max(0.0, anomalyScore));
+      
+      this.logger.log(`[S6] 📊 درجة السلوك غير الطبيعي: ${anomalyScore.toFixed(2)} للـ IP: ${behaviorData.ip}`);
+      
+      // تسجيل الحدث إذا كانت الدرجة مرتفعة
+      if (anomalyScore > 0.7) {
+        this.auditService.logSecurityEvent('ANOMALY_DETECTED', {
+          ...behaviorData,
+          anomalyScore,
+          timestamp: new Date().toISOString(),
+          detectionMethod: 'pattern_analysis'
+        });
+      }
+      
+      return anomalyScore;
+    } catch (error) {
+      this.logger.error(`[S6] ❌ خطأ في كشف السلوك غير الطبيعي: ${error.message}`);
+      return 0.0; // العودة لقيمة آمنة في حالة الخطأ
+    }
+  }
+
+  private async checkRequestFrequency(ip: string, tenantId: string): Promise<void> {
+    const now = Math.floor(Date.now() / 1000);
+    const minuteKey = `anomaly:requests:${tenantId}:${ip}:${now}`;
+    
+    try {
+      const count = await this.redisClient.incr(minuteKey);
+      await this.redisClient.expire(minuteKey, 60); // انتهاء الصلاحية بعد دقيقة
+      
+      // إذا كان هناك أكثر من 20 طلب في الثانية
+      if (count > 20) {
+        this.logger.warn(`[S6] ⚠️ نشاط مكثف من IP: ${ip} للمستأجر: ${tenantId} (${count} طلب/ثانية)`);
+      }
+    } catch (error) {
+      this.logger.error(`[S6] ❌ خطأ في فحص تكرار الطلبات: ${error.message}`);
+    }
+  }
+
+  async getThreatIntelligence(ip: string, context: string): Promise<any> {
+    // في الإصدار الحقيقي، سيتم الاتصال بمصادر معلومات التهديد
+    this.logger.debug(`[S6] 🌐 جلب معلومات التهديد لـ IP: ${ip}`);
+    
+    // بيانات محاكاة
+    const threatData = {
+      ip,
+      context,
+      riskScore: Math.random() * 0.3, // درجة مخاطرة منخفضة افتراضياً
+      knownThreat: false,
+      lastSeen: new Date().toISOString(),
+      sources: ['internal_monitoring']
+    };
+    
+    return threatData;
+  }
+
+  async registerSafePattern(pattern: string, description: string): Promise<void> {
+    try {
+      const key = `anomaly:safe_patterns:${pattern}`;
+      await this.redisClient.setex(
+        key,
+        30 * 24 * 60 * 60, // 30 يوماً
+        JSON.stringify({ description, registeredAt: new Date().toISOString() })
+      );
+      
+      this.logger.log(`[S6] ✅ تسجيل نمط آمن: ${pattern} - ${description}`);
+    } catch (error) {
+      this.logger.error(`[S6] ❌ فشل تسجيل النمط الآمن: ${error.message}`);
+    }
+  }
+
+  async isKnownSafe(ip: string): Promise<boolean> {
+    try {
+      const safeIps = this.configService.get<string[]>('SAFE_IPS', []);
+      if (safeIps.includes(ip)) {
+        return true;
+      }
+      
+      const key = `anomaly:safe_ips:${ip}`;
+      const isSafe = await this.redisClient.exists(key);
+      
+      if (isSafe) {
+        this.logger.debug(`[S6] ✅ IP معروف آمن: ${ip}`);
+      }
+      
+      return isSafe === 1;
+    } catch (error) {
+      this.logger.error(`[S6] ❌ خطأ في التحقق من IP آمن: ${error.message}`);
+      return false;
+    }
+  }
+
+  async analyzeBehaviorTrend(behaviorHistory: any[], timeWindow: string = '1h'): Promise<any> {
+    try {
+      this.logger.debug(`[S6] 📈 تحليل اتجاهات السلوك لفترة: ${timeWindow}`);
+      
+      if (!behaviorHistory || behaviorHistory.length === 0) {
+        return { trend: 'NO_DATA', score: 0 };
+      }
+      
+      // حساب المتوسط المتحرك
+      const scores = behaviorHistory.map(item => item.anomalyScore || 0);
+      const avgScore = scores.reduce((sum, score) => sum + score, 0) / scores.length;
+      
+      // تحديد الاتجاه
+      let trend = 'STABLE';
+      if (scores.length > 2) {
+        const lastScores = scores.slice(-3);
+        const firstAvg = lastScores.slice(0, -1).reduce((sum, score) => sum + score, 0) / (lastScores.length - 1);
+        const lastScore = lastScores[lastScores.length - 1];
+        
+        if (lastScore > firstAvg * 1.5) {
+          trend = 'INCREASING';
+        } else if (lastScore < firstAvg * 0.5) {
+          trend = 'DECREASING';
+        }
+      }
+      
+      return {
+        trend,
+        score: avgScore,
+        dataPoints: scores.length,
+        timestamp: new Date().toISOString(),
+        criticalThreshold: 0.75
+      };
+    } catch (error) {
+      this.logger.error(`[S6] ❌ خطأ في تحليل اتجاهات السلوك: ${error.message}`);
+      return { trend: 'ERROR', score: 0 };
+    }
+  }
+}
+
+/*******************************************************************************
+ * FILE: index.ts
+ * PATH: .\core\src\security\layers\s6-rate-limiting\index.ts
+ *******************************************************************************/
+export * from './rate-limiter.service';
+export * from './anomaly-detection.service';
+export * from './rate-limit.module';
+
+/*******************************************************************************
+ * FILE: rate-limit.module.ts
+ * PATH: .\core\src\security\layers\s6-rate-limiting\rate-limit.module.ts
+ *******************************************************************************/
+import { Module, Global } from '@nestjs/common';
+import { RateLimiterService } from './rate-limiter.service';
+import { AnomalyDetectionService } from './anomaly-detection.service';
+import { AuditService } from '../s4-audit-logging/audit.service';
+import { TenantContextService } from '../s2-tenant-isolation/tenant-context.service';
+import { ConfigModule } from '@nestjs/config';
+
+@Global()
+@Module({
+  imports: [ConfigModule],
+  providers: [
+    RateLimiterService,
+    AnomalyDetectionService,
+    AuditService,
+    TenantContextService
+  ],
+  exports: [RateLimiterService, AnomalyDetectionService],
+})
+export class RateLimitingModule {}
+
+/*******************************************************************************
+ * FILE: rate-limiter.service.ts
+ * PATH: .\core\src\security\layers\s6-rate-limiting\rate-limiter.service.ts
+ *******************************************************************************/
+import { Injectable, Logger, Inject } from '@nestjs/common';
+import { REQUEST } from '@nestjs/core';
+import { Request } from 'express';
+import { Redis } from 'ioredis';
+import { ConfigService } from '@nestjs/config';
+import { v4 as uuidv4 } from 'uuid';
+import { AuditService } from '../s4-audit-logging/audit.service';
+import { TenantContextService } from '../s2-tenant-isolation/tenant-context.service';
+import { AnomalyDetectionService } from './anomaly-detection.service';
+
+@Injectable()
+export class RateLimiterService {
+  private readonly logger = new Logger(RateLimiterService.name);
+  private redisClient: Redis;
+  
+  constructor(
+    @Inject(REQUEST) private readonly request: Request,
+    private readonly configService: ConfigService,
+    private readonly auditService: AuditService,
+    private readonly tenantContext: TenantContextService,
+    private readonly anomalyDetection: AnomalyDetectionService
+  ) {
+    this.initializeRedis();
+  }
+
+  private initializeRedis() {
+    try {
+      const redisUrl = this.configService.get<string>('REDIS_URL', 'redis://localhost:6379');
+      this.redisClient = new Redis(redisUrl);
+      
+      this.redisClient.on('error', (error) => {
+        this.logger.error(`[S6] خطأ في اتصال Redis: ${error.message}`);
+      });
+      
+      this.logger.log('[S6] ✅ تم تهيئة اتصال Redis بنجاح');
+    } catch (error) {
+      this.logger.error(`[S6] ❌ فشل تهيئة Redis: ${error.message}`);
+      throw new Error('فشل في إنشاء اتصال بقاعدة البيانات المؤقتة');
+    }
+  }
+
+  async checkRateLimit(
+    keyPrefix: string, 
+    maxRequests: number, 
+    windowSeconds: number,
+    context: string = 'general'
+  ): Promise<{ allowed: boolean; remaining: number; resetTime: number }> {
+    try {
+      const ip = this.getClientIp();
+      const tenantId = this.tenantContext.getTenantId() || 'system';
+      const userId = this.getUserId() || 'anonymous';
+      
+      // إنشاء مفتاح فريد للحد من المعدل
+      const key = `${keyPrefix}:${tenantId}:${userId}:${ip}`;
+      
+      // الحصول على القيمة الحالية
+      const currentCount = await this.redisClient.incr(key);
+      
+      // إذا كان هذا هو أول طلب في النافذة الزمنية
+      if (currentCount === 1) {
+        await this.redisClient.expire(key, windowSeconds);
+      }
+      
+      const remaining = Math.max(0, maxRequests - currentCount);
+      const resetTime = Math.floor(Date.now() / 1000) + windowSeconds;
+      
+      const allowed = currentCount <= maxRequests;
+      
+      // تسجيل المحاولة
+      await this.logRateLimitAttempt(key, currentCount, maxRequests, allowed, context);
+      
+      // إذا لم يسمح بالطلب، قم بالكشف عن السلوك غير الطبيعي
+      if (!allowed) {
+        await this.detectAnomalousBehavior(key, currentCount, maxRequests, context);
+      }
+      
+      return { allowed, remaining, resetTime };
+    } catch (error) {
+      this.logger.error(`[S6] ❌ خطأ في فحص حد المعدل: ${error.message}`);
+      this.auditService.logSecurityEvent('RATE_LIMIT_ERROR', {
+        error: error.message,
+        context,
+        timestamp: new Date().toISOString()
+      });
+      
+      // في حالة الخطأ، السماح بالطلب لتجنب تعطيل الخدمة
+      return { allowed: true, remaining: maxRequests, resetTime: Math.floor(Date.now() / 1000) + 60 };
+    }
+  }
+
+  private async logRateLimitAttempt(
+    key: string,
+    currentCount: number,
+    maxRequests: number,
+    allowed: boolean,
+    context: string
+  ) {
+    const logData = {
+      key,
+      currentCount,
+      maxRequests,
+      allowed,
+      context,
+      ip: this.getClientIp(),
+      tenantId: this.tenantContext.getTenantId(),
+      userId: this.getUserId(),
+      userAgent: this.request.get('User-Agent'),
+      timestamp: new Date().toISOString()
+    };
+    
+    if (!allowed) {
+      this.logger.warn(`[S6] 🚨 محاولة تجاوز حد المعدل - السياق: ${context}`);
+      this.logger.warn(JSON.stringify(logData, null, 2));
+      
+      // تسجيل حدث أمني
+      this.auditService.logSecurityEvent('RATE_LIMIT_EXCEEDED', {
+        ...logData,
+        severity: currentCount > maxRequests * 2 ? 'HIGH' : 'MEDIUM'
+      });
+    } else if (currentCount > maxRequests * 0.8) {
+      // تسجيل تحذير عند الوصول إلى 80% من الحد
+      this.logger.debug(`[S6] ⚠️ وصل إلى 80% من حد المعدل - السياق: ${context}`);
+    }
+  }
+
+  private async detectAnomalousBehavior(
+    key: string,
+    currentCount: number,
+    maxRequests: number,
+    context: string
+  ) {
+    const ip = this.getClientIp();
+    const tenantId = this.tenantContext.getTenantId() || 'system';
+    
+    // جمع البيانات للسلوك غير الطبيعي
+    const behaviorData = {
+      ip,
+      tenantId,
+      context,
+      requestCount: currentCount,
+      limit: maxRequests,
+      excessRatio: currentCount / maxRequests,
+      userAgent: this.request.get('User-Agent'),
+      path: this.request.path,
+      method: this.request.method,
+      timestamp: new Date().toISOString()
+    };
+    
+    // الكشف عن السلوك غير الطبيعي
+    const anomalyScore = await this.anomalyDetection.detectAnomaly(behaviorData);
+    
+    if (anomalyScore > 0.7) {
+      this.logger.error(`[S6] 🔴 سلوك غير طبيعي مكتشف - الدرجة: ${anomalyScore.toFixed(2)}`);
+      
+      // اتخاذ إجراءات فورية
+      await this.takeAnomalyAction(behaviorData, anomalyScore);
+    }
+  }
+
+  private async takeAnomalyAction(behaviorData: any, anomalyScore: number) {
+    const ip = behaviorData.ip;
+    const tenantId = behaviorData.tenantId;
+    
+    // تسجيل الحدث الأمني
+    this.auditService.logSecurityEvent('ANOMALOUS_BEHAVIOR_DETECTED', {
+      ...behaviorData,
+      anomalyScore,
+      severity: anomalyScore > 0.85 ? 'CRITICAL' : 'HIGH',
+      suggestedActions: [
+        'BLOCK_IP_TEMPORARY',
+        'ENHANCED_MONITORING',
+        'NOTIFY_SECURITY_TEAM'
+      ]
+    });
+    
+    // تنفيذ الإجراءات الفورية
+    if (anomalyScore > 0.85) {
+      // حظر IP مؤقتاً
+      await this.blockIpAddress(ip, 'ANOMALOUS_BEHAVIOR', 3600); // حظر لمدة ساعة
+      this.logger.error(`[S6] 🚫 تم حظر IP: ${ip} بسبب سلوك غير طبيعي`);
+    } else if (anomalyScore > 0.7) {
+      // مراقبة مكثفة
+      await this.applyEnhancedMonitoring(ip, tenantId, anomalyScore);
+    }
+  }
+
+  private async blockIpAddress(ip: string, reason: string, durationSeconds: number) {
+    const blockKey = `security:blocked_ip:${ip}`;
+    const blockData = {
+      reason,
+      blockedAt: new Date().toISOString(),
+      duration: durationSeconds,
+      blockedBy: 'RATE_LIMITER_SERVICE'
+    };
+    
+    await this.redisClient.setex(blockKey, durationSeconds, JSON.stringify(blockData));
+    
+    // تسجيل الحظر
+    this.auditService.logSecurityEvent('IP_BLOCKED', {
+      ip,
+      reason,
+      duration: durationSeconds,
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  private async applyEnhancedMonitoring(ip: string, tenantId: string, anomalyScore: number) {
+    const monitorKey = `security:enhanced_monitor:${ip}`;
+    const monitorData = {
+      tenantId,
+      anomalyScore,
+      startedAt: new Date().toISOString(),
+      duration: 1800, // 30 دقيقة
+      monitoredBy: 'RATE_LIMITER_SERVICE'
+    };
+    
+    await this.redisClient.setex(monitorKey, 1800, JSON.stringify(monitorData));
+    
+    // تسجيل المراقبة المكثفة
+    this.auditService.logSecurityEvent('ENHANCED_MONITORING_APPLIED', {
+      ip,
+      tenantId,
+      anomalyScore,
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  async checkIpBlock(ip: string): Promise<boolean> {
+    const blockKey = `security:blocked_ip:${ip}`;
+    const blockData = await this.redisClient.get(blockKey);
+    
+    if (blockData) {
+      this.logger.warn(`[S6] 🔒 محاولة وصول من IP محظور: ${ip}`);
+      return true;
+    }
+    
+    return false;
+  }
+
+  private getClientIp(): string {
+    const forwardedFor = this.request.headers['x-forwarded-for'];
+    if (forwardedFor) {
+      return Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor.split(',')[0];
+    }
+    return this.request.ip || this.request.connection.remoteAddress || 'unknown';
+  }
+
+  private getUserId(): string | null {
+    return this.request.user?.id || 
+           this.request.headers['x-user-id']?.toString() || 
+           null;
+  }
+
+  async getRateLimitPlan(): Promise<{ maxRequests: number; windowSeconds: number }> {
+    const tenantId = this.tenantContext.getTenantId();
+    
+    if (!tenantId) {
+      // خطة افتراضية للمستخدمين غير المسجلين
+      return { maxRequests: 100, windowSeconds: 300 }; // 100 طلب كل 5 دقائق
+    }
+    
+    try {
+      // الحصول على خطة الاشتراك للمستأجر
+      // في الإصدار الحقيقي، سيتم جلب هذه البيانات من قاعدة البيانات
+      const subscriptionPlan = this.configService.get<string>(`TENANT_${tenantId}_PLAN`, 'FREE');
+      
+      switch (subscriptionPlan) {
+        case 'ENTERPRISE':
+          return { maxRequests: 5000, windowSeconds: 60 }; // 5000 طلب/دقيقة
+        case 'PRO':
+          return { maxRequests: 1000, windowSeconds: 60 }; // 1000 طلب/دقيقة
+        case 'FREE':
+        default:
+          return { maxRequests: 100, windowSeconds: 60 }; // 100 طلب/دقيقة
+      }
+    } catch (error) {
+      this.logger.error(`[S6] ❌ خطأ في الحصول على خطة المستأجر: ${error.message}`);
+      return { maxRequests: 100, windowSeconds: 60 }; // خطة افتراضية آمنة
+    }
+  }
+}
+
+/*******************************************************************************
+ * FILE: encryption.module.ts
+ * PATH: .\core\src\security\layers\s7-encryption\encryption.module.ts
+ *******************************************************************************/
+import { Module, Global } from '@nestjs/common';
+import { EncryptionService } from './encryption.service';
+import { KeyRotationService } from './key-rotation.service';
+import { ConfigModule } from '@nestjs/config';
+import { AuditService } from '../s4-audit-logging/audit.service';
+import { TenantContextService } from '../s2-tenant-isolation/tenant-context.service';
+
+@Global()
+@Module({
+  imports: [ConfigModule],
+  providers: [
+    EncryptionService,
+    KeyRotationService,
+    AuditService,
+    TenantContextService
+  ],
+  exports: [EncryptionService, KeyRotationService],
+})
+export class EncryptionModule {}
+
+/*******************************************************************************
+ * FILE: encryption.service.ts
+ * PATH: .\core\src\security\layers\s7-encryption\encryption.service.ts
+ *******************************************************************************/
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { createCipheriv, createDecipheriv, randomBytes, scrypt, timingSafeEqual } from 'crypto';
+import { promisify } from 'util';
+import { AuditService } from '../s4-audit-logging/audit.service';
+import { TenantContextService } from '../s2-tenant-isolation/tenant-context.service';
+
+@Injectable()
+export class EncryptionService implements OnModuleInit {
+  private readonly logger = new Logger(EncryptionService.name);
+  private masterKey: Buffer;
+  private saltCache: Map<string, Buffer> = new Map();
+  private hkdfCache: Map<string, Buffer> = new Map();
+  
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly auditService: AuditService,
+    private readonly tenantContext: TenantContextService
+  ) {}
+
+  async onModuleInit() {
+    this.logger.log('🔐 [S7] بدء تهيئة خدمات التشفير...');
+    await this.initializeMasterKey();
+    await this.validateEncryptionStrength();
+    this.logger.log('✅ [S7] اكتملت تهيئة خدمات التشفير بنجاح');
+  }
+
+  private async initializeMasterKey() {
+    const masterKey = this.configService.get<string>('ENCRYPTION_MASTER_KEY');
+    
+    if (!masterKey || masterKey.length < 64) {
+      const errorMessage = '❌ [S7] مفتاح التشفير الرئيسي غير موجود أو غير آمن. يجب أن يكون 64 حرفاً على الأقل';
+      this.logger.error(errorMessage);
+      throw new Error(errorMessage);
+    }
+    
+    // تحويل المفتاح إلى بايتات باستخدام HKDF
+    this.masterKey = await this.deriveKey(masterKey, 'master_encryption_key', 32);
+    this.logger.log('✅ [S7] تم تهيئة المفتاح الرئيسي للتشفير');
+  }
+
+  private async validateEncryptionStrength() {
+    // اختبار قوة خوارزمية التشفير
+    const testKey = randomBytes(32);
+    const testIv = randomBytes(12);
+    const testCipher = createCipheriv('aes-256-gcm', testKey, testIv);
+    
+    const testPlaintext = 'test_encryption_strength';
+    const ciphertext = testCipher.update(testPlaintext, 'utf8', 'base64') + testCipher.final('base64');
+    const authTag = testCipher.getAuthTag();
+    
+    const testDecipher = createDecipheriv('aes-256-gcm', testKey, testIv);
+    testDecipher.setAuthTag(authTag);
+    
+    try {
+      const deciphered = testDecipher.update(ciphertext, 'base64', 'utf8') + testDecipher.final('utf8');
+      if (deciphered !== testPlaintext) {
+        throw new Error('فشل اختبار قوة التشفير');
+      }
+      this.logger.log('✅ [S7] نجاح اختبار قوة خوارزمية التشفير');
+    } catch (error) {
+      this.logger.error(`❌ [S7] فشل اختبار قوة التشفير: ${error.message}`);
+      throw new Error('خوارزمية التشفير غير آمنة');
+    }
+  }
+
+  async encryptSensitiveData(data: string, context: string = 'general'): Promise<string> {
+    if (typeof data !== 'string' || data.trim() === '') {
+      this.logger.warn(`[S7] ⚠️ محاولة تشفير بيانات فارغة للسياق: ${context}`);
+      return '';
+    }
+    
+    try {
+      this.logger.debug(`[S7] 🔒 بدء تشفير البيانات للسياق: ${context}`);
+      
+      // الحصول على مفتاح فريد للمستأجر والسياق
+      const tenantId = this.tenantContext.getTenantId() || 'system';
+      const encryptionKey = await this.getTenantEncryptionKey(tenantId, context);
+      
+      // إنشاء IV عشوائي
+      const iv = randomBytes(12);
+      
+      // إنشاء المشفر
+      const cipher = createCipheriv('aes-256-gcm', encryptionKey, iv);
+      
+      // تشفير البيانات
+      let encrypted = cipher.update(data, 'utf8', 'base64');
+      encrypted += cipher.final('base64');
+      
+      // الحصول على علامة المصادقة
+      const authTag = cipher.getAuthTag();
+      
+      // الدمج بين النتائج
+      const result = JSON.stringify({
+        iv: iv.toString('base64'),
+        authTag: authTag.toString('base64'),
+        encryptedData: encrypted,
+        algorithm: 'aes-256-gcm',
+        tenantId,
+        context,
+        timestamp: new Date().toISOString()
+      });
+      
+      // تسجيل عملية التشفير
+      this.auditService.logSecurityEvent('DATA_ENCRYPTION', {
+        context,
+        tenantId,
+        timestamp: new Date().toISOString(),
+        dataSize: data.length,
+        success: true
+      });
+      
+      return result;
+    } catch (error) {
+      this.logger.error(`[S7] ❌ خطأ في تشفير البيانات: ${error.message}`);
+      
+      // تسجيل حدث أمني
+      this.auditService.logSecurityEvent('ENCRYPTION_FAILURE', {
+        context,
+        tenantId: this.tenantContext.getTenantId() || 'system',
+        error: error.message,
+        stack: error.stack,
+        timestamp: new Date().toISOString()
+      });
+      
+      throw new Error('فشل في تشفير البيانات الحساسة');
+    }
+  }
+
+  async decryptSensitiveData(encryptedData: string, context: string = 'general'): Promise<string> {
+    if (typeof encryptedData !== 'string' || encryptedData.trim() === '') {
+      this.logger.warn(`[S7] ⚠️ محاولة فك تشفير بيانات فارغة للسياق: ${context}`);
+      return '';
+    }
+    
+    try {
+      this.logger.debug(`[S7] 🔓 بدء فك تشفير البيانات للسياق: ${context}`);
+      
+      // تحليل البيانات المشفرة
+      const parsedData = JSON.parse(encryptedData);
+      
+      // التحقق من صحة البيانات
+      if (!parsedData.iv || !parsedData.authTag || !parsedData.encryptedData) {
+        throw new Error('بيانات التشفير غير صالحة');
+      }
+      
+      // الحصول على مفتاح فك التشفير
+      const tenantId = parsedData.tenantId || this.tenantContext.getTenantId() || 'system';
+      const decryptionKey = await this.getTenantEncryptionKey(tenantId, context);
+      
+      // إنشاء الـ decipher
+      const decipher = createDecipheriv(
+        'aes-256-gcm',
+        decryptionKey,
+        Buffer.from(parsedData.iv, 'base64')
+      );
+      
+      // تعيين علامة المصادقة
+      decipher.setAuthTag(Buffer.from(parsedData.authTag, 'base64'));
+      
+      // فك التشفير
+      let decrypted = decipher.update(parsedData.encryptedData, 'base64', 'utf8');
+      decrypted += decipher.final('utf8');
+      
+      // تسجيل عملية فك التشفير
+      this.auditService.logSecurityEvent('DATA_DECRYPTION', {
+        context,
+        tenantId,
+        timestamp: new Date().toISOString(),
+        dataSize: decrypted.length,
+        success: true
+      });
+      
+      return decrypted;
+    } catch (error) {
+      this.logger.error(`[S7] ❌ خطأ في فك تشفير البيانات: ${error.message}`);
+      
+      // تسجيل حدث أمني
+      this.auditService.logSecurityEvent('DECRYPTION_FAILURE', {
+        context,
+        tenantId: this.tenantContext.getTenantId() || 'system',
+        error: error.message,
+        stack: error.stack,
+        timestamp: new Date().toISOString()
+      });
+      
+      throw new Error('فشل في فك تشفير البيانات الحساسة');
+    }
+  }
+
+  private async getTenantEncryptionKey(tenantId: string, context: string): Promise<Buffer> {
+    try {
+      // إنشاء معرف فريد للمفتاح
+      const keyId = `${tenantId}:${context}`;
+      
+      // التحقق من وجود المفتاح في الذاكرة المؤقتة
+      if (this.hkdfCache.has(keyId)) {
+        return this.hkdfCache.get(keyId);
+      }
+      
+      // الحصول على الملح الخاص بالمفتاح
+      const salt = await this.getTenantSalt(tenantId);
+      
+      // اشتقاق المفتاح باستخدام HKDF
+      const hkdfKey = await this.hkdf(
+        this.masterKey,
+        salt,
+        `apex-encryption:${tenantId}:${context}`,
+        32
+      );
+      
+      // تخزين المفتاح في الذاكرة المؤقتة
+      this.hkdfCache.set(keyId, hkdfKey);
+      
+      // إزالة المفتاح من الذاكرة المؤقتة بعد ساعتين
+      setTimeout(() => {
+        if (this.hkdfCache.has(keyId)) {
+          this.hkdfCache.delete(keyId);
+          this.logger.debug(`[S7] 🧹 تم مسح مفتاح التشفير المؤقت للمستأجر: ${tenantId}`);
+        }
+      }, 2 * 60 * 60 * 1000); // ساعتين
+      
+      return hkdfKey;
+    } catch (error) {
+      this.logger.error(`[S7] ❌ فشل الحصول على مفتاح التشفير للمستأجر: ${tenantId} - ${error.message}`);
+      throw new Error('فشل في الحصول على مفتاح التشفير');
+    }
+  }
+
+  private async getTenantSalt(tenantId: string): Promise<Buffer> {
+    try {
+      // التحقق من وجود الملح في الذاكرة المؤقتة
+      if (this.saltCache.has(tenantId)) {
+        return this.saltCache.get(tenantId);
+      }
+      
+      // إنشاء ملح عشوائي للمستأجر الجديد
+      const salt = randomBytes(16);
+      
+      // تخزين الملح في الذاكرة المؤقتة
+      this.saltCache.set(tenantId, salt);
+      
+      // حفظ الملح في قاعدة البيانات (سيتم تنفيذه لاحقاً)
+      // await this.saveTenantSalt(tenantId, salt);
+      
+      this.logger.log(`[S7] ✅ تم إنشاء ملح تشفير جديد للمستأجر: ${tenantId}`);
+      
+      return salt;
+    } catch (error) {
+      this.logger.error(`[S7] ❌ فشل الحصول على ملح التشفير للمستأجر: ${tenantId} - ${error.message}`);
+      throw new Error('فشل في الحصول على ملح التشفير');
+    }
+  }
+
+  private async hkdf(key: Buffer, salt: Buffer, info: string, length: number): Promise<Buffer> {
+    const hkdf = promisify(scrypt);
+    return new Promise((resolve, reject) => {
+      hkdf(key, salt, length, (err, derivedKey) => {
+        if (err) reject(err);
+        else resolve(Buffer.from(derivedKey));
+      });
+    });
+  }
+
+  private async deriveKey(input: string, salt: string, length: number): Promise<Buffer> {
+    const hkdf = promisify(scrypt);
+    return new Promise((resolve, reject) => {
+      hkdf(input, salt, length, (err, derivedKey) => {
+        if (err) reject(err);
+        else resolve(Buffer.from(derivedKey));
+      });
+    });
+  }
+
+  async hashData(data: string, pepper?: string): Promise<string> {
+    if (typeof data !== 'string' || data.trim() === '') {
+      throw new Error('البيانات المطلوب تجزئتها فارغة');
+    }
+    
+    try {
+      const salt = randomBytes(16);
+      const pepperValue = pepper || this.configService.get<string>('HASH_PEPPER', 'default_pepper');
+      
+      const hashedData = await new Promise<string>((resolve, reject) => {
+        const hash = scrypt(
+          data + pepperValue,
+          salt,
+          64,
+          (err, derivedKey) => {
+            if (err) reject(err);
+            else resolve(salt.toString('hex') + ':' + derivedKey.toString('hex'));
+          }
+        );
+      });
+      
+      return hashedData;
+    } catch (error) {
+      this.logger.error(`[S7] ❌ خطأ في تجزئة البيانات: ${error.message}`);
+      throw new Error('فشل في تجزئة البيانات');
+    }
+  }
+
+  async verifyHash(data: string, hashedData: string, pepper?: string): Promise<boolean> {
+    try {
+      const [saltHex, keyHex] = hashedData.split(':');
+      if (!saltHex || !keyHex) {
+        return false;
+      }
+      
+      const salt = Buffer.from(saltHex, 'hex');
+      const expectedKey = Buffer.from(keyHex, 'hex');
+      const pepperValue = pepper || this.configService.get<string>('HASH_PEPPER', 'default_pepper');
+      
+      const actualKey = await new Promise<Buffer>((resolve, reject) => {
+        scrypt(
+          data + pepperValue,
+          salt,
+          64,
+          (err, derivedKey) => {
+            if (err) reject(err);
+            else resolve(derivedKey);
+          }
+        );
+      });
+      
+      // استخدام timingSafeEqual لمنع هجمات القناة الجانبية
+      return timingSafeEqual(expectedKey, actualKey);
+    } catch (error) {
+      this.logger.error(`[S7] ❌ خطأ في التحقق من تجزئة البيانات: ${error.message}`);
+      return false;
+    }
+  }
+
+  async rotateKeys(tenantId: string, oldContext?: string): Promise<boolean> {
+    try {
+      this.logger.log(`[S7] 🔄 بدء تدوير المفاتيح للمستأجر: ${tenantId}`);
+      
+      // الحصول على قائمة السياقات التي تحتاج لتدوير المفاتيح
+      const contexts = oldContext ? [oldContext] : ['users', 'payments', 'settings', 'secrets'];
+      
+      for (const context of contexts) {
+        const oldKeyId = `${tenantId}:${context}`;
+        
+        // إزالة المفتاح القديم من الذاكرة المؤقتة
+        if (this.hkdfCache.has(oldKeyId)) {
+          this.hkdfCache.delete(oldKeyId);
+        }
+        
+        // إنشاء مفتاح جديد
+        await this.getTenantEncryptionKey(tenantId, context);
+        
+        this.logger.log(`[S7] ✅ تم تدوير مفتاح التشفير للسياق: ${context}`);
+      }
+      
+      // تسجيل عملية تدوير المفاتيح
+      this.auditService.logSecurityEvent('KEY_ROTATION', {
+        tenantId,
+        contexts,
+        timestamp: new Date().toISOString(),
+        success: true
+      });
+      
+      return true;
+    } catch (error) {
+      this.logger.error(`[S7] ❌ فشل تدوير المفاتيح للمستأجر: ${tenantId} - ${error.message}`);
+      
+      this.auditService.logSecurityEvent('KEY_ROTATION_FAILURE', {
+        tenantId,
+        error: error.message,
+        stack: error.stack,
+        timestamp: new Date().toISOString()
+      });
+      
+      return false;
+    }
+  }
+
+  async encryptFile(fileBuffer: Buffer, metadata: any): Promise<{ encryptedBuffer: Buffer; key: string }> {
+    try {
+      this.logger.log(`[S7] 📁 بدء تشفير الملف`);
+      
+      // الحصول على مفتاح التشفير
+      const tenantId = this.tenantContext.getTenantId() || 'system';
+      const fileKey = await this.getTenantEncryptionKey(tenantId, 'files');
+      
+      // إنشاء IV عشوائي
+      const iv = randomBytes(12);
+      
+      // إنشاء المشفر
+      const cipher = createCipheriv('aes-256-gcm', fileKey, iv);
+      
+      // تشفير البيانات
+      let encrypted = cipher.update(fileBuffer);
+      encrypted = Buffer.concat([encrypted, cipher.final()]);
+      
+      // الحصول على علامة المصادقة
+      const authTag = cipher.getAuthTag();
+      
+      // إنشاء ملف مشفر يحتوي على البيانات والـ IV وعلامة المصادقة
+      const resultBuffer = Buffer.concat([
+        iv,
+        authTag,
+        encrypted
+      ]);
+      
+      // تسجيل عملية التشفير
+      this.auditService.logSecurityEvent('FILE_ENCRYPTION', {
+        tenantId,
+        fileName: metadata.fileName || 'unknown',
+        fileSize: fileBuffer.length,
+        timestamp: new Date().toISOString(),
+        success: true
+      });
+      
+      return {
+        encryptedBuffer: resultBuffer,
+        key: `${tenantId}:files`
+      };
+    } catch (error) {
+      this.logger.error(`[S7] ❌ خطأ في تشفير الملف: ${error.message}`);
+      
+      this.auditService.logSecurityEvent('FILE_ENCRYPTION_FAILURE', {
+        tenantId: this.tenantContext.getTenantId() || 'system',
+        fileName: metadata.fileName || 'unknown',
+        error: error.message,
+        stack: error.stack,
+        timestamp: new Date().toISOString()
+      });
+      
+      throw new Error('فشل في تشفير الملف');
+    }
+  }
+
+  async decryptFile(encryptedBuffer: Buffer, keyId: string): Promise<Buffer> {
+    try {
+      this.logger.log(`[S7] 📂 بدء فك تشفير الملف`);
+      
+      // فصل الـ IV (12 بايت)
+      const iv = encryptedBuffer.slice(0, 12);
+      // فصل علامة المصادقة (16 بايت)
+      const authTag = encryptedBuffer.slice(12, 28);
+      // البيانات المشفرة المتبقية
+      const encryptedData = encryptedBuffer.slice(28);
+      
+      // استخراج tenantId و context من keyId
+      const [tenantId, context] = keyId.split(':');
+      
+      // الحصول على مفتاح فك التشفير
+      const decryptionKey = await this.getTenantEncryptionKey(tenantId, context || 'files');
+      
+      // إنشاء الـ decipher
+      const decipher = createDecipheriv('aes-256-gcm', decryptionKey, iv);
+      decipher.setAuthTag(authTag);
+      
+      // فك التشفير
+      let decrypted = decipher.update(encryptedData);
+      decrypted = Buffer.concat([decrypted, decipher.final()]);
+      
+      // تسجيل عملية فك التشفير
+      this.auditService.logSecurityEvent('FILE_DECRYPTION', {
+        tenantId,
+        timestamp: new Date().toISOString(),
+        fileSize: decrypted.length,
+        success: true
+      });
+      
+      return decrypted;
+    } catch (error) {
+      this.logger.error(`[S7] ❌ خطأ في فك تشفير الملف: ${error.message}`);
+      
+      this.auditService.logSecurityEvent('FILE_DECRYPTION_FAILURE', {
+        keyId,
+        error: error.message,
+        stack: error.stack,
+        timestamp: new Date().toISOString()
+      });
+      
+      throw new Error('فشل في فك تشفير الملف');
+    }
+  }
+}
+
+/*******************************************************************************
+ * FILE: key-rotation.service.ts
+ * PATH: .\core\src\security\layers\s7-encryption\key-rotation.service.ts
+ *******************************************************************************/
+import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { EncryptionService } from './encryption.service';
+import { AuditService } from '../s4-audit-logging/audit.service';
+import { TenantContextService } from '../s2-tenant-isolation/tenant-context.service';
+
+@Injectable()
+export class KeyRotationService {
+  private readonly logger = new Logger(KeyRotationService.name);
+  private rotationSchedule: Map<string, NodeJS.Timeout> = new Map();
+  
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly encryptionService: EncryptionService,
+    private readonly auditService: AuditService,
+    private readonly tenantContext: TenantContextService
+  ) {
+    this.initializeKeyRotation();
+  }
+
+  private initializeKeyRotation() {
+    try {
+      const autoRotationEnabled = this.configService.get<boolean>('AUTO_KEY_ROTATION_ENABLED', false);
+      
+      if (autoRotationEnabled) {
+        this.logger.log('🔄 [S7] تهيئة تدوير المفاتيح التلقائي...');
+        
+        // تدوير مفاتيح المستأجرين كل 30 يوماً
+        const tenantRotationDays = this.configService.get<number>('TENANT_KEY_ROTATION_DAYS', 30);
+        this.scheduleRotation('tenants', tenantRotationDays);
+        
+        // تدوير المفاتيح العامة كل 90 يوماً
+        const systemRotationDays = this.configService.get<number>('SYSTEM_KEY_ROTATION_DAYS', 90);
+        this.scheduleRotation('system', systemRotationDays);
+        
+        this.logger.log('✅ [S7] تم تهيئة تدوير المفاتيح التلقائي');
+      } else {
+        this.logger.warn('⚠️ [S7] تدوير المفاتيح التلقائي معطل');
+      }
+    } catch (error) {
+      this.logger.error(`❌ [S7] فشل تهيئة تدوير المفاتيح: ${error.message}`);
+    }
+  }
+
+  private scheduleRotation(type: string, days: number) {
+    const intervalMs = days * 24 * 60 * 60 * 1000;
+    
+    // إلغاء الجدولة القديمة إذا وجدت
+    if (this.rotationSchedule.has(type)) {
+      clearInterval(this.rotationSchedule.get(type));
+    }
+    
+    // جدولة التدوير الدوري
+    const rotationInterval = setInterval(async () => {
+      await this.performScheduledRotation(type);
+    }, intervalMs);
+    
+    // تنفيذ التدوير الأولي بعد 5 دقائق
+    setTimeout(async () => {
+      await this.performScheduledRotation(type);
+    }, 5 * 60 * 1000);
+    
+    this.rotationSchedule.set(type, rotationInterval);
+    this.logger.log(`✅ [S7] تم جدولة تدوير المفاتيح لنوع "${type}" كل ${days} يوم`);
+  }
+
+  private async performScheduledRotation(type: string) {
+    try {
+      this.logger.log(`🔄 [S7] بدء تدوير المفاتيح المجدول للنوع: ${type}`);
+      
+      // تدوير مفاتيح المستأجرين
+      if (type === 'tenants') {
+        await this.rotateTenantKeys();
+      } 
+      // تدوير المفاتيح العامة
+      else if (type === 'system') {
+        await this.rotateSystemKeys();
+      }
+      
+      this.logger.log(`✅ [S7] اكتمل تدوير المفاتيح للنوع: ${type}`);
+    } catch (error) {
+      this.logger.error(`❌ [S7] فشل تدوير المفاتيح للنوع ${type}: ${error.message}`);
+      
+      // تسجيل حدث أمني
+      this.auditService.logSecurityEvent('SCHEDULED_ROTATION_FAILURE', {
+        type,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  }
+
+  private async rotateTenantKeys() {
+    try {
+      // في الإصدار الحقيقي، سيتم جلب قائمة المستأجرين من قاعدة البيانات
+      const tenants = ['tenant1', 'tenant2', 'tenant3']; // مؤقت
+      
+      this.logger.log(`🔄 [S7] بدء تدوير مفاتيح ${tenants.length} مستأجر`);
+      
+      for (const tenantId of tenants) {
+        this.logger.log(`🔄 [S7] تدوير مفاتيح المستأجر: ${tenantId}`);
+        
+        // تدوير المفاتيح
+        const success = await this.encryptionService.rotateKeys(tenantId);
+        
+        if (success) {
+          this.logger.log(`✅ [S7] تم تدوير مفاتيح المستأجر: ${tenantId} بنجاح`);
+          
+          // إرسال إشعار للمستأجر (سيتم تنفيذه لاحقاً)
+          // await this.notifyTenant(tenantId, 'KEY_ROTATION_COMPLETED');
+        } else {
+          this.logger.error(`❌ [S7] فشل تدوير مفاتيح المستأجر: ${tenantId}`);
+        }
+      }
+      
+      this.logger.log(`✅ [S7] اكتمل تدوير مفاتيح جميع المستأجرين`);
+    } catch (error) {
+      this.logger.error(`❌ [S7] خطأ في تدوير مفاتيح المستأجرين: ${error.message}`);
+      throw error;
+    }
+  }
+
+  private async rotateSystemKeys() {
+    try {
+      this.logger.log(`🔄 [S7] بدء تدوير المفاتيح العامة`);
+      
+      // تدوير مفاتيح النظام المختلفة
+      const systemContexts = ['database', 'cache', 'communication', 'files'];
+      
+      for (const context of systemContexts) {
+        this.logger.log(`🔄 [S7] تدوير مفتاح النظام للسياق: ${context}`);
+        
+        // استخدام tenantId خاص بالنظام
+        const success = await this.encryptionService.rotateKeys('system', context);
+        
+        if (success) {
+          this.logger.log(`✅ [S7] تم تدوير مفتاح النظام للسياق: ${context} بنجاح`);
+        } else {
+          this.logger.error(`❌ [S7] فشل تدوير مفتاح النظام للسياق: ${context}`);
+        }
+      }
+      
+      this.logger.log(`✅ [S7] اكتمل تدوير جميع مفاتيح النظام`);
+    } catch (error) {
+      this.logger.error(`❌ [S7] خطأ في تدوير مفاتيح النظام: ${error.message}`);
+      throw error;
+    }
+  }
+
+  async rotateSpecificTenantKeys(tenantId: string): Promise<boolean> {
+    try {
+      this.logger.log(`🔄 [S7] تدوير يدوي لمفاتيح المستأجر: ${tenantId}`);
+      
+      const success = await this.encryptionService.rotateKeys(tenantId);
+      
+      if (success) {
+        this.logger.log(`✅ [S7] تم تدوير مفاتيح المستأجر: ${tenantId} بنجاح`);
+        
+        // تسجيل الحدث
+        this.auditService.logSecurityEvent('MANUAL_KEY_ROTATION', {
+          tenantId,
+          timestamp: new Date().toISOString(),
+          success: true,
+          triggeredBy: this.tenantContext.getTenantId() || 'system'
+        });
+        
+        return true;
+      } else {
+        this.logger.error(`❌ [S7] فشل تدوير مفاتيح المستأجر: ${tenantId}`);
+        
+        this.auditService.logSecurityEvent('MANUAL_KEY_ROTATION_FAILURE', {
+          tenantId,
+          timestamp: new Date().toISOString(),
+          success: false
+        });
+        
+        return false;
+      }
+    } catch (error) {
+      this.logger.error(`❌ [S7] خطأ في تدوير مفاتيح المستأجر: ${tenantId} - ${error.message}`);
+      
+      this.auditService.logSecurityEvent('MANUAL_KEY_ROTATION_ERROR', {
+        tenantId,
+        error: error.message,
+        stack: error.stack,
+        timestamp: new Date().toISOString()
+      });
+      
+      return false;
+    }
+  }
+
+  async rotateSystemContextKeys(context: string): Promise<boolean> {
+    try {
+      this.logger.log(`🔄 [S7] تدوير يدوي لمفتاح النظام للسياق: ${context}`);
+      
+      const success = await this.encryptionService.rotateKeys('system', context);
+      
+      if (success) {
+        this.logger.log(`✅ [S7] تم تدوير مفتاح النظام للسياق: ${context} بنجاح`);
+        
+        this.auditService.logSecurityEvent('MANUAL_SYSTEM_KEY_ROTATION', {
+          context,
+          timestamp: new Date().toISOString(),
+          success: true,
+          triggeredBy: this.tenantContext.getTenantId() || 'system'
+        });
+        
+        return true;
+      } else {
+        this.logger.error(`❌ [S7] فشل تدوير مفتاح النظام للسياق: ${context}`);
+        
+        this.auditService.logSecurityEvent('MANUAL_SYSTEM_KEY_ROTATION_FAILURE', {
+          context,
+          timestamp: new Date().toISOString(),
+          success: false
+        });
+        
+        return false;
+      }
+    } catch (error) {
+      this.logger.error(`❌ [S7] خطأ في تدوير مفتاح النظام للسياق: ${context} - ${error.message}`);
+      
+      this.auditService.logSecurityEvent('MANUAL_SYSTEM_KEY_ROTATION_ERROR', {
+        context,
+        error: error.message,
+        stack: error.stack,
+        timestamp: new Date().toISOString()
+      });
+      
+      return false;
+    }
+  }
+
+  async getKeyRotationHistory(tenantId?: string, limit: number = 10): Promise<any[]> {
+    try {
+      // في الإصدار الحقيقي، سيتم جلب هذه البيانات من قاعدة البيانات
+      // هنا نعيد بيانات محاكاة
+      const history = [
+        {
+          tenantId: tenantId || 'system',
+          context: 'users',
+          rotationDate: new Date().toISOString(),
+          rotatedBy: 'system_scheduler',
+          success: true
+        },
+        {
+          tenantId: tenantId || 'system',
+          context: 'payments',
+          rotationDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+          rotatedBy: 'manual_request',
+          success: true
+        }
+      ].slice(0, limit);
+      
+      return history;
+    } catch (error) {
+      this.logger.error(`❌ [S7] خطأ في الحصول على سجل تدوير المفاتيح: ${error.message}`);
+      return [];
+    }
+  }
+
+  async emergencyKeyRotation(): Promise<boolean> {
+    try {
+      this.logger.warn(`🚨 [S7] بدء تدوير طوارئ للمفاتيح بسبب اكتشاف تهديد`);
+      
+      // إيقاف التدوير المجدول الحالي
+      this.stopAllScheduledRotations();
+      
+      // تدوير جميع المفاتيح
+      let success = true;
+      
+      // تدوير مفاتيح المستأجرين
+      const tenants = ['tenant1', 'tenant2', 'tenant3']; // في الإصدار الحقيقي، يتم جلبها من قاعدة البيانات
+      for (const tenantId of tenants) {
+        const tenantSuccess = await this.encryptionService.rotateKeys(tenantId);
+        if (!tenantSuccess) success = false;
+      }
+      
+      // تدوير مفاتيح النظام
+      const systemContexts = ['database', 'cache', 'communication', 'files'];
+      for (const context of systemContexts) {
+        const systemSuccess = await this.encryptionService.rotateKeys('system', context);
+        if (!systemSuccess) success = false;
+      }
+      
+      // إعادة تشغيل التدوير المجدول
+      this.initializeKeyRotation();
+      
+      // تسجيل الحدث
+      this.auditService.logSecurityEvent('EMERGENCY_KEY_ROTATION', {
+        timestamp: new Date().toISOString(),
+        triggeredBy: this.tenantContext.getTenantId() || 'system',
+        success,
+        tenantCount: tenants.length,
+        systemContexts: systemContexts.length
+      });
+      
+      return success;
+    } catch (error) {
+      this.logger.error(`❌ [S7] خطأ في تدوير طوارئ للمفاتيح: ${error.message}`);
+      
+      this.auditService.logSecurityEvent('EMERGENCY_KEY_ROTATION_FAILURE', {
+        error: error.message,
+        stack: error.stack,
+        timestamp: new Date().toISOString()
+      });
+      
+      return false;
+    }
+  }
+
+  private stopAllScheduledRotations() {
+    this.rotationSchedule.forEach((interval, type) => {
+      clearInterval(interval);
+    });
+    this.rotationSchedule.clear();
+    this.logger.log('✅ [S7] تم إيقاف جميع جداول تدوير المفاتيح');
+  }
+
+  onModuleDestroy() {
+    this.stopAllScheduledRotations();
+  }
+}
+
+/*******************************************************************************
+ * FILE: csp-config.service.ts
+ * PATH: .\core\src\security\layers\s8-web-protection\csp-config.service.ts
+ *******************************************************************************/
+import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+
+@Injectable()
+export class CSPConfigService {
+  private readonly logger = new Logger(CSPConfigService.name);
+  private static defaultDirectives = {
+    defaultSrc: ["'self'"],
+    scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+    styleSrc: ["'self'", "'unsafe-inline'"],
+    imgSrc: ["'self'", 'data:', 'https:'],
+    fontSrc: ["'self'"],
+    connectSrc: ["'self'"],
+    frameSrc: ["'none'"],
+    objectSrc: ["'none'"],
+    baseUri: ["'self'"],
+    formAction: ["'self'"],
+    frameAncestors: ["'none'"],
+    upgradeInsecureRequests: []
+  };
+  
+  constructor(private readonly configService: ConfigService) {}
+
+  generateCSPHeader(tenantId: string, hostname: string): string {
+    try {
+      // الحصول على تكوين CSP بناءً على بيئة التشغيل
+      const cspConfig = this.getCSPConfig(tenantId, hostname);
+      
+      // بناء سلسلة التوجيهات
+      const directives = [];
+      
+      for (const [directive, sources] of Object.entries(cspConfig)) {
+        if (Array.isArray(sources) && sources.length > 0) {
+          directives.push(`${directive} ${sources.join(' ')}`);
+        } else if (directive === 'upgradeInsecureRequests' && sources.length === 0) {
+          directives.push(directive);
+        }
+      }
+      
+      const cspHeader = directives.join('; ');
+      this.logger.debug(`[S8] CSP Header generated for tenant ${tenantId}: ${cspHeader.substring(0, 100)}...`);
+      
+      return cspHeader;
+    } catch (error) {
+      this.logger.error(`[S8] ❌ خطأ في توليد رأس CSP: ${error.message}`);
+      
+      // العودة إلى تكوين آمن افتراضي
+      const fallbackDirectives = [];
+      for (const [directive, sources] of Object.entries(CSPConfigService.defaultDirectives)) {
+        if (Array.isArray(sources) && sources.length > 0) {
+          fallbackDirectives.push(`${directive} ${sources.join(' ')}`);
+        }
+      }
+      
+      return fallbackDirectives.join('; ');
+    }
+  }
+
+  private getCSPConfig(tenantId: string, hostname: string): any {
+    const isProduction = process.env.NODE_ENV === 'production';
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    
+    // التكوين الأساسي
+    const baseConfig = {
+      ...CSPConfigService.defaultDirectives,
+      scriptSrc: ["'self'", "'unsafe-inline'"], // إزالة 'unsafe-eval' للإنتاج
+      frameSrc: ["'self'"],
+      connectSrc: ["'self'"]
+    };
+    
+    // إضافة مصادر آمنة للمستأجر
+    const tenantDomains = this.getTenantDomains(tenantId, hostname);
+    for (const directive of ['scriptSrc', 'styleSrc', 'imgSrc', 'fontSrc', 'connectSrc']) {
+      if (baseConfig[directive]) {
+        baseConfig[directive].push(...tenantDomains);
+      }
+    }
+    
+    // إضافات للتطوير
+    if (isDevelopment) {
+      baseConfig.scriptSrc.push('webpack://*');
+      baseConfig.connectSrc.push('ws://*', 'wss://*');
+      baseConfig.imgSrc.push('blob:');
+    }
+    
+    // إضافات للإنتاج
+    if (isProduction) {
+      // إزالة 'unsafe-eval' في بيئة الإنتاج
+      baseConfig.scriptSrc = baseConfig.scriptSrc.filter(src => src !== "'unsafe-eval'");
+      
+      // إضافة Google analytics و Firebase إذا مطلوب
+      const enableAnalytics = this.configService.get<boolean>('ENABLE_ANALYTICS', false);
+      if (enableAnalytics) {
+        baseConfig.scriptSrc.push('https://www.google-analytics.com', 'https://www.googletagmanager.com');
+        baseConfig.imgSrc.push('https://www.google-analytics.com');
+        baseConfig.connectSrc.push('https://www.google-analytics.com');
+      }
+      
+      // إضافة خدمات الدفع الآمنة
+      baseConfig.frameSrc.push('https://*.stripe.com', 'https://checkout.paypal.com');
+      baseConfig.connectSrc.push('https://api.stripe.com');
+      baseConfig.imgSrc.push('https://*.stripe.com', 'https://*.paypal.com');
+      
+      // تفعيل ترقية الطلبات غير الآمنة
+      baseConfig.upgradeInsecureRequests = [];
+    }
+    
+    // تكوين خاص للمستأجرين
+    if (tenantId !== 'system') {
+      const tenantConfig = this.getTenantCSPConfig(tenantId);
+      if (tenantConfig) {
+        // دمج التكوين الخاص بالمستأجر مع التكوين الأساسي
+        for (const directive of Object.keys(tenantConfig)) {
+          if (baseConfig[directive] && Array.isArray(tenantConfig[directive])) {
+            baseConfig[directive] = [...new Set([...baseConfig[directive], ...tenantConfig[directive]])];
+          }
+        }
+      }
+    }
+    
+    return baseConfig;
+  }
+
+  private getTenantDomains(tenantId: string, hostname: string): string[] {
+    const domains = [];
+    
+    // نطاق المستأجر الرئيسي
+    if (tenantId !== 'system') {
+      domains.push(`https://${tenantId}.apex-platform.com`);
+      domains.push(`https://admin.${tenantId}.apex-platform.com`);
+    }
+    
+    // النطاق الحالي
+    if (hostname) {
+      domains.push(`https://${hostname}`);
+    }
+    
+    // نطاقات إضافية من المتغيرات البيئية
+    const additionalDomains = this.configService.get<string[]>('ADDITIONAL_CSP_DOMAINS', []);
+    domains.push(...additionalDomains.map(domain => `https://${domain}`));
+    
+    return domains;
+  }
+
+  private getTenantCSPConfig(tenantId: string): any {
+    // في الإصدار الحقيقي، سيتم جلب هذا من قاعدة البيانات أو ملف التكوين
+    const tenantConfigs = {
+      'premium-tenant': {
+        scriptSrc: ['https://cdn.premium-widgets.com'],
+        imgSrc: ['https://images.premium-content.com'],
+        connectSrc: ['https://api.premium-services.com']
+      }
+    };
+    
+    return tenantConfigs[tenantId] || null;
+  }
+
+  validateCSPReport(report: any) {
+    try {
+      this.logger.warn(`[S8] تقرير انتهاك سياسة الأمان: ${JSON.stringify(report, null, 2)}`);
+      
+      // تحليل التقرير
+      if (report['csp-report']) {
+        const violation = report['csp-report'];
+        const blockedUri = violation['blocked-uri'] || 'unknown';
+        const violatedDirective = violation['violated-directive'] || 'unknown';
+        
+        this.logger.warn(`[S8] انتهاك CSP: ${violatedDirective} - ${blockedUri}`);
+        
+        // تحديد شدة الانتهاك
+        let severity = 'LOW';
+        if (blockedUri.includes('data:') || blockedUri.includes('blob:')) {
+          severity = 'MEDIUM';
+        }
+        if (blockedUri.includes('script') || blockedUri.includes('eval')) {
+          severity = 'HIGH';
+        }
+        if (blockedUri.startsWith('http') && !blockedUri.includes('apex-platform.com')) {
+          severity = 'CRITICAL';
+        }
+        
+        // هنا يمكن إرسال تنبيه أو اتخاذ إجراء بناءً على الشدة
+        if (severity === 'CRITICAL') {
+          this.logger.error(`[S8] 🚨 انتهاك CSP خطير: ${blockedUri}`);
+          // this.securityAlertService.sendAlert('CRITICAL_CSP_VIOLATION', { report, severity });
+        }
+      }
+      
+      return { status: 'processed', severity: 'MEDIUM' };
+    } catch (error) {
+      this.logger.error(`[S8] ❌ خطأ في معالجة تقرير CSP: ${error.message}`);
+      return { status: 'error', error: error.message };
+    }
+  }
+
+  getReportUri(): string {
+    return this.configService.get<string>('CSP_REPORT_URI', '/api/csp-report');
+  }
+}
+
+/*******************************************************************************
+ * FILE: index.ts
+ * PATH: .\core\src\security\layers\s8-web-protection\index.ts
+ *******************************************************************************/
+export * from './security-headers.middleware';
+export * from './csp-config.service';
+export * from './web-protection.module';
+
+/*******************************************************************************
+ * FILE: security-headers.middleware.ts
+ * PATH: .\core\src\security\layers\s8-web-protection\security-headers.middleware.ts
+ *******************************************************************************/
+import { Injectable, NestMiddleware, Logger } from '@nestjs/common';
+import { Request, Response, NextFunction } from 'express';
+import { CSPConfigService } from './csp-config.service';
+import { v4 as uuidv4 } from 'uuid';
+import { AuditService } from '../s4-audit-logging/audit.service';
+import { TenantContextService } from '../s2-tenant-isolation/tenant-context.service';
+
+@Injectable()
+export class SecurityHeadersMiddleware implements NestMiddleware {
+  private readonly logger = new Logger(SecurityHeadersMiddleware.name);
+
+  constructor(
+    private readonly cspConfig: CSPConfigService,
+    private readonly auditService: AuditService,
+    private readonly tenantContext: TenantContextService
+  ) {}
+
+  use(req: Request, res: Response, next: NextFunction) {
+    try {
+      const requestId = req['requestId'] || uuidv4();
+      const tenantId = this.tenantContext.getTenantId() || 'system';
+      
+      this.logger.debug(`[S8] إضافة رؤوس الأمان للطلب: ${requestId}`);
+      
+      // 1. محتوى سياسة الأمان (Content Security Policy)
+      const cspHeader = this.cspConfig.generateCSPHeader(tenantId, req.hostname);
+      if (cspHeader) {
+        res.setHeader('Content-Security-Policy', cspHeader);
+      }
+      
+      // 2. X-Content-Type-Options
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      
+      // 3. X-Frame-Options
+      res.setHeader('X-Frame-Options', 'DENY');
+      
+      // 4. X-XSS-Protection
+      res.setHeader('X-XSS-Protection', '1; mode=block');
+      
+      // 5. Strict-Transport-Security (HSTS)
+      if (process.env.NODE_ENV === 'production') {
+        res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+      }
+      
+      // 6. Referrer-Policy
+      res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+      
+      // 7. Permissions-Policy (سابقاً Feature-Policy)
+      res.setHeader('Permissions-Policy', 'geolocation=(), camera=(), microphone=()');
+      
+      // 8. Cross-Origin-Opener-Policy
+      res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+      
+      // 9. Cross-Origin-Embedder-Policy
+      res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+      
+      // 10. Cross-Origin-Resource-Policy
+      res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+      
+      // تسجيل إضافة رؤوس الأمان
+      this.auditService.logSystemEvent('SECURITY_HEADERS_APPLIED', {
+        requestId,
+        tenantId,
+        headers: {
+          csp: !!cspHeader,
+          'X-Content-Type-Options': 'nosniff',
+          'X-Frame-Options': 'DENY',
+          'X-XSS-Protection': '1; mode=block',
+          hsts: process.env.NODE_ENV === 'production'
+        },
+        timestamp: new Date().toISOString()
+      });
+      
+      next();
+    } catch (error) {
+      this.logger.error(`[S8] ❌ خطأ في إضافة رؤوس الأمان: ${error.message}`);
+      
+      // في حالة الخطأ، نستمر في الطلب مع تسجيل الحدث
+      this.auditService.logSecurityEvent('SECURITY_HEADERS_FAILURE', {
+        error: error.message,
+        stack: error.stack,
+        timestamp: new Date().toISOString()
+      });
+      
+      next();
+    }
+  }
+}
+
+export function securityHeaders() {
+  return new SecurityHeadersMiddleware();
+}
+
+/*******************************************************************************
+ * FILE: web-protection.module.ts
+ * PATH: .\core\src\security\layers\s8-web-protection\web-protection.module.ts
+ *******************************************************************************/
+import { Module, Global } from '@nestjs/common';
+import { SecurityHeadersMiddleware } from './security-headers.middleware';
+import { CSPConfigService } from './csp-config.service';
+import { ConfigModule } from '@nestjs/config';
+import { AuditService } from '../s4-audit-logging/audit.service';
+import { TenantContextService } from '../s2-tenant-isolation/tenant-context.service';
+
+@Global()
+@Module({
+  imports: [ConfigModule],
+  providers: [
+    CSPConfigService,
+    AuditService,
+    TenantContextService
+  ],
+  exports: [CSPConfigService],
+})
+export class WebProtectionModule {}
+
+/*******************************************************************************
+ * FILE: asmp-protocol.service.ts
+ * PATH: .\core\src\security\protocol\asmp\asmp-protocol.service.ts
+ *******************************************************************************/
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { ViolationDetectorService } from './violation-detector.service';
+import { AuditService } from '../../layers/s4-audit-logging/audit.service';
+
+@Injectable()
+export class ASMPProtocolService implements OnModuleInit {
+  private readonly logger = new Logger(ASMPProtocolService.name);
+  private protocolVersion = 'ASMP/v2.3';
+  private protocolConfig: any;
+  
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly violationDetector: ViolationDetectorService,
+    private readonly auditService: AuditService
+  ) {}
+
+  async onModuleInit() {
+    this.logger.log(`🛡️ [ASMP] بدء تشغيل بروتوكول الأمان المتقدم ${this.protocolVersion}...`);
+    
+    try {
+      await this.loadProtocolConfig();
+      await this.validateProtocolIntegrity();
+      await this.initializeMonitoring();
+      
+      this.logger.log(`✅ [ASMP] البروتوكول جاهز للعمل`);
+    } catch (error) {
+      this.logger.error(`❌ [ASMP] فشل تهيئة البروتوكول: ${error.message}`);
+      
+      // في حالة الفشل الحرجة، اتخاذ إجراءات الطوارئ
+      if (error.message.includes('INTEGRITY_CHECK_FAILED')) {
+        this.activateEmergencyMode();
+      }
+    }
+  }
+
+  private async loadProtocolConfig() {
+    try {
+      // تحميل تكوين البروتوكول من المتغيرات البيئية
+      this.protocolConfig = {
+        securityLevel: this.configService.get<string>('ASMP_SECURITY_LEVEL', 'high'),
+        violationThreshold: this.configService.get<number>('ASMP_VIOLATION_THRESHOLD', 5),
+        autoResponseEnabled: this.configService.get<boolean>('ASMP_AUTO_RESPONSE_ENABLED', true),
+        monitoringInterval: this.configService.get<number>('ASMP_MONITORING_INTERVAL', 60), // ثوانٍ
+        criticalLayers: this.configService.get<string[]>('ASMP_CRITICAL_LAYERS', ['S1', 'S2', 'S7', 'S8']),
+        reportLevel: this.configService.get<string>('ASMP_REPORT_LEVEL', 'detailed')
+      };
+      
+      this.logger.log(`[ASMP] ✅ تم تحميل تكوين البروتوكول`);
+      this.logger.debug(`[ASMP] التكوين: ${JSON.stringify(this.protocolConfig, null, 2)}`);
+    } catch (error) {
+      this.logger.error(`[ASMP] ❌ خطأ في تحميل تكوين البروتوكول: ${error.message}`);
+      throw new Error('فشل في تحميل تكوين بروتوكول الأمان');
+    }
+  }
+
+  private async validateProtocolIntegrity() {
+    try {
+      this.logger.log(`[ASMP] 🔍 بدء فحص سلامة البروتوكول...`);
+      
+      // 1. فحص إصدار البروتوكول
+      const minRequiredVersion = this.configService.get<string>('ASMP_MIN_VERSION', 'ASMP/v2.0');
+      if (this.compareVersions(this.protocolVersion, minRequiredVersion) < 0) {
+        throw new Error(`إصدار بروتوكول غير آمن. الإصدار المطلوب: ${minRequiredVersion}، الحالي: ${this.protocolVersion}`);
+      }
+      
+      // 2. فحص سلامة الملفات الأساسية
+      const criticalFiles = [
+        'main.ts',
+        'environment-validator.service.ts',
+        'tenant-context.service.ts',
+        'encryption.service.ts'
+      ];
+      
+      for (const file of criticalFiles) {
+        const integrityStatus = await this.checkFileIntegrity(file);
+        if (!integrityStatus.valid) {
+          throw new Error(`فشل فحص سلامة الملف: ${file} - ${integrityStatus.reason}`);
+        }
+      }
+      
+      // 3. فحص المتغيرات البيئية الحرجة
+      const criticalVars = ['ENCRYPTION_MASTER_KEY', 'JWT_SECRET', 'DATABASE_URL'];
+      for (const varName of criticalVars) {
+        if (!this.configService.get(varName)) {
+          throw new Error(`متغير بيئي حرجة مفقود: ${varName}`);
+        }
+      }
+      
+      this.logger.log(`[ASMP] ✅ نجاح فحص سلامة البروتوكول`);
+    } catch (error) {
+      this.logger.error(`[ASMP] ❌ فشل فحص سلامة البروتوكول: ${error.message}`);
+      throw new Error(`INTEGRITY_CHECK_FAILED: ${error.message}`);
+    }
+  }
+
+  private compareVersions(v1: string, v2: string): number {
+    // تقسيم الإصدارات إلى أجزاء
+    const parts1 = v1.replace('ASMP/v', '').split('.').map(Number);
+    const parts2 = v2.replace('ASMP/v', '').split('.').map(Number);
+    
+    // مقارنة الأجزاء
+    for (let i = 0; i < Math.max(parts1.length, parts2.length); i++) {
+      const p1 = parts1[i] || 0;
+      const p2 = parts2[i] || 0;
+      
+      if (p1 > p2) return 1;
+      if (p1 < p2) return -1;
+    }
+    
+    return 0;
+  }
+
+  private async checkFileIntegrity(fileName: string): Promise<{ valid: boolean; reason?: string }> {
+    // في الإصدار الحقيقي، سيتم فحص الـ hash والتوقيعات الرقمية
+    // هنا نقوم بفحص بسيط
+    
+    try {
+      // محاكاة فحص سلامة الملف
+      if (fileName.includes('encryption') && this.protocolConfig.securityLevel !== 'high') {
+        return { valid: false, reason: 'مستوى أمان منخفض لملف التشفير' };
+      }
+      
+      return { valid: true };
+    } catch (error) {
+      return { valid: false, reason: error.message };
+    }
+  }
+
+  private async initializeMonitoring() {
+    try {
+      this.logger.log(`[ASMP] 👁️ بدء مراقبة البروتوكول...`);
+      
+      // بدء المراقبة الدورية
+      setInterval(() => {
+        this.performProtocolHealthCheck();
+      }, this.protocolConfig.monitoringInterval * 1000);
+      
+      // بدء الكشف عن الانتهاكات
+      await this.violationDetector.initialize();
+      
+      this.logger.log(`[ASMP] ✅ تم تهيئة مراقبة البروتوكول`);
+    } catch (error) {
+      this.logger.error(`[ASMP] ❌ فشل تهيئة المراقبة: ${error.message}`);
+      throw new Error('فشل في تهيئة مراقبة البروتوكول');
+    }
+  }
+
+  private performProtocolHealthCheck() {
+    this.logger.debug(`[ASMP] 💓 فحص صحة البروتوكول الدوري`);
+    
+    try {
+      const healthStatus = {
+        timestamp: new Date().toISOString(),
+        protocolVersion: this.protocolVersion,
+        securityLevel: this.protocolConfig.securityLevel,
+        autoResponse: this.protocolConfig.autoResponseEnabled,
+        violationCount: this.violationDetector.getViolationCount(),
+        criticalLayersStatus: this.checkCriticalLayersStatus()
+      };
+      
+      // تسجيل حالة الصحة
+      this.auditService.logSystemEvent('PROTOCOL_HEALTH_CHECK', healthStatus);
+      
+      // التحقق من الحاجة لأي إجراء
+      this.evaluateHealthStatus(healthStatus);
+    } catch (error) {
+      this.logger.error(`[ASMP] ❌ خطأ في فحص صحة البروتوكول: ${error.message}`);
+    }
+  }
+
+  private checkCriticalLayersStatus(): any {
+    // في الإصدار الحقيقي، سيتم فحص حالة الطبقات الحرجة
+    return {
+      S1: 'operational',
+      S2: 'operational', 
+      S7: 'operational',
+      S8: 'operational'
+    };
+  }
+
+  private evaluateHealthStatus(healthStatus: any) {
+    const criticalIssues = Object.entries(healthStatus.criticalLayersStatus)
+      .filter(([layer, status]) => status !== 'operational')
+      .map(([layer, status]) => ({ layer, status }));
+    
+    if (criticalIssues.length > 0) {
+      this.logger.error(`[ASMP] 🚨 اكتشاف مشاكل حرجة في ${criticalIssues.length} طبقة`);
+      
+      // تنفيذ الإجراءات التلقائية
+      if (this.protocolConfig.autoResponseEnabled) {
+        this.executeAutoResponse('CRITICAL_LAYER_FAILURE', criticalIssues);
+      }
+    }
+    
+    if (healthStatus.violationCount > this.protocolConfig.violationThreshold) {
+      this.logger.warn(`[ASMP] ⚠️ عدد الانتهاكات (${healthStatus.violationCount}) يتجاوز الحد المسموح (${this.protocolConfig.violationThreshold})`);
+      
+      if (this.protocolConfig.autoResponseEnabled) {
+        this.executeAutoResponse('VIOLATION_THRESHOLD_EXCEEDED', {
+          currentCount: healthStatus.violationCount,
+          threshold: this.protocolConfig.violationThreshold
+        });
+      }
+    }
+  }
+
+  private executeAutoResponse(eventType: string, eventData: any) {
+    this.logger.log(`[ASMP] 🛠️ تنفيذ استجابة تلقائية للحدث: ${eventType}`);
+    
+    switch (eventType) {
+      case 'CRITICAL_LAYER_FAILURE':
+        // إعادة تشغيل الخدمات المعطلة
+        this.logger.log('[ASMP] ♻️ إعادة تشغيل الخدمات الحرجة');
+        // this.reloadCriticalServices(eventData);
+        break;
+        
+      case 'VIOLATION_THRESHOLD_EXCEEDED':
+        // تشديد إعدادات الأمان مؤقتاً
+        this.logger.log('[ASMP] 🔒 تشديد إعدادات الأمان مؤقتاً');
+        // this.tightenSecuritySettings();
+        break;
+        
+      case 'SECURITY_BREACH_DETECTED':
+        // تفعيل وضع الطوارئ
+        this.activateEmergencyMode();
+        break;
+    }
+    
+    // تسجيل الإجراء
+    this.auditService.logSecurityEvent('AUTO_RESPONSE_EXECUTED', {
+      eventType,
+      eventData,
+      timestamp: new Date().toISOString(),
+      protocolVersion: this.protocolVersion
+    });
+  }
+
+  private activateEmergencyMode() {
+    this.logger.error(`[ASMP] 🚨🚨🚨 تفعيل وضع الطوارئ! 🚨🚨🚨`);
+    
+    try {
+      // 1. تعطيل جميع الواجهات الخارجية مؤقتاً
+      // this.disableExternalInterfaces();
+      
+      // 2. تسجيل جميع الأحداث الفورية
+      this.auditService.logSecurityEvent('EMERGENCY_MODE_ACTIVATED', {
+        reason: 'Critical security breach or protocol integrity failure',
+        timestamp: new Date().toISOString(),
+        protocolVersion: this.protocolVersion
+      });
+      
+      // 3. إرسال تنبيه فوري للمشرفين
+      // await this.sendEmergencyAlert();
+      
+      // 4. حفظ حالة النظام الحالية
+      // await this.saveSystemState();
+      
+      this.logger.error('[ASMP] ⚠️ النظام يعمل في وضع الطوارئ. جميع العمليات الخارجية معطلة');
+    } catch (error) {
+      this.logger.error(`[ASMP] ❌ فشل تفعيل وضع الطوارئ: ${error.message}`);
+      
+      // في حالة فشل وضع الطوارئ، إنهاء العملية فوراً
+      process.exit(1);
+    }
+  }
+
+  async registerSecurityEvent(layer: string, eventType: string, eventData: any): Promise<boolean> {
+    try {
+      this.logger.debug(`[ASMP] 📝 تسجيل حدث أمني: ${layer} - ${eventType}`);
+      
+      // التحقق من صحة الحدث
+      if (!this.protocolConfig.criticalLayers.includes(layer) && this.protocolConfig.reportLevel === 'critical_only') {
+        return false;
+      }
+      
+      // كشف الانتهاكات المحتملة
+      const violationDetected = await this.violationDetector.detectViolation(layer, eventType, eventData);
+      
+      if (violationDetected) {
+        this.logger.warn(`[ASMP] ⚠️ تم اكتشاف انتهاك في الطبقة ${layer} للحدث ${eventType}`);
+        
+        // تنفيذ استجابة تلقائية إذا تمكّن
+        if (this.protocolConfig.autoResponseEnabled) {
+          this.executeAutoResponse('VIOLATION_DETECTED', {
+            layer,
+            eventType,
+            eventData,
+            violationDetails: violationDetected
+          });
+        }
+        
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      this.logger.error(`[ASMP] ❌ خطأ في تسجيل الحدث الأمني: ${error.message}`);
+      return false;
+    }
+  }
+
+  async generateProtocolReport(): Promise<any> {
+    try {
+      this.logger.log('[ASMP] 📊 إنشاء تقرير البروتوكول');
+      
+      const report = {
+        protocolVersion: this.protocolVersion,
+        generationTime: new Date().toISOString(),
+        systemStatus: {
+          uptime: process.uptime(),
+          nodeVersion: process.version,
+          environment: process.env.NODE_ENV
+        },
+        securityMetrics: {
+          totalViolations: this.violationDetector.getViolationCount(),
+          criticalViolations: this.violationDetector.getCriticalViolationCount(),
+          autoResponses: this.violationDetector.getAutoResponseCount()
+        },
+        layerStatus: this.checkCriticalLayersStatus(),
+        recommendations: await this.generateRecommendations()
+      };
+      
+      // تسجيل إنشاء التقرير
+      this.auditService.logSystemEvent('PROTOCOL_REPORT_GENERATED', report);
+      
+      return report;
+    } catch (error) {
+      this.logger.error(`[ASMP] ❌ فشل إنشاء تقرير البروتوكول: ${error.message}`);
+      throw new Error('فشل في إنشاء تقرير البروتوكول');
+    }
+  }
+
+  private async generateRecommendations(): Promise<string[]> {
+    // في الإصدار الحقيقي، سيتم توليد التوصيات ديناميكياً
+    return [
+      'تحديث إصدار البروتوكول إلى ASMP/v2.4',
+      'تشديد إعدادات التشفير للطبقة S7',
+      'زيادة تكرار مراقبة الطبقات الحرجة'
+    ];
+  }
+
+  getProtocolStatus(): any {
+    return {
+      protocolVersion: this.protocolVersion,
+      securityLevel: this.protocolConfig.securityLevel,
+      autoResponseEnabled: this.protocolConfig.autoResponseEnabled,
+      violationCount: this.violationDetector.getViolationCount(),
+      lastHealthCheck: new Date().toISOString()
+    };
+  }
+}

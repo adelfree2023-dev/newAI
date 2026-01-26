@@ -4,8 +4,8 @@ import { ConfigService } from '@nestjs/config';
 @Injectable()
 export class EnvironmentValidatorService implements OnModuleInit {
   private readonly logger = new Logger(EnvironmentValidatorService.name);
-  
-  constructor(private readonly configService: ConfigService) {}
+
+  constructor(private readonly configService: ConfigService) { }
 
   async onModuleInit() {
     this.logger.log('🔐 [S1] بدء التحقق من البيئة والأمان...');
@@ -20,7 +20,9 @@ export class EnvironmentValidatorService implements OnModuleInit {
       'ENCRYPTION_MASTER_KEY',
       'JWT_SECRET',
       'DATABASE_URL',
-      'MASTER_ADMIN_EMAIL'
+      'MASTER_ADMIN_EMAIL',
+      'REDIS_URL',
+      'ASMP_SECURITY_LEVEL'
     ];
 
     for (const varName of criticalVars) {
@@ -81,7 +83,7 @@ export class EnvironmentValidatorService implements OnModuleInit {
 
   validateDynamicUpdate(key: string, newValue: string): boolean {
     this.logger.log(`🔄 [S1] محاولة تحديث متغير البيئة ديناميكياً: ${key}`);
-    
+
     try {
       // منع تحديث المفاتيح الحساسة ديناميكياً دون إعادة تشغيل
       const sensitiveKeys = ['ENCRYPTION_MASTER_KEY', 'JWT_SECRET', 'DATABASE_URL'];
@@ -89,13 +91,13 @@ export class EnvironmentValidatorService implements OnModuleInit {
         this.logger.warn(`🔒 [S1] تحديث ديناميكي محظور للمفتاح الحساس: ${key}`);
         return false;
       }
-      
+
       // التحقق من صحة القيمة الجديدة
       if (newValue.trim() === '') {
         this.logger.error(`❌ [S1] قيمة فارغة لـ ${key} - الرفض`);
         return false;
       }
-      
+
       process.env[key] = newValue;
       this.logger.log(`✅ [S1] تم تحديث ${key} بنجاح`);
       return true;

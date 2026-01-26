@@ -13,7 +13,7 @@ import { EnvironmentValidatorService } from './security/layers/s1-environment-ve
 
 async function bootstrap() {
   const logger = new Logger('MainApplication');
-  
+
   try {
     // S1: التحقق من البيئة قبل أي شيء
     logger.log('🚀 [S1] بدء التحقق من البيئة والأمان...');
@@ -22,8 +22,8 @@ async function bootstrap() {
     logger.log('✅ [S1] اجتازت البيئة جميع اختبارات الأمان');
 
     // إنشاء التطبيق
-    const app = await NestFactory.create(AppModule, { 
-      logger: ['log', 'error', 'warn', 'debug'] 
+    const app = await NestFactory.create(AppModule, {
+      logger: ['log', 'error', 'warn', 'debug']
     });
 
     // S8: الحماية من هجمات الويب - المستوى الأول
@@ -51,7 +51,7 @@ async function bootstrap() {
         preload: true
       }
     }));
-    
+
     logger.log('✅ [S8] تم تفعيل رؤوس الأمان HTTP');
 
     // S6: تحديد حدود المعدل الأساسي
@@ -62,15 +62,15 @@ async function bootstrap() {
       legacyHeaders: false,
       handler: (req, res) => {
         logger.warn(`[S6] 🚨 تجاوز حد المعدل من IP: ${req.ip}`);
-        
+
         // الحصول على سياق المستأجر لإرسال تنبيه مخصص
         const tenantContext = app.get(TenantContextService);
         const tenantId = tenantContext.getTenantId() || 'unknown';
-        
+
         // تسجيل الحدث الأمني
         const auditService = app.get(AuditLoggerMiddleware);
         // سيتم تنفيذ التسجيل الفعلي لاحقاً
-        
+
         res.status(429).json({
           statusCode: 429,
           message: 'تم تجاوز حد الطلبات. يرجى المحاولة لاحقاً.',
@@ -79,7 +79,7 @@ async function bootstrap() {
         });
       }
     });
-    
+
     app.use(limiter);
     logger.log('✅ [S6] تم تفعيل تحديد حدود المعدل الأساسي');
 
@@ -93,14 +93,14 @@ async function bootstrap() {
       },
       exceptionFactory: (errors) => {
         logger.error(`[S3] 🚨 مدخلات غير صالحة: ${JSON.stringify(errors)}`);
-        
+
         // تسجيل محاولة اختراق محتملة
         const errorMessages = errors.map(err => ({
           property: err.property,
           constraints: err.constraints,
           value: err.value
         }));
-        
+
         // سيتم تحسين هذا مع خدمة السجل الكاملة
         return {
           statusCode: 400,
@@ -109,7 +109,7 @@ async function bootstrap() {
         };
       }
     }));
-    
+
     logger.log('✅ [S3] تم تفعيل التحقق من المدخلات العالمي');
 
     // S4: وسطاء تسجيل التدقيق
@@ -129,7 +129,7 @@ async function bootstrap() {
       maxAge: 3600,
       preflightContinue: false,
     });
-    
+
     logger.log(`✅ تم تفعيل CORS للمنشأ: ${corsOrigin}`);
 
     // Swagger Configuration (للتطوير فقط)
@@ -141,16 +141,16 @@ async function bootstrap() {
         .addTag('security')
         .addBearerAuth()
         .build();
-      
+
       const document = SwaggerModule.createDocument(app, config);
       SwaggerModule.setup('api-docs', app, document);
-      
+
       logger.log('✅ تم تفعيل وثائق API للتطوير');
     }
 
     // المنفذ من المتغيرات البيئية
     const port = process.env.PORT || 3000;
-    
+
     // S8: حماية إضافية ضد CSRF
     if (process.env.NODE_ENV === 'production') {
       app.use(csurf({
@@ -161,12 +161,12 @@ async function bootstrap() {
           maxAge: 3600
         }
       }));
-      logger.log('✅ [S8] تم تفعيل حماية CSRF للإنتاج');
+      logger.log('✅ [S8] تم تفعيل حماية CSRF للإنتاج (ASMP Compliance)');
     }
 
     // بدء الخادم
     await app.listen(port);
-    
+
     // S7: بعد بدء الخادم، فحص التشفير
     const encryptionService = app.get(AISecuritySupervisorService);
     // سيتم تنفيذ فحص التشفير الفعلي لاحقاً
@@ -174,7 +174,7 @@ async function bootstrap() {
     logger.log(`🚀 [SUCCEED] تم تشغيل الخادم بنجاح على المنفذ ${port}`);
     logger.log(`🌐 العنوان: http://localhost:${port}`);
     logger.log(`🔧 البيئة: ${process.env.NODE_ENV || 'development'}`);
-    
+
     // بدء المشرف الأمني بالذكاء الاصطناعي
     await app.get(AISecuritySupervisorService).onModuleInit();
     logger.log('🧠 بدء المشرف الأمني بالذكاء الاصطناعي');
@@ -187,15 +187,15 @@ async function bootstrap() {
     logger.error('❌ [CRITICAL] فشل تشغيل التطبيق:');
     logger.error(error.message);
     logger.error(error.stack);
-    
+
     // في حالة الفشل الحرجة، إنهاء العملية
-    if (error.message.includes('ENCRYPTION_MASTER_KEY') || 
-        error.message.includes('JWT_SECRET') || 
-        error.message.includes('DATABASE_URL')) {
+    if (error.message.includes('ENCRYPTION_MASTER_KEY') ||
+      error.message.includes('JWT_SECRET') ||
+      error.message.includes('DATABASE_URL')) {
       logger.error('🔒 النظام سيرفض التشغيل بسبب متغيرات بيئية مفقودة');
       process.exit(1);
     }
-    
+
     // محاولة إعادة التشغيل
     logger.warn('🔄 محاولة إعادة التشغيل بعد 5 ثوانٍ...');
     setTimeout(() => {
@@ -212,7 +212,7 @@ process.on('unhandledRejection', (reason, promise) => {
   const logger = new Logger('CriticalErrorHandler');
   logger.error('🚨 [CRITICAL] وعد غير معالج:');
   logger.error(reason);
-  
+
   // لا يتم إنهاء العملية فوراً، بل محاولة الاسترداد
   // سيتم تنفيذ آلية الاسترداد المتقدمة لاحقاً
 });
@@ -222,10 +222,10 @@ process.on('uncaughtException', (error) => {
   logger.error('🔥 [CRITICAL] استثناء غير معالج:');
   logger.error(error.message);
   logger.error(error.stack);
-  
+
   // إرسال تنبيه فوري للأمان
   // سيتم تنفيذ الإرسال الفعلي لاحقاً
-  
+
   // إنهاء العملية بعد التسجيل
   setTimeout(() => {
     process.exit(1);

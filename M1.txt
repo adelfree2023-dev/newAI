@@ -1,0 +1,80 @@
+packages/
+  core/
+    src/
+      security/
+        layers/
+          s1-environment-verification/
+            environment-validator.service.ts
+            environment-validator.module.ts
+            index.ts
+          s2-tenant-isolation/
+            tenant-scoped.guard.ts
+            tenant-context.service.ts
+            tenant-isolation.module.ts
+            index.ts
+          s3-input-validation/
+            input-validator.service.ts
+            validation-schemas/
+              auth.schema.ts
+              payment.schema.ts
+              tenant.schema.ts
+            input-validation.module.ts
+            index.ts
+          s4-audit-logging/
+            audit.service.ts
+            audit-logger.middleware.ts
+            audit.module.ts
+            index.ts
+          s5-error-handling/
+            exceptions/
+              secure-exception.filter.ts
+              database-exception.filter.ts
+            error-handling.module.ts
+            index.ts
+          s6-rate-limiting/
+            rate-limiter.service.ts
+            anomaly-detection.service.ts
+            rate-limit.module.ts
+            index.ts
+          s7-encryption/
+            encryption.service.ts
+            key-rotation.service.ts
+            encryption.module.ts
+            index.ts
+          s8-web-protection/
+            security-headers.middleware.ts
+            csp-config.service.ts
+            web-protection.module.ts
+            index.ts
+        protocol/
+          asmp/
+            asmp-protocol.service.ts
+            violation-detector.service.ts
+            index.ts
+        ai-supervisor/
+          ai-security-supervisor.service.ts
+          prompt-templates.ts
+          index.ts
+        security.module.ts
+        index.ts
+      main.ts
+      app.module.ts
+    .env.example
+    .env.production
+    nest-cli.json
+    package.json
+    tsconfig.json
+  scripts/
+    apex-agent/
+      apex-agent.ts
+      apex-agent.runner.ts
+logs/
+  agent-report.log
+  agent-errors.log
+  audit-logs/
+.eslintrc.js
+.prettierrc
+docker-compose.yml
+Dockerfile
+README.md
+SECURITY_PROTOCOL.md

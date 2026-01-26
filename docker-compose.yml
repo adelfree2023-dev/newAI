@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  apex-platform:
+    build:
+      context: ./packages/core
+      dockerfile: Dockerfile
+    container_name: apex-platform
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://apex_user:secure_password@postgres:5432/apex_db
+      - REDIS_URL=redis://redis:6379
+      - ENCRYPTION_MASTER_KEY=${ENCRYPTION_MASTER_KEY}
+      - JWT_SECRET=${JWT_SECRET}
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - apex-network
+    volumes:
+      - ./logs:/app/logs
+      - ./uploads:/app/uploads
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: apex-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: apex_user
+      POSTGRES_PASSWORD: secure_password
+      POSTGRES_DB: apex_db
+    volumes:
+      - pg:/var/lib/postgresql/data
+    networks:
+      - apex-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: apex-redis
+    restart: unless-stopped
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - redisdata:/data
+    networks:
+      - apex-network
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: apex-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@apex-platform.com
+      PGADMIN_DEFAULT_PASSWORD: admin_password
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    networks:
+      - apex-network
+
+networks:
+  apex-network:
+    driver: bridge
+
+volumes:
+  pg:
+  redisdata:
