@@ -26,15 +26,6 @@ import { Scope } from '@nestjs/common';
       scope: Scope.REQUEST
     },
     IsolationValidatorService,
-    TenantContextService,
-    AuditService,
-    EncryptionService,
-    {
-      provide: VercelAgentFactory,
-      useFactory: (auditService: AuditService, vercelSkillMapper: VercelSkillMapper) =>
-        VercelAgentFactory.getInstance(auditService, vercelSkillMapper),
-      inject: [AuditService, VercelSkillMapper]
-    },
     {
       provide: APP_INTERCEPTOR,
       useClass: TenantContextInterceptor
