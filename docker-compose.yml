@@ -11,7 +11,7 @@ services:
       - "3000:3000"
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=postgresql://apex_user:secure_password@postgres:5432/apex_db
+      - DATABASE_URL=postgresql://apex_user:ApexSecurePass2026!#@postgres:5432/apex_platform
       - REDIS_URL=redis://redis:6379
       - ENCRYPTION_MASTER_KEY=${ENCRYPTION_MASTER_KEY}
       - JWT_SECRET=${JWT_SECRET}
@@ -30,8 +30,8 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: apex_user
-      POSTGRES_PASSWORD: secure_password
-      POSTGRES_DB: apex_db
+      POSTGRES_PASSWORD: ApexSecurePass2026!#
+      POSTGRES_DB: apex_platform
     volumes:
       - pg:/var/lib/postgresql/data
     networks:
