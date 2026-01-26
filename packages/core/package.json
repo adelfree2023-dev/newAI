@@ -9,7 +9,9 @@
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
-    "agent": "ts-node src/security/ai-supervisor/agents/tenant-isolation-agent.ts"
+    "agent": "ts-node src/security/ai-supervisor/agents/tenant-isolation-agent.ts",
+    "test": "jest",
+    "test:cov": "jest --coverage"
   },
   "dependencies": {
     "@nestjs/common": "^10.0.0",
