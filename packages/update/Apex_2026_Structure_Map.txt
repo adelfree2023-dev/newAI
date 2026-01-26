@@ -1,8 +1,8 @@
 ﻿========================================================
 🗺️  PROJECT STRUCTURE MAP
 ========================================================
-📅 Generated: 2026-01-26 16:43
-📂 Files Included: 72
+📅 Generated: 2026-01-26 19:16
+📂 Files Included: 71
 🚫 Noise Filtered: Lockfiles, Logs, Assets
 🔒 Security Filter: ACTIVE
 ========================================================
@@ -27,9 +27,7 @@
     │   │   │   ├── 📂 shims
     │   │   │   │   └── 📄 ai-agent-types.ts
     │   │   │   ├── 📂 skills
-    │   │   │   │   ├── 📄 database-isolation-skill.ts
     │   │   │   │   ├── 📄 index.ts
-    │   │   │   │   ├── 📄 security-protocol-skill.ts
     │   │   │   │   ├── 📄 test-generation-skill.ts
     │   │   │   │   └── 📄 threat-intelligence-skill.ts
     │   │   │   ├── 📂 vercel-integration
@@ -97,7 +95,8 @@
     │   │   │   └── 📄 tenant-scoped.decorator.ts
     │   │   ├── 📂 database
     │   │   │   ├── 📄 isolation-validator.service.ts
-    │   │   │   ├── 📄 schema-manager.service.ts
+    │   │   │   ├── 📄 schema-initializer.service.ts
+    │   │   │   ├── 📄 tenant-connection.service.ts
     │   │   │   └── 📄 tenant-database.service.ts
     │   │   ├── 📄 tenant.controller.ts
     │   │   ├── 📄 tenant.module.ts

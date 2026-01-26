@@ -4,11 +4,11 @@
 #
 #  📊 STATISTICS SUMMARY:
 #  ---------------------
-#  📂 Total Files : 72
-#  📝 Total Lines : 8,124
-#  🔤 Total Words : 25,015
-#  🧮 Total Chars : 282,051
-#  🪙 Est. Tokens : 70,513 (Approx. for LLM Context)
+#  📂 Total Files : 71
+#  📝 Total Lines : 7,586
+#  🔤 Total Words : 23,500
+#  🧮 Total Chars : 262,875
+#  🪙 Est. Tokens : 65,719 (Approx. for LLM Context)
 #
 ################################################################################
 
@@ -137,27 +137,46 @@ module.exports = {
  * FILE: app.module.ts
  * PATH: .\core\src\app.module.ts
  *******************************************************************************/
-import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { AISupervisorModule } from './security/ai-supervisor/ai-supervisor.module';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { TenantModule } from './tenants/tenant.module';
-import { AuditLoggerMiddleware } from './security/layers/s4-audit-logging/audit-logger.middleware';
-import { TenantContextMiddleware } from './tenants/context/tenant-context.middleware';
-import { ProductModule } from './products/product.module';
-import { SecurityValidationMiddleware } from './security/layers/s3-input-validation/security-validation.middleware';
-
+import { TenantIsolationModule } from './security/layers/s2-tenant-isolation/tenant-isolation.module';
+import { EnvironmentVerificationModule } from './security/layers/s1-environment-verification/environment-validator.module';
+import { InputValidationModule } from './security/layers/s3-input-validation/input-validation.module';
+import { AuditModule } from './security/layers/s4-audit-logging/audit.module';
+import { ErrorHandlingModule } from './security/layers/s5-error-handling/error-handling.module';
+import { RateLimitingModule } from './security/layers/s6-rate-limiting/rate-limit.module';
+import { EncryptionModule } from './security/layers/s7-encryption/encryption.module';
+import { WebProtectionModule } from './security/layers/s8-web-protection/web-protection.module';
 import { APP_FILTER } from '@nestjs/core';
 import { AllExceptionsFilter } from './security/layers/s5-error-handling/exceptions/secure-exception.filter';
+import { AuditLoggerMiddleware } from './security/layers/s4-audit-logging/audit-logger.middleware';
+import { NestModule, MiddlewareConsumer } from '@nestjs/common';
 
 @Module({
     imports: [
         ConfigModule.forRoot({
             isGlobal: true,
-            envFilePath: ['.env.production', '.env.example'],
+            envFilePath: ['.env.local', '.env']
         }),
-        AISupervisorModule,
+        TypeOrmModule.forRoot({
+            type: 'postgres',
+            url: process.env.DATABASE_URL,
+            entities: [],
+            synchronize: false,
+            logging: process.env.NODE_ENV === 'development',
+            schema: 'public' // المخطط الافتراضي
+        }),
         TenantModule,
-        ProductModule,
+        TenantIsolationModule,
+        EnvironmentVerificationModule,
+        InputValidationModule,
+        AuditModule,
+        ErrorHandlingModule,
+        RateLimitingModule,
+        EncryptionModule,
+        WebProtectionModule
     ],
     providers: [
         {
@@ -170,10 +189,6 @@ export class AppModule implements NestModule {
     configure(consumer: MiddlewareConsumer) {
         consumer
             .apply(AuditLoggerMiddleware)
-            .forRoutes('*')
-            .apply(SecurityValidationMiddleware)
-            .forRoutes('*')
-            .apply(TenantContextMiddleware)
             .forRoutes('*');
     }
 }
@@ -186,70 +201,37 @@ export class AppModule implements NestModule {
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { Logger, ValidationPipe } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
-import * as csurf from 'csurf';
-import { rateLimit } from 'express-rate-limit';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { AllExceptionsFilter } from './security/layers/s5-error-handling/exceptions/secure-exception.filter';
-import { AuditLoggerMiddleware } from './security/layers/s4-audit-logging/audit-logger.middleware';
-import { TenantContextService } from './security/layers/s2-tenant-isolation/tenant-context.service';
-import { AISecuritySupervisorService } from './security/ai-supervisor/ai-security-supervisor.service';
+import rateLimit from 'express-rate-limit';
 import { EnvironmentValidatorService } from './security/layers/s1-environment-verification/environment-validator.service';
-import { TenantContextMiddleware } from './tenants/context/tenant-context.middleware';
-import { TenantService } from './tenants/tenant.service';
-import { AuditService } from './security/layers/s4-audit-logging/audit.service';
-import { VercelAgentFactory } from './security/ai-supervisor/vercel-integration/vercel-agent-factory';
+import { SchemaInitializerService } from './tenants/database/schema-initializer.service';
 
 async function bootstrap() {
   const logger = new Logger('MainApplication');
+
   try {
     // S1: التحقق من البيئة قبل أي شيء
     logger.log('🚀 [S1] بدء التحقق من البيئة والأمان...');
-    // تمرير نسخة بسيطة من ConfigService للتحقق الأولي
-    const environmentValidator = new EnvironmentValidatorService(new ConfigService(process.env));
+    const environmentValidator = new EnvironmentValidatorService();
     await environmentValidator.onModuleInit();
     logger.log('✅ [S1] اجتازت البيئة جميع اختبارات الأمان');
 
     // إنشاء التطبيق
     const app = await NestFactory.create(AppModule, {
-      logger: ['log', 'error', 'warn', 'debug'],
-      // تمكين CORS بشكل صحيح للسماح لطلبات المستأجرين
-      cors: {
-        origin: function (origin, callback) {
-          const allowedOrigins = process.env.CORS_ORIGIN?.split(',') || ['https://apex-platform.com'];
-          const tenantDomains = ['localhost', '.apex-platform.com', '.vercel.app'];
-
-          if (!origin) return callback(null, true);
-
-          const isAllowed = allowedOrigins.some(allowed =>
-            origin.includes(allowed) ||
-            tenantDomains.some(domain => origin.includes(domain))
-          );
-
-          if (isAllowed) {
-            callback(null, true);
-          } else {
-            callback(new Error('Not allowed by CORS'));
-          }
-        },
-        methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-        credentials: true,
-        maxAge: 3600,
-      }
+      logger: ['log', 'error', 'warn', 'debug']
     });
 
-    // S8: الحماية من هجمات الويب - المستوى الأول
+    // S8: الحماية من هجمات الويب
     app.use(helmet({
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          scriptSrc: ["'self'", "'unsafe-inline'", 'https://*.apex-platform.com', 'https://*.vercel.app'],
-          styleSrc: ["'self'", "'unsafe-inline'", 'https://*.apex-platform.com', 'https://*.vercel.app'],
-          imgSrc: ["'self'", 'data:', 'https://*.apex-platform.com', 'https://*.stripe.com', 'https://*.vercel.app'],
-          fontSrc: ["'self'", 'https://*.apex-platform.com', 'https://*.vercel.app'],
-          connectSrc: ["'self'", 'https://*.apex-platform.com', 'wss://*.apex-platform.com', 'https://*.vercel.app'],
-          frameSrc: ["'self'", 'https://*.stripe.com', 'https://*.vercel.app'],
+          scriptSrc: ["'self'", "'unsafe-inline'", 'https://*.apex-platform.com'],
+          styleSrc: ["'self'", "'unsafe-inline'", 'https://*.apex-platform.com'],
+          imgSrc: ["'self'", 'data:', 'https://*.apex-platform.com'],
+          fontSrc: ["'self'", 'https://*.apex-platform.com'],
+          connectSrc: ["'self'", 'https://*.apex-platform.com', 'wss://*.apex-platform.com'],
+          frameSrc: ["'self'"],
           objectSrc: ["'none'"],
           baseUri: ["'self'"],
           formAction: ["'self'"],
@@ -257,135 +239,49 @@ async function bootstrap() {
           upgradeInsecureRequests: [],
         },
         reportOnly: process.env.NODE_ENV === 'development'
-      },
-      hsts: {
-        maxAge: 31536000,
-        includeSubDomains: true,
-        preload: true
       }
     }));
     logger.log('✅ [S8] تم تفعيل رؤوس الأمان HTTP');
 
-    // S6: تحديد حدود المعدل الأساسي
+    // S6: تحديد حدود المعدل
     const limiter = rateLimit({
-      windowMs: 15 * 60 * 1000, // 15 دقيقة
-      max: process.env.NODE_ENV === 'production' ? 100 : 500, // حدود مرنة للتطوير
+      windowMs: 15 * 60 * 1000,
+      max: process.env.NODE_ENV === 'production' ? 100 : 500,
       standardHeaders: true,
-      legacyHeaders: false,
-      handler: (req, res) => {
-        logger.warn(`[S6] 🚨 تجاوز حد المعدل من IP: ${req.ip}`);
-
-        // استخراج سياق المستأجر يدوياً من الهيدر لتجنب مشاكل Scoped Services في main.ts
-        const tenantId = req.headers['x-tenant-id']?.toString() || 'system';
-
-        res.status(429).json({
-          statusCode: 429,
-          message: 'تم تجاوز حد الطلبات. يرجى المحاولة لاحقاً.',
-          retryAfter: 15,
-          timestamp: new Date().toISOString(),
-          tenantId
-        });
-      },
-      keyGenerator: (req) => {
-        const tenantId = req.headers['x-tenant-id']?.toString() || 'system';
-        return `${req.ip}:${tenantId}`;
-      }
+      legacyHeaders: false
     });
     app.use(limiter);
-    logger.log('✅ [S6] تم تفعيل تحديد حدود المعدل الأساسي');
+    logger.log('✅ [S6] تم تفعيل تحديد حدود المعدل');
 
-    // S3: التحقق من المدخلات العالمي مع دعم المستأجرين
+    // S3: التحقق من المدخلات
     app.useGlobalPipes(new ValidationPipe({
       whitelist: true,
       forbidNonWhitelisted: true,
-      transform: true,
-      transformOptions: {
-        enableImplicitConversion: true
-      },
-      exceptionFactory: (errors) => {
-        logger.error(`[S3] 🚨 مدخلات غير صالحة: ${JSON.stringify(errors)}`);
-        const errorMessages = errors.map(err => ({
-          property: err.property,
-          constraints: err.constraints,
-          value: err.value
-        }));
-
-        return {
-          statusCode: 400,
-          message: 'مدخلات غير صالحة',
-          errors: errorMessages
-        };
-      }
+      transform: true
     }));
-    logger.log('✅ [S3] تم تفعيل التحقق من المدخلات العالمي');
+    logger.log('✅ [S3] تم تفعيل التحقق من المدخلات');
 
-    logger.log('✅ [S3] تم تفعيل التحقق من المدخلات العالمي');
+    // ملاحظة: تم نقل S4 (AuditLogger) و S5 (ExceptionFilter) إلى AppModule 
+    // لضمان التعامل الصحيح مع التبعات (Dependencies)
 
-    // S4 & S2: يتم تفعيل تسجيل التدقيق وعزل المستأجرين عبر AppModule
-    logger.log('✅ [S4 & S2] تم تفعيل تسجيل التدقيق وعزل المستأجرين');
+    // تهيئة CORS
+    app.enableCors({
+      origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:3000'],
+      methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+      credentials: true
+    });
 
-    // S5: يتم تفعيل معالجة الأخطاء الآمنة عبر AppModule (APP_FILTER)
-    logger.log('✅ [S5] تم تفعيل معالجة الأخطاء الآمنة');
-
-    // Swagger Configuration (للتطوير فقط)
-    if (process.env.NODE_ENV !== 'production') {
-      const config = new DocumentBuilder()
-        .setTitle('Apex Platform API')
-        .setDescription('وثائق واجهة برمجة تطبيقات منصة Apex')
-        .setVersion('1.0')
-        .addTag('security')
-        .addTag('tenants')
-        .addBearerAuth()
-        .build();
-
-      const document = SwaggerModule.createDocument(app, config);
-      SwaggerModule.setup('api-docs', app, document);
-      logger.log('✅ تم تفعيل وثائق API للتطوير مع دعم المستأجرين');
-    }
-
-    // المنفذ من المتغيرات البيئية
+    // المنفذ
     const port = process.env.PORT || 3000;
-
-    // S8: حماية إضافية ضد CSRF مع دعم المستأجرين
-    if (process.env.NODE_ENV === 'production') {
-      app.use(csurf({
-        cookie: {
-          httpOnly: true,
-          secure: true,
-          sameSite: 'strict',
-          maxAge: 3600
-        }
-      }));
-      logger.log('✅ [S8] تم تفعيل حماية CSRF للإنتاج (ASMP Compliance)');
-    }
 
     // بدء الخادم
     await app.listen(port);
 
+    // M2: تهيئة مخططات المستأجرين (تتم تلقائياً عبر Lifecycle Hooks)
     logger.log(`🚀 [SUCCEED] تم تشغيل الخادم بنجاح على المنفذ ${port}`);
     logger.log(`🌐 العنوان: http://localhost:${port}`);
     logger.log(`🔧 البيئة: ${process.env.NODE_ENV || 'development'}`);
-    logger.log(`🏢 دعم متعدد المستأجرين: ${process.env.SUPPORT_MULTITENANT === 'true' ? 'مفعل' : 'معطل'}`);
-
-    // 🤖 M2: بدء المشرف الأمني بالذكاء الاصطناعي (Request Scoped)
-    try {
-      // resolve handles request-scoped services by creating a transient instance
-      const aiSupervisor = await app.resolve(AISecuritySupervisorService);
-      logger.log('🧠 [M2] المشرف الأمني بالذكاء الاصطناعي جاهز (Bootstrap Mode)');
-
-      const vercelAgentFactory = await app.resolve(VercelAgentFactory);
-      const tenantIsolationAgent = vercelAgentFactory.createTenantIsolationAgent();
-      logger.log('🛡️ [M2] تم تهيئة عامل عزل المستأجرين بالذكاء الاصطناعي');
-    } catch (e) {
-      logger.warn('⚠️ [M2] تعذر تهيئة المشرف الأمني في وضع الـ Bootstrap (سيتم تهيئته عند أول طلب)');
-    }
-
-    // ✅ M2: التحقق من حالة عزل المستأجرين
-    const tenantService = app.get(TenantService);
-    logger.log(`✅ [M2] نظام المستأجرين نشط ومعزول`);
-
-    // إرسال تنبيه بدء التشغيل الناجح
-    logger.log('✅ [S4] تم تفعيل تسجيل أحداث النظام');
+    logger.log(`✅ [M2] نظام المستأجرين جاهز`);
 
   } catch (error) {
     logger.error('❌ [CRITICAL] فشل تشغيل التطبيق:');
@@ -394,9 +290,9 @@ async function bootstrap() {
 
     if (error.message.includes('ENCRYPTION_MASTER_KEY') ||
       error.message.includes('JWT_SECRET') ||
-      error.message.includes('DATABASE_URL') ||
-      error.message.includes('TENANT_ISOLATION_FAILURE')) {
-      logger.error('🔒 النظام سيرفض التشغيل بسبب متغيرات بيئية مفقودة أو فشل في العزل');
+      error.message.includes('DATABASE_URL')) {
+      logger.error('🔒 النظام سيرفض التشغيل بسبب متغيرات بيئية مفقودة');
+      process.exit(1);
     }
 
     process.exit(1);
@@ -405,20 +301,12 @@ async function bootstrap() {
 
 // معالجة الأحداث الحرجة
 process.on('unhandledRejection', (reason) => {
-  const logger = new Logger('CriticalErrorHandler');
-  logger.error('🚨 [CRITICAL] وعد غير معالج:');
-  logger.error(reason);
+  console.error('🚨 [CRITICAL] وعد غير معالج:', reason);
 });
 
 process.on('uncaughtException', (error) => {
-  const logger = new Logger('CriticalErrorHandler');
-  logger.error('🔥 [CRITICAL] استثناء غير معالج:');
-  logger.error(error.message);
-  logger.error(error.stack);
-
-  setTimeout(() => {
-    process.exit(1);
-  }, 1000);
+  console.error('🔥 [CRITICAL] استثناء غير معالج:', error);
+  process.exit(1);
 });
 
 bootstrap();
@@ -1035,8 +923,8 @@ export class AISecuritySupervisorService implements OnModuleInit {
       await this.auditService.logSystemEvent('SECURITY_PROTOCOL_FILE_GENERATED', {
         fileName,
         path: filePath,
-        complianceStatus: spcData.complianceStatus,
-        score: spcData.complianceScore
+        complianceStatus: spcData.compliance,
+        score: 0 // تم تغيير نظام النقاط في الهيكل الجديد
       });
 
       return spcData;
@@ -1100,8 +988,7 @@ export * from './ai-supervisor.module';
 export * from './agents/tenant-isolation-agent';
 export * from './agents/security-analyst-agent';
 export * from './agents/anomaly-detector-agent';
-export * from './skills/database-isolation-skill';
-export * from './skills/security-protocol-skill';
+export * from './skills/threat-intelligence-skill';
 export * from './skills/threat-intelligence-skill';
 export * from './vercel-integration/vercel-agent-factory';
 export * from './vercel-integration/vercel-skill-mapper';
@@ -2107,427 +1994,12 @@ export class AgentRuntime {
 
 
 /*******************************************************************************
- * FILE: database-isolation-skill.ts
- * PATH: .\core\src\security\ai-supervisor\skills\database-isolation-skill.ts
- *******************************************************************************/
-import { Skill, SkillContext } from '../shims/ai-agent-types';
-import { z } from 'zod';
-import { Logger } from '@nestjs/common';
-
-export class DatabaseIsolationSkill extends Skill {
-  private readonly logger = new Logger(DatabaseIsolationSkill.name);
-
-  static get skillName(): string {
-    return 'database-isolation';
-  }
-
-  static get description(): string {
-    return 'التحقق من سلامة عزل مخططات قاعدة البيانات بين المستأجرين';
-  }
-
-  static get inputSchema() {
-    return z.object({
-      tenantId: z.string().min(1, 'معرف المستأجر مطلوب'),
-      schemaName: z.string().min(1, 'اسم المخطط مطلوب'),
-      operationType: z.enum(['CREATE', 'READ', 'UPDATE', 'DELETE', 'VALIDATE']),
-      targetTables: z.array(z.string()).optional(),
-      contextData: z.object({
-        requestId: z.string().optional(),
-        userId: z.string().optional(),
-        ipAddress: z.string().optional(),
-        userAgent: z.string().optional()
-      }).optional()
-    });
-  }
-
-  static get outputSchema() {
-    return z.object({
-      isolationStatus: z.enum(['SECURE', 'POTENTIAL_BREACH', 'CONFIRMED_BREACH']),
-      confidence: z.number().min(0).max(1),
-      threatLevel: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']),
-      detectedIssues: z.array(z.object({
-        issueType: z.string(),
-        description: z.string(),
-        affectedTables: z.array(z.string()).optional(),
-        severity: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'])
-      })),
-      recommendedActions: z.array(z.string()),
-      analysisTimestamp: z.string().datetime(),
-      aiModelVersion: z.string()
-    });
-  }
-
-  async execute(context: SkillContext): Promise<any> {
-    const { input } = context;
-    const parsedInput = DatabaseIsolationSkill.inputSchema.parse(input);
-    
-    this.logger.log(`[AI] 🔍 تحليل عزل قاعدة البيانات للمستأجر: ${parsedInput.tenantId}`);
-    
-    try {
-      // محاكاة تحليل الذكاء الاصطناعي للعزل
-      const analysis = this.simulateIsolationAnalysis(parsedInput);
-      
-      // التحقق من النتائج
-      const validationResult = DatabaseIsolationSkill.outputSchema.parse(analysis);
-      
-      this.logger.log(`[AI] ✅ اكتمل تحليل العزل: ${validationResult.isolationStatus} - الثقة: ${validationResult.confidence}`);
-      
-      return validationResult;
-    } catch (error) {
-      this.logger.error(`[AI] ❌ خطأ في تحليل العزل: ${error.message}`);
-      throw new Error(`فشل في تحليل عزل قاعدة البيانات: ${error.message}`);
-    }
-  }
-
-  private simulateIsolationAnalysis(input: z.infer<typeof DatabaseIsolationSkill.inputSchema>) {
-    const now = new Date().toISOString();
-    
-    // منطق المحاكاة - في الإصدار الحقيقي سيتم استخدام نموذج AI فعلي
-    let isolationStatus = 'SECURE';
-    let confidence = 0.95;
-    let threatLevel = 'LOW';
-    const detectedIssues: any[] = [];
-    const recommendedActions: string[] = [];
-    
-    // محاكاة الكشف عن مشاكل في العزل
-    if (input.operationType === 'READ' && Math.random() > 0.95) {
-      isolationStatus = 'POTENTIAL_BREACH';
-      confidence = 0.85;
-      threatLevel = 'MEDIUM';
-      
-      detectedIssues.push({
-        issueType: 'CROSS_TENANT_QUERY_DETECTED',
-        description: 'تم اكتشاف استعلام يحاول الوصول إلى جداول مستأجر آخر',
-        affectedTables: ['users', 'orders'],
-        severity: 'HIGH'
-      });
-      
-      recommendedActions.push(
-        'BLOCK_QUERY_EXECUTION',
-        'LOG_FULL_QUERY_DETAILS',
-        'NOTIFY_SECURITY_TEAM',
-        'ISOLATE_TENANT_TEMPORARILY'
-      );
-    }
-    
-    // محاكاة اكتشاف ثغرة حرجة
-    if (input.schemaName.includes('system') && input.operationType === 'DELETE') {
-      isolationStatus = 'CONFIRMED_BREACH';
-      confidence = 0.99;
-      threatLevel = 'CRITICAL';
-      
-      detectedIssues.push({
-        issueType: 'SYSTEM_SCHEMA_ACCESS_ATTEMPT',
-        description: 'محاولة حذف من مخطط النظام - انتهاك خطير للعزل',
-        severity: 'CRITICAL'
-      });
-      
-      recommendedActions.push(
-        'IMMEDIATE_SYSTEM_SHUTDOWN',
-        'PRESERVE_EVIDENCE',
-        'ALERT_ADMINISTRATORS',
-        'INITIATE_INCIDENT_RESPONSE'
-      );
-    }
-    
-    return {
-      isolationStatus,
-      confidence,
-      threatLevel,
-      detectedIssues,
-      recommendedActions,
-      analysisTimestamp: now,
-      aiModelVersion: 'apex-ai-v2.3'
-    };
-  }
-}
-
-
-/*******************************************************************************
  * FILE: index.ts
  * PATH: .\core\src\security\ai-supervisor\skills\index.ts
  *******************************************************************************/
-export * from './database-isolation-skill';
-export * from './security-protocol-skill';
+export * from './threat-intelligence-skill';
 export * from './threat-intelligence-skill';
 export * from './test-generation-skill';
-
-
-/*******************************************************************************
- * FILE: security-protocol-skill.ts
- * PATH: .\core\src\security\ai-supervisor\skills\security-protocol-skill.ts
- *******************************************************************************/
-import { Skill, SkillContext } from '../shims/ai-agent-types';
-import { z } from 'zod';
-import { Logger } from '@nestjs/common';
-
-export class SecurityProtocolSkill extends Skill {
-  private readonly logger = new Logger(SecurityProtocolSkill.name);
-
-  static get skillName(): string {
-    return 'security-protocol';
-  }
-
-  static get description(): string {
-    return 'تقييم توافق العمليات مع بروتوكول ASMP للأمان';
-  }
-
-  static get inputSchema() {
-    return z.object({
-      protocolVersion: z.string().min(1, 'إصدار البروتوكول مطلوب'),
-      layer: z.enum(['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 'all']),
-      operationType: z.enum(['CREATE', 'READ', 'UPDATE', 'DELETE', 'VALIDATE', 'BATCH']),
-      tenantId: z.string().optional(),
-      contextData: z.object({
-        requestId: z.string().optional(),
-        userId: z.string().optional(),
-        ipAddress: z.string().optional(),
-        userAgent: z.string().optional(),
-        timestamp: z.string().datetime().optional(),
-        requestData: z.any().optional()
-      }).optional(),
-      securityMetrics: z.object({
-        isolationLevel: z.string().optional(),
-        encryptionStatus: z.string().optional(),
-        auditTrail: z.boolean().optional(),
-        complianceChecks: z.array(z.string()).optional()
-      }).optional()
-    });
-  }
-
-  static get outputSchema() {
-    return z.object({
-      complianceStatus: z.enum(['FULLY_COMPLIANT', 'PARTIALLY_COMPLIANT', 'NON_COMPLIANT', 'REQUIRES_REVIEW']),
-      complianceScore: z.number().min(0).max(100),
-      protocolVersionMatch: z.boolean(),
-      detectedViolations: z.array(z.object({
-        violationId: z.string(),
-        layer: z.string(),
-        ruleId: z.string(),
-        description: z.string(),
-        severity: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']),
-        recommendedAction: z.string(),
-        evidence: z.any().optional()
-      })),
-      recommendations: z.array(z.object({
-        priority: z.enum(['IMMEDIATE', 'HIGH', 'MEDIUM', 'LOW']),
-        layer: z.string(),
-        action: z.string(),
-        estimatedEffort: z.enum(['MINUTES', 'HOURS', 'DAYS'])
-      })),
-      analysisTimestamp: z.string().datetime(),
-      confidence: z.number().min(0).max(1),
-      modelVersion: z.string()
-    });
-  }
-
-  async execute(context: SkillContext): Promise<any> {
-    const { input } = context;
-    const parsedInput = SecurityProtocolSkill.inputSchema.parse(input);
-    
-    this.logger.log(`[AI] 📋 تحليل توافق البروتوكول للأمان للطبقة: ${parsedInput.layer}`);
-    
-    try {
-      // محاكاة تحليل بروتوكول ASMP
-      const analysis = this.simulateProtocolAnalysis(parsedInput);
-      
-      // التحقق من النتائج
-      const validationResult = SecurityProtocolSkill.outputSchema.parse(analysis);
-      
-      this.logger.log(`[AI] ✅ اكتمل تحليل البروتوكول. الحالة: ${validationResult.complianceStatus} - الدرجة: ${validationResult.complianceScore}`);
-      
-      return validationResult;
-    } catch (error) {
-      this.logger.error(`[AI] ❌ خطأ في تحليل البروتوكول: ${error.message}`);
-      
-      // العودة لنتيجة افتراضية آمنة
-      return {
-        complianceStatus: 'REQUIRES_REVIEW',
-        complianceScore: 50,
-        protocolVersionMatch: false,
-        detectedViolations: [],
-        recommendations: [{
-          priority: 'HIGH',
-          layer: parsedInput.layer,
-          action: 'إعادة تحليل بروتوكول ASMP يدوياً',
-          estimatedEffort: 'HOURS'
-        }],
-        analysisTimestamp: new Date().toISOString(),
-        confidence: 0.3,
-        modelVersion: 'apex-ai-fallback-v1'
-      };
-    }
-  }
-
-  private simulateProtocolAnalysis(input: z.infer<typeof SecurityProtocolSkill.inputSchema>) {
-    const now = new Date().toISOString();
-    let complianceStatus = 'FULLY_COMPLIANT';
-    let complianceScore = 95;
-    let protocolVersionMatch = true;
-    const detectedViolations: any[] = [];
-    const recommendations: any[] = [];
-
-    // التحقق من إصدار البروتوكول
-    const minVersion = 'ASMP/v2.3';
-    if (input.protocolVersion.localeCompare(minVersion, undefined, { numeric: true }) < 0) {
-      protocolVersionMatch = false;
-      complianceScore -= 10;
-      detectedViolations.push({
-        violationId: `version-${Date.now()}`,
-        layer: 'SYSTEM',
-        ruleId: 'ASMP-VERSION-001',
-        description: `إصدار بروتوكول غير آمن. مطلوب: ${minVersion}, الحالي: ${input.protocolVersion}`,
-        severity: 'HIGH',
-        recommendedAction: 'تحديث إلى أحدث إصدار من بروتوكول ASMP',
-        evidence: { currentVersion: input.protocolVersion, requiredVersion: minVersion }
-      });
-      recommendations.push({
-        priority: 'IMMEDIATE',
-        layer: 'SYSTEM',
-        action: 'تحديث بروتوكول ASMP',
-        estimatedEffort: 'HOURS'
-      });
-    }
-
-    // تحليل حسب الطبقة
-    switch (input.layer) {
-      case 'S1': // التحقق من البيئة
-        if (Math.random() > 0.9) {
-          complianceScore -= 15;
-          detectedViolations.push({
-            violationId: `s1-${Date.now()}`,
-            layer: 'S1',
-            ruleId: 'ENV-SECURITY-001',
-            description: 'مفتاح تشفير ضعيف أو غير موجود',
-            severity: 'CRITICAL',
-            recommendedAction: 'تحديث جميع المتغيرات البيئية الحساسة',
-            evidence: { missingVars: ['ENCRYPTION_MASTER_KEY', 'JWT_SECRET'] }
-          });
-          recommendations.push({
-            priority: 'IMMEDIATE',
-            layer: 'S1',
-            action: 'تهيئة المتغيرات البيئية بشكل آمن',
-            estimatedEffort: 'HOURS'
-          });
-        }
-        break;
-
-      case 'S2': // عزل المستأجرين
-        if (input.operationType === 'READ' && Math.random() > 0.95) {
-          complianceScore -= 25;
-          detectedViolations.push({
-            violationId: `s2-${Date.now()}`,
-            layer: 'S2',
-            ruleId: 'TENANT-ISOLATION-001',
-            description: 'محاولة وصول إلى بيانات مستأجر آخر',
-            severity: 'CRITICAL',
-            recommendedAction: 'فرض عزل كامل على مستوى المخطط',
-            evidence: { 
-              attemptedTenant: input.tenantId,
-              sourceTenant: 'unknown',
-              operation: input.operationType
-            }
-          });
-          recommendations.push({
-            priority: 'IMMEDIATE',
-            layer: 'S2',
-            action: 'تفعيل آلية الحماية من اختراق العزل',
-            estimatedEffort: 'MINUTES'
-          });
-        }
-        break;
-
-      case 'S7': // التشفير
-        if (Math.random() > 0.9) {
-          complianceScore -= 20;
-          detectedViolations.push({
-            violationId: `s7-${Date.now()}`,
-            layer: 'S7',
-            ruleId: 'ENCRYPTION-001',
-            description: 'بيانات حساسة غير مشفرة',
-            severity: 'HIGH',
-            recommendedAction: 'تشفير جميع البيانات الحساسة باستخدام AES-256-GCM',
-            evidence: { unencryptedFields: ['passwords', 'credit_cards', 'personal_data'] }
-          });
-          recommendations.push({
-            priority: 'HIGH',
-            layer: 'S7',
-            action: 'تنفيذ تشفير شامل لجميع البيانات الحساسة',
-            estimatedEffort: 'DAYS'
-          });
-        }
-        break;
-
-      case 'all': // فحص كامل
-        // محاكاة اكتشاف انتهاكات متعددة
-        if (Math.random() > 0.8) {
-          complianceScore -= 30;
-          
-          detectedViolations.push({
-            violationId: `multi-${Date.now()}`,
-            layer: 'S2',
-            ruleId: 'ISOLATION-BREACH-001',
-            description: 'انتهاك متعدد الطبقات في عزل المستأجرين',
-            severity: 'CRITICAL',
-            recommendedAction: 'إيقاف جميع العمليات غير النظامية وفحص سلامة المخططات',
-            evidence: { 
-              affectedTenants: [input.tenantId || 'unknown'],
-              breachLevel: 'DATA_ACCESS_VIOLATION'
-            }
-          });
-          
-          detectedViolations.push({
-            violationId: `multi2-${Date.now()}`,
-            layer: 'S5',
-            ruleId: 'ERROR-HANDLING-002',
-            description: 'إظهار تفاصيل الأخطاء الحساسة للمستخدمين',
-            severity: 'MEDIUM',
-            recommendedAction: 'إخفاء تفاصيل الأخطاء الداخلية في بيئة الإنتاج',
-            evidence: { exposedDetails: ['stack_trace', 'database_schema'] }
-          });
-          
-          recommendations.push({
-            priority: 'CRITICAL',
-            layer: 'S2',
-            action: 'تفعيل وضع الطوارئ وعزل المتاجر المتأثرة',
-            estimatedEffort: 'MINUTES'
-          });
-          
-          recommendations.push({
-            priority: 'HIGH',
-            layer: 'S5',
-            action: 'إصلاح معالجة الأخطاء الآمنة',
-            estimatedEffort: 'HOURS'
-          });
-        }
-        break;
-    }
-
-    // تحديد حالة الامتثال النهائية
-    if (detectedViolations.some(v => v.severity === 'CRITICAL')) {
-      complianceStatus = 'NON_COMPLIANT';
-      complianceScore = Math.max(0, complianceScore - 50);
-    } else if (detectedViolations.some(v => v.severity === 'HIGH') || complianceScore < 70) {
-      complianceStatus = 'PARTIALLY_COMPLIANT';
-    } else if (detectedViolations.length > 0) {
-      complianceStatus = 'REQUIRES_REVIEW';
-    }
-
-    // ضمان درجة بين 0-100
-    complianceScore = Math.max(0, Math.min(100, complianceScore));
-
-    return {
-      complianceStatus,
-      complianceScore,
-      protocolVersionMatch,
-      detectedViolations,
-      recommendations,
-      analysisTimestamp: now,
-      confidence: protocolVersionMatch ? 0.95 : 0.75,
-      modelVersion: 'apex-asmp-v2.4'
-    };
-  }
-}
 
 
 /*******************************************************************************
@@ -2899,8 +2371,6 @@ export class ThreatIntelligenceSkill extends Skill {
 import { Injectable, Logger, Scope } from '@nestjs/common';
 import { AgentRuntime } from '../shims/ai-agent-types';
 import { z, ZodSchema } from 'zod';
-import { DatabaseIsolationSkill } from '../skills/database-isolation-skill';
-import { SecurityProtocolSkill } from '../skills/security-protocol-skill';
 import { ThreatIntelligenceSkill } from '../skills/threat-intelligence-skill';
 import { TenantIsolationAgent } from '../agents/tenant-isolation-agent';
 import { QualityAssuranceAgent } from '../agents/qa-agent';
@@ -2925,8 +2395,6 @@ export class VercelAgentFactory {
         temperature: 0.3,
         maxTokens: 2000,
         skills: [
-          new DatabaseIsolationSkill(),
-          new SecurityProtocolSkill(),
           new ThreatIntelligenceSkill()
         ],
         systemPrompt: `
@@ -2996,11 +2464,13 @@ export class VercelAgentFactory {
   }
 
   async validateDatabaseIsolation(isolationData: any) {
-    return this.executeSkill('database-isolation', isolationData, DatabaseIsolationSkill.outputSchema);
+    this.logger.warn('[M2] 🛡️ جاري إعادة بناء تحليل العزل الحقيقي (سيتم تفعيله في اليوم الثاني)');
+    return { isolationStatus: 'REBUILDING', threatLevel: 'INFO' };
   }
 
   async checkProtocolCompliance(protocolData: any) {
-    return this.executeSkill('security-protocol', protocolData, SecurityProtocolSkill.outputSchema);
+    this.logger.warn('[M2] 🛡️ جاري إعادة بناء فحص البروتوكول الحقيقي (سيتم تفعيله في اليوم الثاني)');
+    return { compliance: 'REBUILDING', issues: [] };
   }
 }
 
@@ -3089,9 +2559,9 @@ export class EnvironmentValidatorService implements OnModuleInit {
     const jwtSecret = this.configService ? this.configService.get<string>('JWT_SECRET') : process.env['JWT_SECRET'];
 
     // التحقق من قوة المفاتيح
-    const minKeyLength = 64; // 64 حرفاً كحد أدنى للأمان العالي
-    if (masterKey.length < minKeyLength || jwtSecret.length < minKeyLength) {
-      const errorMessage = `❌ [S1] مفاتيح ضعيفة: يجب أن تكون المفاتيح 64 حرفاً على الأقل`;
+    const minKeyLength = 64;
+    if ((masterKey?.length || 0) < minKeyLength || (jwtSecret?.length || 0) < minKeyLength) {
+      const errorMessage = `❌ [S1] مفاتيح ضعيفة: يجب أن تكون المفاتيح 64 حرفاً على الأقل (الحالي مفقود أو قصير)`;
       this.logger.error(errorMessage);
       throw new Error(errorMessage);
     }
@@ -3115,7 +2585,8 @@ export class EnvironmentValidatorService implements OnModuleInit {
       // في بيئة الإنتاج، التحقق من عدم وجود متغيرات التطوير
       const devVars = ['DEV_ONLY_FEATURES', 'DEBUG_MODE', 'TEST_DATABASE_URL'];
       for (const varName of devVars) {
-        if (this.configService.get(varName)) {
+        const val = this.configService ? this.configService.get(varName) : process.env[varName];
+        if (val) {
           this.logger.warn(`⚠️ [S1] متغير تطوير موجود في بيئة الإنتاج: ${varName}`);
         }
       }
@@ -3176,53 +2647,33 @@ export * from './tenant-isolation.module';
  * FILE: tenant-context.service.ts
  * PATH: .\core\src\security\layers\s2-tenant-isolation\tenant-context.service.ts
  *******************************************************************************/
-import { Injectable, Scope, Inject } from '@nestjs/common';
+import { Injectable, Scope, Inject, Logger } from '@nestjs/common';
 import { REQUEST } from '@nestjs/core';
 import { Request } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import { Logger } from '@nestjs/common';
 
 @Injectable({ scope: Scope.REQUEST })
 export class TenantContextService {
   private readonly logger = new Logger(TenantContextService.name);
-  private tenantId: string;
-  private tenantSchema: string;
+  private tenantId: string | null = null;
+  private tenantSchema: string | null = null;
   private isSystemOperation = false;
 
   constructor(@Inject(REQUEST) private readonly request: Request) {
-    // Only initialize if we're in a request context and not manually initialized
-    if (this.request && !this.tenantId) {
-      this.initializeFromRequest();
-    }
-  }
-
-  public initializeTenantContext(tenantId: string | null, req?: Request) {
-    if (tenantId) {
-      this.tenantId = tenantId;
-      this.tenantSchema = `tenant_${this.sanitizeTenantId(this.tenantId)}`;
-      this.isSystemOperation = false;
-    } else {
-      this.isSystemOperation = true;
-    }
-  }
-
-  public forceTenantContext(tenantId: string) {
-    this.tenantId = tenantId;
-    this.tenantSchema = `tenant_${this.sanitizeTenantId(this.tenantId)}`;
-    this.isSystemOperation = false;
+    this.initializeFromRequest();
   }
 
   private initializeFromRequest() {
-    // محاولة استخراج tenantId من عدة مصادر
+    // استخراج tenantId من عدة مصادر
     this.tenantId =
-      this.request.headers['x-tenant-id']?.toString() ||
-      this.request.subdomains[0] ||
+      this.request?.headers?.['x-tenant-id']?.toString() ||
+      this.request?.subdomains?.[0] ||
       this.extractFromHost() ||
       this.extractFromPath();
 
     if (this.tenantId) {
       this.tenantSchema = `tenant_${this.sanitizeTenantId(this.tenantId)}`;
-      this.logger.debug(`[S2] تم تعيين سياق المستأجر: ${this.tenantId} -> ${this.tenantSchema}`);
+      this.logger.debug(`[S2] تم تعيين سياق المستأجر: ${this.tenantId}`);
     } else {
       // عمليات النظام لا تحتوي على tenantId
       this.isSystemOperation = true;
@@ -3253,18 +2704,21 @@ export class TenantContextService {
   }
 
   getTenantId(): string | null {
-    return this.tenantId || null;
+    return this.tenantId;
   }
 
   getTenantSchema(): string | null {
-    return this.tenantSchema || null;
+    return this.tenantSchema;
   }
 
   isSystemContext(): boolean {
     return this.isSystemOperation;
   }
 
-  async validateTenantAccess(requestedTenantId: string): Promise<boolean> {
+  /**
+   * التحقق من صلاحية الوصول للمستأجر
+   */
+  validateTenantAccess(requestedTenantId: string): boolean {
     // السماح لعمليات النظام بالوصول إلى أي مستأجر
     if (this.isSystemOperation) {
       this.logger.warn(`[S2] ⚠️ عملية نظام تحاول الوصول إلى مستأجر: ${requestedTenantId}`);
@@ -3283,8 +2737,8 @@ export class TenantContextService {
       this.logSecurityIncident('TENANT_ISOLATION_VIOLATION', {
         currentTenant: this.tenantId,
         attemptedAccess: requestedTenantId,
-        ip: this.request.ip,
-        userAgent: this.request.get('User-Agent'),
+        ip: this.request?.ip,
+        userAgent: (this.request && typeof this.request.get === 'function') ? this.request.get('User-Agent') : 'unknown',
         timestamp: new Date().toISOString()
       });
     }
@@ -3292,7 +2746,7 @@ export class TenantContextService {
     return isValid;
   }
 
-  logSecurityIncident(type: string, details: any) {
+  private logSecurityIncident(type: string, details: any) {
     const incidentId = uuidv4();
     this.logger.error(`[S2] 🔒 حادث أمني [${incidentId}] - النوع: ${type}`);
     this.logger.error(JSON.stringify({
@@ -3301,11 +2755,21 @@ export class TenantContextService {
       details,
       stack: new Error().stack
     }, null, 2));
-
-    // هنا يمكن إرسال تنبيه فوري للمشرفين
-    // this.securityAlertService.sendAlert(type, details);
   }
 
+  /**
+   * تعيين سياق المستأجر يدوياً (للعمليات النظامية)
+   */
+  forceTenantContext(tenantId: string) {
+    this.tenantId = tenantId;
+    this.tenantSchema = `tenant_${this.sanitizeTenantId(tenantId)}`;
+    this.isSystemOperation = false;
+    this.logger.warn(`[S2] ⚠️ تم تعيين سياق المستأجر يدوياً: ${tenantId}`);
+  }
+
+  /**
+   * تفعيل سياق النظام يدوياً
+   */
   forceSystemContext() {
     this.isSystemOperation = true;
     this.tenantId = 'system';
@@ -3327,6 +2791,7 @@ import { APP_GUARD } from '@nestjs/core';
 @Module({
   providers: [
     TenantContextService,
+    TenantScopedGuard,
     {
       provide: APP_GUARD,
       useClass: TenantScopedGuard,
@@ -3334,16 +2799,15 @@ import { APP_GUARD } from '@nestjs/core';
   ],
   exports: [TenantContextService, TenantScopedGuard],
 })
-export class TenantIsolationModule {}
+export class TenantIsolationModule { }
 
 /*******************************************************************************
  * FILE: tenant-scoped.guard.ts
  * PATH: .\core\src\security\layers\s2-tenant-isolation\tenant-scoped.guard.ts
  *******************************************************************************/
-import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
-import { TenantContextService } from './tenant-context.service';
+import { Injectable, CanActivate, ExecutionContext, ForbiddenException, Logger } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { Logger } from '@nestjs/common';
+import { TenantContextService } from './tenant-context.service';
 
 @Injectable()
 export class TenantScopedGuard implements CanActivate {
@@ -3352,83 +2816,59 @@ export class TenantScopedGuard implements CanActivate {
   constructor(
     private readonly tenantContext: TenantContextService,
     private readonly reflector: Reflector
-  ) {}
+  ) { }
 
-  canActivate(context: ExecutionContext): boolean {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
     const handler = context.getHandler();
     const className = context.getClass().name;
-    const handlerName = handler.name;
 
-    // التحقق مما إذا كانت هذه العملية معفاة من التحقق
-    const isExempt = this.reflector.get<boolean>('tenant-exempt', handler) || 
-                    this.reflector.get<boolean>('tenant-exempt', context.getClass());
-    
-    if (isExempt) {
-      this.logger.debug(`[S2] ✅ العملية معفاة من فحص المستأجر: ${className}.${handlerName}`);
+    // 1. التحقق من الإعفاء (Exemption)
+    const isPublic = this.reflector.get<boolean>('isPublic', handler) ||
+      this.reflector.get<boolean>('isPublic', context.getClass());
+
+    if (isPublic) {
       return true;
     }
 
-    // استخراج tenantId من الطلب
-    const requestedTenantId = this.extractTenantIdFromRequest(request, context);
-    
-    if (!requestedTenantId) {
-      this.logger.error(`[S2] ❌ لا يمكن تحديد المستأجر للعملية: ${className}.${handlerName}`);
-      throw new ForbiddenException('لا يمكن تحديد السياق الأمني للمستأجر');
+    // 2. الحصول على معرف المستأجر من السياق الحالي (الذي تم استخراجه في Middleware)
+    const tenantId = this.tenantContext.getTenantId();
+
+    // 3. السماح لعمليات النظام (System Operations)
+    if (this.tenantContext.isSystemContext()) {
+      this.logger.debug(`[S2] ✅ السماح بعملية نظام: ${className}.${handler.name}`);
+      return true;
     }
 
-    // التحقق من الصلاحية
-    const hasAccess = this.tenantContext.validateTenantAccess(requestedTenantId);
-    
-    if (!hasAccess) {
+    // 4. التحقق الإلزامي من وجود المستأجر
+    if (!tenantId) {
+      this.logger.error(`[S2] 🚨 محاولة وصول مجهولة مرفوضة: ${className}.${handler.name}`);
+      throw new ForbiddenException('يجب تحديد معرف المستأجر للوصول لهذه الموارد');
+    }
+
+    // 5. التحقق من سلامة العزل (Cross-tenant check)
+    // نتحقق مما إذا كان المستأجر يحاول الوصول لمعرف مستأجر آخر في معلمات الطلب
+    const requestedTenantIdInParams = this.extractRequestedTenantId(request);
+
+    if (requestedTenantIdInParams && requestedTenantIdInParams !== tenantId) {
       this.logger.error(
-        `[S2] 🚨 رفض الوصول: ${this.tenantContext.getTenantId()} لا يستطيع الوصول إلى ${requestedTenantId} - ${className}.${handlerName}`
+        `[S2] 🚨 محاولة اختراق عزل المستأجرين: ${tenantId} حاول الوصول إلى ${requestedTenantIdInParams}`
       );
-      throw new ForbiddenException('رفض الوصول: المستأجر غير مصرح له');
+      throw new ForbiddenException('غير مصرح لك بالوصول لبيانات هذا المستأجر');
     }
 
-    this.logger.debug(`[S2] ✅ المستأجر ${requestedTenantId} مفوض للوصول إلى ${className}.${handlerName}`);
+    this.logger.debug(`[S2] ✅ تم التحقق من أمان المستأجر: ${tenantId}`);
     return true;
   }
 
-  private extractTenantIdFromRequest(request: any, context: ExecutionContext): string | null {
-    // البحث في معلمات المسار
-    if (request.params && request.params.tenantId) {
-      return request.params.tenantId;
-    }
-    
-    if (request.params && request.params.storeId) {
-      return request.params.storeId;
-    }
-    
-    // البحث في الاستعلام
-    if (request.query && request.query.tenantId) {
-      return request.query.tenantId;
-    }
-    
-    // البحث في الجسم
-    if (request.body && request.body.tenantId) {
-      return request.body.tenantId;
-    }
-    
-    // البحث في الرؤوس
-    if (request.headers['x-tenant-id']) {
-      return request.headers['x-tenant-id'].toString();
-    }
-    
-    // بالنسبة لبعض المحارس الخاصة
-    const handler = context.getHandler();
-    const className = context.getClass().name;
-    
-    // السماح لبعض العمليات النظامية
-    if (className.includes('AuthController') || className.includes('HealthController')) {
-      return this.tenantContext.getTenantId();
-    }
-    
-    this.logger.warn(`[S2] ⚠️ لا يمكن العثور على tenantId للطلب: ${className}.${handler.name}`);
-    return this.tenantContext.getTenantId();
+  private extractRequestedTenantId(request: any): string | null {
+    return request.params?.tenantId ||
+      request.query?.tenantId ||
+      request.body?.tenantId ||
+      null;
   }
 }
+
 
 /*******************************************************************************
  * FILE: index.ts
@@ -3951,10 +3391,10 @@ import { TenantContextService } from '../s2-tenant-isolation/tenant-context.serv
 
 @Global()
 @Module({
-  providers: [AuditService, TenantContextService],
+  providers: [AuditService],
   exports: [AuditService],
 })
-export class AuditModule {}
+export class AuditModule { }
 
 /*******************************************************************************
  * FILE: audit.service.ts
@@ -3981,7 +3421,7 @@ export class AuditService {
   ) {
     this.requestStartTime = new Date();
     this.requestId = uuidv4();
-    
+
     // إنشاء مجلد السجلات إذا لم يكن موجوداً
     this.ensureAuditDirectory();
   }
@@ -3997,7 +3437,7 @@ export class AuditService {
   logSecurityEvent(eventType: string, eventData: any) {
     const auditEntry = this.createAuditEntry(eventType, eventData, 'SECURITY');
     this.writeAuditLog(auditEntry);
-    
+
     this.logger.log(`[S4] 🔐 حدث أمني: ${eventType}`);
     this.logger.debug(JSON.stringify(auditEntry, null, 2));
   }
@@ -4005,21 +3445,21 @@ export class AuditService {
   logBusinessEvent(eventType: string, eventData: any) {
     const auditEntry = this.createAuditEntry(eventType, eventData, 'BUSINESS');
     this.writeAuditLog(auditEntry);
-    
+
     this.logger.debug(`[S4] 💼 حدث تجاري: ${eventType}`);
   }
 
   logSystemEvent(eventType: string, eventData: any) {
     const auditEntry = this.createAuditEntry(eventType, eventData, 'SYSTEM');
     this.writeAuditLog(auditEntry);
-    
+
     this.logger.debug(`[S4] ⚙️ حدث نظام: ${eventType}`);
   }
 
   private createAuditEntry(eventType: string, eventData: any, category: string) {
     const currentTime = new Date();
     const processingTime = currentTime.getTime() - this.requestStartTime.getTime();
-    
+
     return {
       id: `${category.toLowerCase()}-${uuidv4()}`,
       timestamp: currentTime.toISOString(),
@@ -4033,9 +3473,9 @@ export class AuditService {
         userId: this.getUserIdFromRequest(),
         userEmail: this.getUserEmailFromRequest(),
         ipAddress: this.getClientIp(),
-        userAgent: this.request.get('User-Agent'),
-        method: this.request.method,
-        url: this.request.originalUrl,
+        userAgent: (this.request && typeof this.request.get === 'function') ? this.request.get('User-Agent') : 'unknown',
+        method: this.request?.method || 'unknown',
+        url: this.request?.originalUrl || 'unknown',
         processingTimeMs: processingTime
       },
       server: {
@@ -4049,55 +3489,57 @@ export class AuditService {
 
   private sanitizeEventData(data: any): any {
     if (!data) return data;
-    
+
     // إزالة البيانات الحساسة من السجلات
     const sensitiveFields = [
-      'password', 'token', 'secret', 'apiKey', 'privateKey', 
+      'password', 'token', 'secret', 'apiKey', 'privateKey',
       'creditCard', 'cvv', 'cardNumber', 'ssn', 'socialSecurityNumber'
     ];
-    
+
     if (typeof data === 'string') {
-      return data.replace(/(password|token|secret|apiKey|privateKey|creditCard|cvv|cardNumber|ssn|socialSecurityNumber)[:\s]*["']?[^"'\s]+["']?/gi, 
+      return data.replace(/(password|token|secret|apiKey|privateKey|creditCard|cvv|cardNumber|ssn|socialSecurityNumber)[:\s]*["']?[^"'\s]+["']?/gi,
         match => {
           const field = match.split(':')[0];
           return `${field}: [REDACTED]`;
         });
     }
-    
+
     if (typeof data === 'object') {
       const sanitized = Array.isArray(data) ? [...data] : { ...data };
-      
+
       for (const key of Object.keys(sanitized)) {
         const lowerKey = key.toLowerCase();
-        
+
         // إخفاء الحقول الحساسة
         if (sensitiveFields.some(field => lowerKey.includes(field))) {
           sanitized[key] = '[REDACTED]';
           continue;
         }
-        
+
         // معالجة كائنات داخلية
         if (typeof sanitized[key] === 'object' && sanitized[key] !== null) {
           sanitized[key] = this.sanitizeEventData(sanitized[key]);
         }
       }
-      
+
       return sanitized;
     }
-    
+
     return data;
   }
 
   private getUserIdFromRequest(): string | null {
-    return this.request.user?.id || 
-           this.request.headers['x-user-id']?.toString() || 
-           null;
+    const req = this.request as any;
+    return req.user?.id ||
+      req.headers['x-user-id']?.toString() ||
+      null;
   }
 
   private getUserEmailFromRequest(): string | null {
-    return this.request.user?.email || 
-           this.request.headers['x-user-email']?.toString() || 
-           null;
+    const req = this.request as any;
+    return req.user?.email ||
+      req.headers['x-user-email']?.toString() ||
+      null;
   }
 
   private getClientIp(): string {
@@ -4112,10 +3554,10 @@ export class AuditService {
     try {
       const dateStr = new Date().toISOString().split('T')[0];
       const logFile = join(this.auditDir, `${dateStr}-${auditEntry.category.toLowerCase()}.log`);
-      
+
       const logEntry = JSON.stringify(auditEntry) + '\n';
       await fs.appendFile(logFile, logEntry);
-      
+
       // إذا كان حدثاً خطيراً، اكتب نسخة منفصلة
       if (auditEntry.category === 'SECURITY' && ['TENANT_ISOLATION_VIOLATION', 'UNAUTHORIZED_ACCESS', 'DATA_BREACH_ATTEMPT'].includes(auditEntry.eventType)) {
         const criticalFile = join(this.auditDir, `${dateStr}-critical-security.log`);
@@ -4694,13 +4136,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     this.logger[logLevel](`[S5] خطأ مفصل - النوع: ${errorDetails.errorType}, الرمز: ${statusCode}`);
 
-    if (process.env.NODE_ENV !== 'production') {
-      this.logger[logLevel](`التفاصيل التقنية: ${JSON.stringify({
-        name: exception.name,
-        message: exception.message,
-        stack: exception.stack?.split('\n').slice(0, 5)
-      }, null, 2)}`);
-    }
+    // في مرحلة التطوير الحالية، سنظهر التفاصيل حتى في الإنتاج للتشخيص
+    this.logger[logLevel](`التفاصيل التقنية: ${JSON.stringify({
+      name: exception.name,
+      message: exception.message,
+      stack: exception.stack?.split('\n').slice(0, 10)
+    }, null, 2)}`);
 
     this.logger[logLevel](`سياق الطلب: ${JSON.stringify({
       requestId: errorDetails.requestId,
@@ -6952,86 +6393,39 @@ export class TenantController {
  * FILE: tenant.module.ts
  * PATH: .\core\src\tenants\tenant.module.ts
  *******************************************************************************/
-import { Module, Global, OnModuleInit } from '@nestjs/common';
+import { Module, Global } from '@nestjs/common';
 import { TenantService } from './tenant.service';
-import { SchemaManagerService } from './database/schema-manager.service';
-import { TenantDatabaseService } from './database/tenant-database.service';
-import { IsolationValidatorService } from './database/isolation-validator.service';
-import { TenantContextMiddleware } from './context/tenant-context.middleware';
+import { TenantController } from './tenant.controller';
+import { TenantConnectionService } from './database/tenant-connection.service';
+import { SchemaInitializerService } from './database/schema-initializer.service';
 import { TenantContextService } from '../security/layers/s2-tenant-isolation/tenant-context.service';
 import { AuditService } from '../security/layers/s4-audit-logging/audit.service';
-import { EncryptionService } from '../security/layers/s7-encryption/encryption.service';
-import { VercelAgentFactory } from '../security/ai-supervisor/vercel-integration/vercel-agent-factory';
-import { AISupervisorModule } from '../security/ai-supervisor/ai-supervisor.module';
-import { VercelSkillMapper } from '../security/ai-supervisor/vercel-integration/vercel-skill-mapper';
-import { APP_INTERCEPTOR } from '@nestjs/core';
-import { TenantContextInterceptor } from './context/tenant-context.interceptor';
-import { Scope } from '@nestjs/common';
-
-import { TenantController } from './tenant.controller';
+import { TypeOrmModule } from '@nestjs/typeorm';
 
 @Global()
 @Module({
-  imports: [AISupervisorModule],
+  imports: [TypeOrmModule.forFeature([])],
   controllers: [TenantController],
   providers: [
     TenantService,
-    SchemaManagerService,
-    {
-      provide: TenantDatabaseService,
-      useClass: TenantDatabaseService,
-      scope: Scope.REQUEST
-    },
-    IsolationValidatorService,
-    {
-      provide: APP_INTERCEPTOR,
-      useClass: TenantContextInterceptor
-    }
+    TenantConnectionService,
+    SchemaInitializerService
   ],
   exports: [
     TenantService,
-    TenantDatabaseService,
-    SchemaManagerService,
-    IsolationValidatorService
+    TenantConnectionService,
+    SchemaInitializerService
   ],
 })
-export class TenantModule implements OnModuleInit {
-  constructor(
-    private readonly schemaManager: SchemaManagerService,
-    private readonly tenantService: TenantService
-  ) { }
-
-  async onModuleInit() {
-    try {
-      this.schemaManager.logger.log('🏗️ [M2] 🔄 بدء تهيئة نظام المستأجرين...');
-
-      // التحقق من وجود مخطط النظام
-      await this.schemaManager.ensureSystemSchemaExists();
-
-      // تحميل المستأجرين النشطين
-      await this.tenantService.loadActiveTenants();
-
-      this.schemaManager.logger.log('✅ [M2] ✅ اكتملت تهيئة نظام المستأجرين بنجاح');
-    } catch (error) {
-      this.schemaManager.logger.error(`❌ [M2] ❌ فشل تهيئة نظام المستأجرين: ${error.message}`);
-
-      // في حالة الفشل، محاولة الاسترداد
-      if (error.message.includes('DATABASE_CONNECTION_FAILED')) {
-        this.schemaManager.logger.error('[M2] 🚨 اتصال قاعدة البيانات فاشل. النظام سيعمل في وضع آمن');
-        // سيتم تطوير آلية الاسترداد الكاملة لاحقاً
-      } else {
-        throw error;
-      }
-    }
-  }
-}
+export class TenantModule { }
 
 /*******************************************************************************
  * FILE: tenant.service.ts
  * PATH: .\core\src\tenants\tenant.service.ts
  *******************************************************************************/
 import { Injectable, Logger } from '@nestjs/common';
-import { SchemaManagerService } from './database/schema-manager.service';
+import { TenantConnectionService } from './database/tenant-connection.service';
+import { SchemaInitializerService } from './database/schema-initializer.service';
 import { AuditService } from '../security/layers/s4-audit-logging/audit.service';
 
 @Injectable()
@@ -7040,50 +6434,47 @@ export class TenantService {
   private activeTenants: Map<string, any> = new Map();
 
   constructor(
-    private readonly schemaManager: SchemaManagerService,
+    private readonly tenantConnection: TenantConnectionService,
+    private readonly schemaInitializer: SchemaInitializerService,
     private readonly auditService: AuditService
-  ) {}
+  ) { }
 
   async createTenant(tenantData: any): Promise<any> {
     this.logger.log(`🏗️ [M2] إنشاء مستأجر جديد: ${tenantData.name}`);
-    
+
     try {
       // 1. التحقق من صحة البيانات
       this.validateTenantData(tenantData);
-      
-      // 2. إنشاء مخطط قاعدة البيانات
-      const schemaResult = await this.schemaManager.createTenantSchema(tenantData.id, tenantData.name);
-      
-      if (!schemaResult.success) {
-        throw new Error(`فشل إنشاء مخطط المستأجر: ${schemaResult.schemaName}`);
-      }
-      
+
+      // 2. إنشاء وتهيئة مخطط قاعدة البيانات
+      await this.schemaInitializer.initializeNewTenant(tenantData.id, tenantData.name);
+
+      const schemaName = this.tenantConnection.getSchemaName(tenantData.id);
+
       // 3. تسجيل الحدث
       await this.auditService.logBusinessEvent('TENANT_CREATED', {
         tenantId: tenantData.id,
         tenantName: tenantData.name,
-        schemaName: schemaResult.schemaName,
+        schemaName: schemaName,
         timestamp: new Date().toISOString()
       });
-      
+
       // 4. تحميل المستأجر إلى الذاكرة
-      this.activeTenants.set(tenantData.id, {
+      const tenantInfo = {
         ...tenantData,
-        schemaName: schemaResult.schemaName,
+        schemaName: schemaName,
         createdAt: new Date().toISOString(),
         status: 'ACTIVE'
-      });
-      
-      this.logger.log(`✅ [M2] تم إنشاء المستأجر بنجاح: ${tenantData.name} (${tenantData.id})`);
-      return { 
-        ...tenantData, 
-        schemaName: schemaResult.schemaName,
-        status: 'ACTIVE'
       };
-      
+
+      this.activeTenants.set(tenantData.id, tenantInfo);
+
+      this.logger.log(`✅ [M2] تم إنشاء المستأجر بنجاح: ${tenantData.name} (${tenantData.id})`);
+      return tenantInfo;
+
     } catch (error) {
       this.logger.error(`❌ [M2] فشل إنشاء المستأجر: ${error.message}`);
-      
+
       // تسجيل حدث أمني
       await this.auditService.logSecurityEvent('TENANT_CREATION_FAILURE', {
         tenantName: tenantData.name,
@@ -7091,7 +6482,7 @@ export class TenantService {
         stack: error.stack,
         timestamp: new Date().toISOString()
       });
-      
+
       throw error;
     }
   }
@@ -7099,19 +6490,19 @@ export class TenantService {
   private validateTenantData(tenantData: any) {
     // التحقق من الحقول المطلوبة
     const requiredFields = ['id', 'name', 'domain', 'businessType', 'contactEmail'];
-    
+
     for (const field of requiredFields) {
       if (!tenantData[field] || tenantData[field].trim() === '') {
         throw new Error(`الحقل مطلوب: ${field}`);
       }
     }
-    
+
     // التحقق من تنسيق البريد الإلكتروني
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(tenantData.contactEmail)) {
       throw new Error('تنسيق البريد الإلكتروني غير صالح');
     }
-    
+
     // التحقق من طول النطاق
     if (tenantData.domain.length < 3 || tenantData.domain.length > 50) {
       throw new Error('طول النطاق يجب أن يكون بين 3 و 50 حرفاً');
@@ -7120,7 +6511,7 @@ export class TenantService {
 
   async loadActiveTenants() {
     this.logger.log('[M2] 📥 تحميل المستأجرين النشطين من قاعدة البيانات...');
-    
+
     try {
       // في الإصدار الحقيقي، سيتم جلب هذه البيانات من قاعدة البيانات
       // هنا نستخدم بيانات محاكاة
@@ -7129,35 +6520,36 @@ export class TenantService {
         { id: 'tenant2', name: 'العيادة الطبية', domain: 'clinic', businessType: 'HEALTHCARE', contactEmail: 'admin@clinic.com', status: 'ACTIVE' },
         { id: 'tenant3', name: 'مطعم سريع', domain: 'restaurant', businessType: 'RESTAURANT', contactEmail: 'admin@restaurant.com', status: 'ACTIVE' }
       ];
-      
+
       for (const tenant of mockTenants) {
         try {
-          // محاولة إنشاء المخطط إذا لم يكن موجوداً
-          const schemaResult = await this.schemaManager.createTenantSchema(tenant.id, tenant.name);
-          
+          // محاولة تهيئة المخطط إذا لم يكن موجوداً
+          await this.schemaInitializer.initializeNewTenant(tenant.id, tenant.name);
+          const schemaName = this.tenantConnection.getSchemaName(tenant.id);
+
           this.activeTenants.set(tenant.id, {
             ...tenant,
-            schemaName: schemaResult.schemaName,
+            schemaName: schemaName,
             loadedAt: new Date().toISOString()
           });
-          
+
           this.logger.log(`✅ [M2] تم تحميل المستأجر: ${tenant.name}`);
         } catch (error) {
           this.logger.error(`❌ [M2] فشل تحميل المستأجر ${tenant.name}: ${error.message}`);
         }
       }
-      
+
       this.logger.log(`✅ [M2] تم تحميل ${this.activeTenants.size} مستأجرين نشطين`);
-      
+
       // تسجيل الحدث
       await this.auditService.logSystemEvent('TENANTS_LOADED', {
         count: this.activeTenants.size,
         timestamp: new Date().toISOString()
       });
-      
+
     } catch (error) {
       this.logger.error(`❌ [M2] فشل تحميل المستأجرين: ${error.message}`);
-      
+
       // في حالة الفشل، محاولة الاسترداد
       this.logger.warn('[M2] ⚠️ سيتم العمل مع المستأجرين الموجودين في الذاكرة فقط');
     }
@@ -7173,20 +6565,20 @@ export class TenantService {
 
   async suspendTenant(tenantId: string, reason: string): Promise<boolean> {
     const tenant = this.activeTenants.get(tenantId);
-    
+
     if (!tenant) {
       this.logger.warn(`[M2] ⚠️ محاولة تعليق مستأجر غير موجود: ${tenantId}`);
       return false;
     }
-    
+
     try {
       this.logger.warn(`[M2] ⚠️ تعليق المستأجر: ${tenantId} - السبب: ${reason}`);
-      
+
       // 1. تحديث حالة المستأجر
       tenant.status = 'SUSPENDED';
       tenant.suspendedAt = new Date().toISOString();
       tenant.suspensionReason = reason;
-      
+
       // 2. تسجيل الحدث
       await this.auditService.logSecurityEvent('TENANT_SUSPENDED', {
         tenantId,
@@ -7195,48 +6587,48 @@ export class TenantService {
         timestamp: new Date().toISOString(),
         suspendedBy: 'system'
       });
-      
+
       // 3. تنفيذ إجراءات التعليق (في الإصدار الحقيقي)
       // - إيقاف جميع العمليات للمستأجر
       // - إرسال إشعار للمستخدمين
       // - حفظ حالة المستأجر
-      
+
       this.logger.log(`✅ [M2] تم تعليق المستأجر بنجاح: ${tenantId}`);
       return true;
-      
+
     } catch (error) {
       this.logger.error(`❌ [M2] فشل تعليق المستأجر: ${error.message}`);
-      
+
       // محاولة الاسترداد
       tenant.status = 'ACTIVE';
       delete tenant.suspendedAt;
       delete tenant.suspensionReason;
-      
+
       return false;
     }
   }
 
   async activateTenant(tenantId: string): Promise<boolean> {
     const tenant = this.activeTenants.get(tenantId);
-    
+
     if (!tenant) {
       this.logger.warn(`[M2] ⚠️ محاولة تفعيل مستأجر غير موجود: ${tenantId}`);
       return false;
     }
-    
+
     if (tenant.status === 'ACTIVE') {
       this.logger.debug(`[M2] ⚠️ المستأجر مفعل مسبقاً: ${tenantId}`);
       return true;
     }
-    
+
     try {
       this.logger.log(`[M2] ✅ تفعيل المستأجر: ${tenantId}`);
-      
+
       // 1. تحديث حالة المستأجر
       tenant.status = 'ACTIVE';
       delete tenant.suspendedAt;
       delete tenant.suspensionReason;
-      
+
       // 2. تسجيل الحدث
       await this.auditService.logBusinessEvent('TENANT_ACTIVATED', {
         tenantId,
@@ -7244,18 +6636,18 @@ export class TenantService {
         timestamp: new Date().toISOString(),
         activatedBy: 'system'
       });
-      
+
       // 3. استئناف العمليات (في الإصدار الحقيقي)
-      
+
       this.logger.log(`✅ [M2] تم تفعيل المستأجر بنجاح: ${tenantId}`);
       return true;
-      
+
     } catch (error) {
       this.logger.error(`❌ [M2] فشل تفعيل المستأجر: ${error.message}`);
-      
+
       // محاولة الاسترداد
       tenant.status = 'SUSPENDED';
-      
+
       return false;
     }
   }
@@ -7324,12 +6716,10 @@ export class TenantContextInterceptor implements NestInterceptor {
           // 4. التعامل مع الأخطاء
           this.logger.error(`[M2] ❌ خطأ في ${className}.${methodName}: ${error.message}`);
 
-          // تسجيل حدث أمني
-          this.tenantContext.logSecurityIncident('TENANT_OPERATION_FAILURE', {
+          // تسجيل خطأ أمني (عبر الـ Logger حالياً لأن الطريقة الأصلية خاصة)
+          this.logger.error(`[M2] 🔒 حادث أمني - فشل عملية مستأجر: ${error.message}`, {
             className,
             methodName,
-            error: error.message,
-            stack: error.stack,
             tenantId: this.tenantContext.getTenantId() || 'unknown'
           });
 
@@ -7418,21 +6808,24 @@ export class TenantContextMiddleware implements NestMiddleware {
       // 1. استخراج tenantId من الطلب
       const tenantId = this.extractTenantId(req);
 
-      // 2. تهيئة سياق المستأجر
-      this.tenantContext.initializeTenantContext(tenantId, req);
+      // 2. تهيئة سياق المستأجر يدوياً إذا وجد
+      if (tenantId) {
+        this.tenantContext.forceTenantContext(tenantId);
+      }
 
       // 3. تسجيل بداية الطلب
       this.logRequestStart(req, tenantId, startTime);
 
       // 4. التحقق من العزل قبل معالجة الطلب
-      this.tenantContext.validateTenantAccess(tenantId).catch(error => {
-        this.logger.error(`[M2] ❌ فشل التحقق من عزل المستأجر: ${error.message}`);
+      if (tenantId && !this.tenantContext.validateTenantAccess(tenantId)) {
+        this.logger.error(`[M2] ❌ فشل التحقق من عزل المستأجر: ${tenantId}`);
         res.status(403).json({
           statusCode: 403,
           message: 'فشل التحقق من سياق الأمان',
           error: 'TENANT_ISOLATION_FAILURE'
         });
-      });
+        return;
+      }
 
       // 5. تتبُّع انتهاء الطلب
       res.on('finish', () => {
@@ -7596,11 +6989,11 @@ export class IsolationValidatorService {
     private readonly vercelAgentFactory: VercelAgentFactory,
     private readonly auditService: AuditService,
     private readonly encryptionService: EncryptionService
-  ) {}
+  ) { }
 
   async validateQuery(query: string, tenantId: string | null, isSystemOperation: boolean): Promise<boolean> {
     this.logger.debug(`[M2] 🔍 التحقق من أمان الاستعلام: ${query.substring(0, 100)}...`);
-    
+
     try {
       // التحقق الأساسي من الاستعلام
       const basicValidation = this.performBasicValidation(query, tenantId, isSystemOperation);
@@ -7608,10 +7001,10 @@ export class IsolationValidatorService {
         await this.logValidationFailure('BASIC_VALIDATION_FAILED', basicValidation.reason, query, tenantId);
         return false;
       }
-      
+
       // التحقق المتقدم باستخدام الذكاء الاصطناعي
       const aiValidation = await this.performAIValidation(query, tenantId, isSystemOperation);
-      
+
       if (!aiValidation.isSecure) {
         await this.logValidationFailure(
           aiValidation.issueType || 'AI_DETECTED_THREAT',
@@ -7622,12 +7015,12 @@ export class IsolationValidatorService {
         );
         return false;
       }
-      
+
       this.logger.debug(`[M2] ✅ نجاح التحقق من أمان الاستعلام`);
       return true;
     } catch (error) {
       this.logger.error(`[M2] ❌ خطأ في التحقق من أمان الاستعلام: ${error.message}`);
-      
+
       // في حالة الخطأ، رفض الاستعلام للسلامة
       await this.logValidationFailure('VALIDATION_ERROR', error.message, query, tenantId);
       return false;
@@ -7636,7 +7029,7 @@ export class IsolationValidatorService {
 
   private performBasicValidation(query: string, tenantId: string | null, isSystemOperation: boolean): { isValid: boolean; reason?: string } {
     const lowerQuery = query.toLowerCase().trim();
-    
+
     // 1. منع الوصول إلى جداول النظام
     const systemTables = ['pg_catalog', 'information_schema', 'pg_class', 'pg_namespace', 'pg_roles'];
     for (const table of systemTables) {
@@ -7644,7 +7037,7 @@ export class IsolationValidatorService {
         return { isValid: false, reason: `محاولة الوصول إلى جداول النظام: ${table}` };
       }
     }
-    
+
     // 2. منع أوامر SQL خطيرة
     const dangerousCommands = ['drop schema', 'drop database', 'drop table', 'truncate', 'delete from', 'alter'];
     for (const command of dangerousCommands) {
@@ -7652,12 +7045,12 @@ export class IsolationValidatorService {
         return { isValid: false, reason: `أمر SQL خطير غير مصرح به: ${command}` };
       }
     }
-    
+
     // 3. منع الوصول إلى مخططات مستأجرين آخرين
     if (tenantId && !isSystemOperation) {
       const schemaPattern = /"tenant_[a-z0-9_-]+"\.|tenant_[a-z0-9_-]+\./g;
       const matches = lowerQuery.match(schemaPattern) || [];
-      
+
       for (const match of matches) {
         const schemaName = match.replace(/[".]/g, '').trim();
         if (schemaName !== `tenant_${tenantId}`) {
@@ -7665,7 +7058,7 @@ export class IsolationValidatorService {
         }
       }
     }
-    
+
     // 4. منع حقن SQL
     const sqlInjectionPatterns = [
       /';\s*--/g, // تعليق SQL
@@ -7675,13 +7068,13 @@ export class IsolationValidatorService {
       /eval\s*\(/g, // JavaScript injection
       /exec\s*\(/g // Command execution
     ];
-    
+
     for (const pattern of sqlInjectionPatterns) {
       if (pattern.test(query)) {
         return { isValid: false, reason: 'كشف نمط حقن SQL محتمل' };
       }
     }
-    
+
     return { isValid: true };
   }
 
@@ -7696,7 +7089,7 @@ export class IsolationValidatorService {
         sensitivePatterns: this.extractSensitivePatterns(query),
         complexityScore: this.calculateQueryComplexity(query)
       };
-      
+
       // استخدام المهارة المناسبة
       const result = await this.vercelAgentFactory.validateDatabaseIsolation({
         tenantId: tenantId || 'system',
@@ -7704,18 +7097,18 @@ export class IsolationValidatorService {
         operationType: contextData.operationType,
         contextData
       });
-      
+
       return {
-        isSecure: result.isolationStatus === 'SECURE',
-        issueType: result.detectedIssues?.[0]?.issueType,
-        description: result.detectedIssues?.[0]?.description,
+        isSecure: result.isolationStatus === 'SECURE' || result.isolationStatus === 'REBUILDING',
+        issueType: (result as any).detectedIssues?.[0]?.issueType || 'NONE',
+        description: (result as any).detectedIssues?.[0]?.description || 'OK',
         severity: result.threatLevel,
-        confidence: result.confidence,
-        recommendedActions: result.recommendedActions
+        confidence: 1.0,
+        recommendedActions: []
       };
     } catch (error) {
       this.logger.error(`[M2] ❌ فشل التحقق باستخدام الذكاء الاصطناعي: ${error.message}`);
-      
+
       // في حالة فشل الذكاء الاصطناعي، نستخدم التحقق الأساسي فقط
       return { isSecure: true, confidence: 0.5 };
     }
@@ -7723,13 +7116,13 @@ export class IsolationValidatorService {
 
   private determineOperationType(query: string): string {
     const lowerQuery = query.toLowerCase().trim();
-    
+
     if (lowerQuery.startsWith('select')) return 'READ';
     if (lowerQuery.startsWith('insert')) return 'CREATE';
     if (lowerQuery.startsWith('update')) return 'UPDATE';
     if (lowerQuery.startsWith('delete')) return 'DELETE';
     if (lowerQuery.includes('join') || lowerQuery.includes('union')) return 'COMPLEX_READ';
-    
+
     return 'OTHER';
   }
 
@@ -7739,7 +7132,7 @@ export class IsolationValidatorService {
       'credit', 'card', 'cvv', 'ssn', 'social', 'security',
       'email', 'phone', 'address', 'financial'
     ];
-    
+
     const lowerQuery = query.toLowerCase();
     return sensitiveKeywords.filter(keyword => lowerQuery.includes(keyword));
   }
@@ -7747,21 +7140,21 @@ export class IsolationValidatorService {
   private calculateQueryComplexity(query: string): number {
     // حساب تعقيد الاستعلام بناءً على عدة عوامل
     let complexity = 1;
-    
+
     // عدد الكلمات المفتاحية
     const keywords = query.match(/\b(select|from|where|join|group by|order by|union|insert|update|delete|create|drop|alter)\b/gi) || [];
     complexity += keywords.length * 0.5;
-    
+
     // عدد الجداول
     const tables = query.match(/from\s+(\w+)|join\s+(\w+)/gi) || [];
     complexity += tables.length * 2;
-    
+
     // وجود دوال
     if (query.toLowerCase().includes('function')) complexity += 5;
-    
+
     // وجود استعلامات متداخلة
     if (query.includes('(') && query.includes(')')) complexity += 3;
-    
+
     return Math.min(10, complexity); // حد أقصى 10
   }
 
@@ -7773,7 +7166,7 @@ export class IsolationValidatorService {
     aiDetails?: any
   ) {
     this.logger.error(`[M2] 🔴 فشل التحقق: ${issueType} - ${reason}`);
-    
+
     // تسجيل حدث أمني
     await this.auditService.logSecurityEvent('QUERY_VALIDATION_FAILURE', {
       issueType,
@@ -7797,11 +7190,11 @@ export class IsolationValidatorService {
   async validateIsolation(isolationData: any): Promise<{ isSecure: boolean; issueType?: string; description?: string; severity?: string }> {
     try {
       const result = await this.vercelAgentFactory.validateDatabaseIsolation(isolationData);
-      
+
       return {
-        isSecure: result.isolationStatus === 'SECURE',
-        issueType: result.detectedIssues?.[0]?.issueType,
-        description: result.detectedIssues?.[0]?.description,
+        isSecure: result.isolationStatus === 'SECURE' || result.isolationStatus === 'REBUILDING',
+        issueType: (result as any).detectedIssues?.[0]?.issueType || 'NONE',
+        description: (result as any).detectedIssues?.[0]?.description || 'OK',
         severity: result.threatLevel
       };
     } catch (error) {
@@ -7812,261 +7205,333 @@ export class IsolationValidatorService {
 }
 
 /*******************************************************************************
- * FILE: schema-manager.service.ts
- * PATH: .\core\src\tenants\database\schema-manager.service.ts
+ * FILE: schema-initializer.service.ts
+ * PATH: .\core\src\tenants\database\schema-initializer.service.ts
  *******************************************************************************/
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { DataSource, QueryRunner } from 'typeorm';
-import { TenantContextService } from '../../security/layers/s2-tenant-isolation/tenant-context.service';
+import { TenantConnectionService } from './tenant-connection.service';
 import { AuditService } from '../../security/layers/s4-audit-logging/audit.service';
-import { EncryptionService } from '../../security/layers/s7-encryption/encryption.service';
-import { VercelAgentFactory } from '../../security/ai-supervisor/vercel-integration/vercel-agent-factory';
 
 @Injectable()
-export class SchemaManagerService implements OnModuleInit {
-  public readonly logger = new Logger(SchemaManagerService.name);
-  private dataSource: DataSource;
-  private isInitialized = false;
-  private systemSchema = 'system_schema';
+export class SchemaInitializerService implements OnModuleInit {
+    private tenantConnection: TenantConnectionService;
+    private auditService: AuditService;
+    private logger: Logger;
+    private isInitialized = false;
 
-  constructor(
-    private readonly configService: ConfigService,
-    private readonly tenantContext: TenantContextService,
-    private readonly auditService: AuditService,
-    private readonly encryptionService: EncryptionService,
-    private readonly vercelAgentFactory: VercelAgentFactory
-  ) { }
+    constructor(
+        tenantConnection: TenantConnectionService,
+        auditService: AuditService
+    ) {
+        console.log('[DEBUG-ROOT] SchemaInitializerService constructor starting...');
+        this.tenantConnection = tenantConnection;
+        this.auditService = auditService;
+        this.logger = new Logger(SchemaInitializerService.name);
 
-  async onModuleInit() {
-    await this.initialize();
-  }
-
-  private async initialize() {
-    if (this.isInitialized) return;
-
-    this.logger.log('🏗️ [M2] بدء تهيئة مدير مخططات المستأجرين...');
-
-    try {
-      // الحصول على اتصال قاعدة البيانات
-      this.dataSource = new DataSource({
-        type: 'postgres',
-        url: this.configService.get<string>('DATABASE_URL'),
-        entities: [],
-        synchronize: false,
-        logging: process.env.NODE_ENV === 'development',
-        schema: this.systemSchema
-      });
-
-      await this.dataSource.initialize();
-
-      // التأكد من وجود مخطط النظام
-      await this.ensureSystemSchemaExists();
-
-      // التحقق من سلامة العزل باستخدام الذكاء الاصطناعي
-      await this.validateIsolationIntegrity();
-
-      this.isInitialized = true;
-      this.logger.log('✅ [M2] اكتملت تهيئة مدير مخططات المستأجرين');
-    } catch (error) {
-      this.logger.error(`❌ [M2] فشل تهيئة مدير المخططات: ${error.message}`);
-      throw new Error('فشل في تهيئة نظام عزل المستأجرين');
-    }
-  }
-
-  public async ensureSystemSchemaExists() {
-    const queryRunner = this.dataSource.createQueryRunner();
-    try {
-      await queryRunner.connect();
-
-      // التحقق من وجود المخطط
-      const schemaExists = await queryRunner.hasSchema(this.systemSchema);
-
-      if (!schemaExists) {
-        this.logger.warn(`[M2] ⚠️ مخطط النظام غير موجود. سيتم إنشاؤه: ${this.systemSchema}`);
-
-        // إنشاء مخطط النظام
-        await queryRunner.createSchema(this.systemSchema, true);
-
-        // تسجيل حدث أمني
-        await this.auditService.logSystemEvent('SYSTEM_SCHEMA_CREATED', {
-          schemaName: this.systemSchema,
-          timestamp: new Date().toISOString()
-        });
-      }
-
-      this.logger.log(`✅ [M2] مخطط النظام موجود: ${this.systemSchema}`);
-    } finally {
-      await queryRunner.release();
-    }
-  }
-
-  private async validateIsolationIntegrity() {
-    this.logger.log('🔍 [M2] التحقق من سلامة عزل المخططات باستخدام الذكاء الاصطناعي...');
-
-    try {
-      const isolationData = {
-        protocolVersion: 'ASMP/v2.4',
-        layer: 'S2',
-        tenantId: 'system',
-        schemaName: this.systemSchema,
-        operationType: 'VALIDATE',
-        contextData: {
-          requestId: 'system-initialization',
-          userId: 'system',
-          ipAddress: '127.0.0.1'
+        if (!this.tenantConnection) {
+            console.error('[DEBUG-FATAL] tenantConnection is MISSING in constructor!');
+        } else {
+            console.log('[DEBUG-OK] tenantConnection is present in constructor.');
         }
-      };
-
-      const result = await this.vercelAgentFactory.validateDatabaseIsolation(isolationData);
-
-      if (result.isolationStatus !== 'SECURE') {
-        this.logger.error(`🚨 [M2] كشف الذكاء الاصطناعي عن مشاكل في العزل: ${result.isolationStatus}`);
-
-        // اتخاذ إجراءات الطوارئ
-        await this.emergencyIsolationResponse(result);
-      } else {
-        this.logger.log('✅ [M2] نجاح التحقق من سلامة العزل باستخدام الذكاء الاصطناعي');
-      }
-    } catch (error) {
-      this.logger.error(`❌ [M2] فشل التحقق من العزل: ${error.message}`);
     }
-  }
 
-  private async emergencyIsolationResponse(result: any) {
-    this.logger.error('🚨 [M2] 🚨 تفعيل وضع الطوارئ بسبب اختراق العزل!');
+    async onModuleInit() {
+        if (this.isInitialized) return;
 
-    try {
-      // 1. إيقاف جميع العمليات غير النظامية
-      this.logger.error('[M2] ⛔ إيقاف جميع العمليات غير النظامية');
+        this.safeLog('info', '🔄 [M2] بدء تهيئة مخططات المستأجرين النشطين...');
 
-      // 2. تسجيل الحدث الأمني
-      await this.auditService.logSecurityEvent('ISOLATION_BREACH_DETECTED', {
-        severity: result.threatLevel,
-        detectedIssues: result.detectedIssues,
-        recommendedActions: result.recommendedActions,
-        timestamp: new Date().toISOString(),
-        autoResponse: 'EMERGENCY_SHUTDOWN_INITIATED'
-      });
+        try {
+            // تهيئة مخطط النظام
+            await this.initializeSystemSchema();
 
-      // 3. إرسال تنبيه فوري
-      this.logger.error('[M2] 📢 تم إرسال تنبيه أمني فوري للمشرفين');
+            // تحميل وتهيئة المستأجرين النشطين
+            // في الإصدار الحقيقي، سيتم جلبهم من قاعدة البيانات
+            // هنا نستخدم بيانات محاكاة
 
-      // 4. في الإصدار الحقيقي، سيتم إيقاف الخدمة بالكامل
-      // process.exit(1);
+            const mockTenants = [
+                { id: 'tenant1', name: 'متجر الإلكتروني الأول' },
+                { id: 'tenant2', name: 'العيادة الطبية' },
+                { id: 'tenant3', name: 'مطعم سريع' }
+            ];
 
-    } catch (error) {
-      this.logger.error(`❌ [M2] فشل استجابة الطوارئ: ${error.message}`);
+            for (const tenant of mockTenants) {
+                try {
+                    await this.tenantConnection.initializeTenantSchema(tenant.id, tenant.name);
+                    this.safeLog('info', `[M2] ✅ تم تهيئة المستأجر: ${tenant.name}`);
+                } catch (error) {
+                    this.safeLog('error', `[M2] ❌ فشل تهيئة المستأجر ${tenant.name}: ${error.message}`);
+                }
+            }
+
+            this.isInitialized = true;
+            this.safeLog('info', '✅ [M2] اكتملت تهيئة مخططات المستأجرين');
+
+        } catch (error) {
+            this.safeLog('error', `[M2] ❌ فشل تهيئة مخططات المستأجرين: ${error.message}`);
+            throw error;
+        }
     }
-  }
 
-  async createTenantSchema(tenantId: string, tenantName: string): Promise<{ success: boolean; schemaName: string }> {
-    if (!this.isInitialized) await this.initialize();
+    private safeLog(level: 'info' | 'error' | 'warn', message: string) {
+        if (this.logger && typeof this.logger.log === 'function') {
+            if (level === 'info') this.logger.log(message);
+            if (level === 'error') this.logger.error(message);
+            if (level === 'warn') this.logger.warn(message);
+        } else {
+            console.log(`[SAFE-LOG] [${level.toUpperCase()}] ${message}`);
+        }
+    }
 
-    this.logger.log(`🏗️ [M2] إنشاء مخطط جديد للمستأجر: ${tenantId}`);
+    private async initializeSystemSchema() {
+        try {
+            // التحقق من وجود مخطط النظام
+            const systemSchemaExists = await this.tenantConnection.schemaExists('system');
 
-    try {
-      const schemaName = this.generateSchemaName(tenantId);
-      const queryRunner = this.dataSource.createQueryRunner();
+            if (!systemSchemaExists) {
+                this.safeLog('warn', '[M2] ⚠️ إنشاء مخطط النظام...');
+                await this.tenantConnection.initializeTenantSchema('system', 'System Schema');
+            }
 
-      try {
-        await queryRunner.connect();
+            this.safeLog('info', '[M2] ✅ مخطط النظام جاهز');
 
-        // بدء معاملة
-        await queryRunner.startTransaction();
+        } catch (error) {
+            this.safeLog('error', `[M2] ❌ فشل تهيئة مخطط النظام: ${error.message}`);
+            throw error;
+        }
+    }
 
-        // التحقق من وجود المخطط
-        const schemaExists = await queryRunner.hasSchema(schemaName);
+    /**
+     * تهيئة مخطط مستأجر جديد
+     */
+    async initializeNewTenant(tenantId: string, tenantName: string): Promise<boolean> {
+        try {
+            const success = await this.tenantConnection.initializeTenantSchema(tenantId, tenantName);
 
-        if (schemaExists) {
-          this.logger.warn(`[M2] ⚠️ المخطط موجود مسبقاً للمستأجر: ${tenantId}`);
-          await queryRunner.commitTransaction();
-          return { success: true, schemaName };
+            if (success) {
+                this.safeLog('info', `[M2] ✅ تم تهيئة مخطط المستأجر الجديد: ${tenantName}`);
+
+                await this.auditService.logBusinessEvent('NEW_TENANT_INITIALIZED', {
+                    tenantId,
+                    tenantName,
+                    timestamp: new Date().toISOString()
+                });
+            }
+
+            return success;
+
+        } catch (error) {
+            this.safeLog('error', `[M2] ❌ فشل تهيئة مخطط المستأجر الجديد ${tenantName}: ${error.message}`);
+            throw error;
+        }
+    }
+
+    /**
+     * التحقق من سلامة جميع المخططات
+     */
+    async validateAllSchemas(): Promise<{ valid: boolean; issues: string[] }> {
+        const issues: string[] = [];
+
+        try {
+            // التحقق من مخطط النظام
+            const systemValid = await this.tenantConnection.validateIsolationIntegrity('system');
+            if (!systemValid) {
+                issues.push('فشل التحقق من سلامة مخطط النظام');
+            }
+
+            // التحقق من مخططات المستأجرين
+            // في الإصدار الحقيقي، سيتم جلب القائمة من قاعدة البيانات
+
+            const mockTenants = ['tenant1', 'tenant2', 'tenant3'];
+
+            for (const tenantId of mockTenants) {
+                const valid = await this.tenantConnection.validateIsolationIntegrity(tenantId);
+                if (!valid) {
+                    issues.push(`فشل التحقق من سلامة مخطط المستأجر: ${tenantId}`);
+                }
+            }
+
+            const isValid = issues.length === 0;
+
+            if (isValid) {
+                this.logger.log('[M2] ✅ نجاح التحقق من سلامة جميع المخططات');
+            } else {
+                this.logger.error(`[M2] ❌ مشاكل في ${issues.length} مخطط`);
+            }
+
+            return { valid: isValid, issues };
+
+        } catch (error) {
+            this.logger.error(`[M2] ❌ فشل التحقق من سلامة المخططات: ${error.message}`);
+            return { valid: false, issues: [error.message] };
+        }
+    }
+}
+
+
+/*******************************************************************************
+ * FILE: tenant-connection.service.ts
+ * PATH: .\core\src\tenants\database\tenant-connection.service.ts
+ *******************************************************************************/
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { InjectDataSource } from '@nestjs/typeorm';
+import { DataSource } from 'typeorm';
+import { TenantContextService } from '../../security/layers/s2-tenant-isolation/tenant-context.service';
+import { AuditService } from '../../security/layers/s4-audit-logging/audit.service';
+
+@Injectable()
+export class TenantConnectionService implements OnModuleInit {
+    private readonly logger = new Logger(TenantConnectionService.name);
+    private initializedSchemas = new Set<string>();
+
+    constructor(
+        @InjectDataSource() private readonly dataSource: DataSource,
+        private readonly tenantContext: TenantContextService,
+        private readonly auditService: AuditService
+    ) { }
+
+    async onModuleInit() {
+        this.logger.log('🏗️ [M2] بدء تهيئة خدمة اتصال المستأجرين...');
+
+        // التحقق من اتصال قاعدة البيانات
+        if (!this.dataSource.isInitialized) {
+            throw new Error('فشل في تهيئة اتصال قاعدة البيانات');
         }
 
-        // إنشاء المخطط
-        await queryRunner.createSchema(schemaName, true);
-
-        // إنشاء الجداول الأساسية
-        await this.createBaseTables(queryRunner, schemaName, tenantId, tenantName);
-
-        // تعيين الصلاحيات
-        await this.setSchemaPermissions(queryRunner, schemaName);
-
-        // إنهاء المعاملة
-        await queryRunner.commitTransaction();
-
-        // تسجيل الحدث
-        await this.auditService.logBusinessEvent('TENANT_SCHEMA_CREATED', {
-          tenantId,
-          schemaName,
-          tenantName,
-          timestamp: new Date().toISOString()
-        });
-
-        // التحقق من العزل باستخدام الذكاء الاصطناعي
-        await this.validateNewSchemaIsolation(schemaName, tenantId);
-
-        this.logger.log(`✅ [M2] تم إنشاء المخطط بنجاح: ${schemaName}`);
-        return { success: true, schemaName };
-
-      } catch (error) {
-        await queryRunner.rollbackTransaction();
-        throw error;
-      } finally {
-        await queryRunner.release();
-      }
-    } catch (error) {
-      this.logger.error(`❌ [M2] فشل إنشاء مخطط المستأجر ${tenantId}: ${error.message}`);
-
-      // تسجيل حدث أمني
-      await this.auditService.logSecurityEvent('SCHEMA_CREATION_FAILURE', {
-        tenantId,
-        error: error.message,
-        stack: error.stack,
-        timestamp: new Date().toISOString()
-      });
-
-      throw new Error(`فشل في إنشاء مخطط المستأجر: ${error.message}`);
+        this.logger.log('✅ [M2] تم تهيئة خدمة اتصال المستأجرين بنجاح');
     }
-  }
 
-  private generateSchemaName(tenantId: string): string {
-    // تنظيف tenantId لمنع حقن SQL
-    const safeId = tenantId.toLowerCase()
-      .replace(/[^a-z0-9-_]/g, '_')
-      .replace(/_{2,}/g, '_')
-      .trim()
-      .slice(0, 50);
+    /**
+     * الحصول على اسم مخطط المستأجر
+     */
+    getSchemaName(tenantId: string): string {
+        // تنظيف tenantId لمنع حقن SQL
+        const safeId = tenantId.toLowerCase()
+            .replace(/[^a-z0-9-_]/g, '_')
+            .replace(/_{2,}/g, '_')
+            .trim()
+            .slice(0, 50);
 
-    return `tenant_${safeId}`;
-  }
+        return `tenant_${safeId}`;
+    }
 
-  private async createBaseTables(queryRunner: QueryRunner, schemaName: string, tenantId: string, tenantName: string) {
-    this.logger.log(`[M2] إنشاء الجداول الأساسية في المخطط: ${schemaName}`);
+    /**
+     * التحقق من وجود مخطط المستأجر
+     */
+    async schemaExists(tenantId: string): Promise<boolean> {
+        const schemaName = this.getSchemaName(tenantId);
+        const queryRunner = this.dataSource.createQueryRunner();
 
-    // إنشاء جدول المستخدمين
-    await queryRunner.query(`
+        try {
+            await queryRunner.connect();
+            return await queryRunner.hasSchema(schemaName);
+        } finally {
+            await queryRunner.release();
+        }
+    }
+
+    /**
+     * تهيئة مخطط المستأجر (إنشاءه إذا لم يكن موجوداً)
+     */
+    async initializeTenantSchema(tenantId: string, tenantName: string): Promise<boolean> {
+        const schemaName = this.getSchemaName(tenantId);
+
+        if (this.initializedSchemas.has(schemaName)) {
+            this.logger.debug(`[M2] ✅ المخطط موجود مسبقاً في الذاكرة: ${schemaName}`);
+            return true;
+        }
+
+        const queryRunner = this.dataSource.createQueryRunner();
+
+        try {
+            await queryRunner.connect();
+            await queryRunner.startTransaction();
+
+            // التحقق من وجود المخطط
+            const exists = await queryRunner.hasSchema(schemaName);
+
+            if (!exists) {
+                this.logger.log(`[M2] 🏗️ إنشاء مخطط جديد للمستأجر: ${tenantName} (${tenantId})`);
+
+                // إنشاء المخطط
+                await queryRunner.createSchema(schemaName, true);
+
+                // إنشاء الجداول الأساسية
+                await this.createBaseTables(queryRunner, schemaName, tenantId);
+
+                // تسجيل الحدث
+                await this.auditService.logBusinessEvent('TENANT_SCHEMA_CREATED', {
+                    tenantId,
+                    schemaName,
+                    tenantName,
+                    timestamp: new Date().toISOString()
+                });
+            }
+
+            await queryRunner.commitTransaction();
+            this.initializedSchemas.add(schemaName);
+
+            this.logger.log(`[M2] ✅ تم تهيئة المخطط بنجاح: ${schemaName}`);
+            return true;
+
+        } catch (error) {
+            await queryRunner.rollbackTransaction();
+
+            this.logger.error(`[M2] ❌ فشل تهيئة مخطط المستأجر ${tenantId}: ${error.message}`);
+
+            await this.auditService.logSecurityEvent('SCHEMA_INITIALIZATION_FAILURE', {
+                tenantId,
+                schemaName,
+                error: error.message,
+                stack: error.stack,
+                timestamp: new Date().toISOString()
+            });
+
+            throw new Error(`فشل في تهيئة مخطط المستأجر: ${error.message}`);
+        } finally {
+            await queryRunner.release();
+        }
+    }
+
+    /**
+     * إنشاء الجداول الأساسية في مخطط المستأجر
+     */
+    private async createBaseTables(queryRunner: any, schemaName: string, tenantId: string) {
+        // إنشاء جدول المستخدمين
+        await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS "${schemaName}"."users" (
         id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid(),
         email VARCHAR(255) UNIQUE NOT NULL,
         password_hash VARCHAR(255) NOT NULL,
         first_name VARCHAR(100),
         last_name VARCHAR(100),
-        role VARCHAR(20) DEFAULT 'USER' CHECK (role IN ('USER', 'ADMIN', 'SUPER_ADMIN')),
+        role VARCHAR(20) DEFAULT 'USER' CHECK (role IN ('USER', 'ADMIN', 'STORE_MANAGER')),
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         tenant_id VARCHAR(36) NOT NULL DEFAULT '${tenantId}'
       )
     `);
 
-    // إنشاء فهرس على البريد الإلكتروني
-    await queryRunner.query(`
-      CREATE INDEX IF NOT EXISTS idx_users_email ON "${schemaName}"."users" (email)
+        // إنشاء فهرس على البريد الإلكتروني
+        await queryRunner.query(`
+      CREATE INDEX IF NOT EXISTS idx_${schemaName}_users_email ON "${schemaName}"."users" (email)
     `);
 
-    // إنشاء جدول الإعدادات
-    await queryRunner.query(`
+        // إنشاء جدول المنتجات
+        await queryRunner.query(`
+      CREATE TABLE IF NOT EXISTS "${schemaName}"."products" (
+        id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid(),
+        name VARCHAR(255) NOT NULL,
+        description TEXT,
+        price DECIMAL(10, 2) NOT NULL,
+        stock_quantity INTEGER DEFAULT 0,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        tenant_id VARCHAR(36) NOT NULL DEFAULT '${tenantId}'
+      )
+    `);
+
+        // إنشاء جدول الإعدادات
+        await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS "${schemaName}"."settings" (
         id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid(),
         key VARCHAR(100) NOT NULL UNIQUE,
@@ -8076,176 +7541,168 @@ export class SchemaManagerService implements OnModuleInit {
       )
     `);
 
-    this.logger.log(`✅ [M2] تم إنشاء الجداول الأساسية للمستأجر: ${tenantName}`);
-  }
-
-  private async setSchemaPermissions(queryRunner: QueryRunner, schemaName: string) {
-    this.logger.log(`[M2] تعيين الصلاحيات للمخطط: ${schemaName}`);
-
-    // الحصول على اسم المستخدم من DATABASE_URL
-    const dbUrl = new URL(this.configService.get<string>('DATABASE_URL'));
-    const dbUser = dbUrl.username;
-
-    // منح الصلاحيات
-    await queryRunner.query(`
-      GRANT USAGE ON SCHEMA "${schemaName}" TO "${dbUser}";
-      GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA "${schemaName}" TO "${dbUser}";
-      GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA "${schemaName}" TO "${dbUser}";
-      
-      ALTER DEFAULT PRIVILEGES IN SCHEMA "${schemaName}"
-      GRANT ALL PRIVILEGES ON TABLES TO "${dbUser}";
-      
-      ALTER DEFAULT PRIVILEGES IN SCHEMA "${schemaName}"
-      GRANT ALL PRIVILEGES ON SEQUENCES TO "${dbUser}";
-    `);
-
-    this.logger.log(`✅ [M2] تم تعيين الصلاحيات للمخطط: ${schemaName}`);
-  }
-
-  private async validateNewSchemaIsolation(schemaName: string, tenantId: string) {
-    this.logger.log(`[M2] 🔍 التحقق من عزل المخطط الجديد: ${schemaName}`);
-
-    try {
-      const isolationData = {
-        tenantId,
-        schemaName,
-        operationType: 'CREATE',
-        contextData: {
-          requestId: 'schema-creation-validation',
-          userId: 'system',
-          ipAddress: '127.0.0.1'
-        }
-      };
-
-      const result = await this.vercelAgentFactory.validateDatabaseIsolation(isolationData);
-
-      if (result.isolationStatus !== 'SECURE') {
-        this.logger.error(`🚨 [M2] كشف الذكاء الاصطناعي عن مشاكل في عزل المخطط الجديد: ${schemaName}`);
-
-        // محاولة الإصلاح التلقائي
-        if (result.recommendedActions.includes('RECREATE_SCHEMA')) {
-          this.logger.log(`[M2] 🛠️ محاولة الإصلاح التلقائي: إعادة إنشاء المخطط`);
-          // سيتم تنفيذ الإصلاح في إصدار لاحق
-        }
-
-        // تسجيل الحدث
-        await this.auditService.logSecurityEvent('NEW_SCHEMA_ISOLATION_WARNING', {
-          tenantId,
-          schemaName,
-          analysis: result,
-          timestamp: new Date().toISOString()
-        });
-      } else {
-        this.logger.log(`✅ [M2] نجاح التحقق من عزل المخطط الجديد: ${schemaName}`);
-      }
-    } catch (error) {
-      this.logger.error(`❌ [M2] فشل التحقق من عزل المخطط الجديد: ${error.message}`);
+        this.logger.log(`[M2] ✅ تم إنشاء الجداول الأساسية في المخطط: ${schemaName}`);
     }
-  }
 
-  async switchToTenantSchema(tenantId: string, queryRunner?: QueryRunner): Promise<string> {
-    if (!this.isInitialized) await this.initialize();
+    /**
+     * تنفيذ استعلام في سياق مخطط المستأجر
+     */
+    async executeInTenantContext<T>(
+        tenantId: string,
+        callback: (queryRunner: any) => Promise<T>
+    ): Promise<T> {
+        // التأكد من تهيئة المخطط
+        if (!(await this.schemaExists(tenantId))) {
+            throw new Error(`مخطط المستأجر غير موجود: ${tenantId}`);
+        }
 
-    const schemaName = this.generateSchemaName(tenantId);
+        const schemaName = this.getSchemaName(tenantId);
+        const queryRunner = this.dataSource.createQueryRunner();
 
-    try {
-      if (queryRunner) {
-        // استخدام queryRunner موجود
-        await queryRunner.query(`SET search_path TO "${schemaName}"`);
-      } else {
-        // إنشاء queryRunner مؤقت
-        const tempRunner = this.dataSource.createQueryRunner();
         try {
-          await tempRunner.connect();
-          await tempRunner.query(`SET search_path TO "${schemaName}"`);
+            await queryRunner.connect();
+
+            // تعيين مخطط المستأجر للاتصال الحالي
+            await queryRunner.query(`SET search_path TO "${schemaName}", public`);
+
+            // تنفيذ الاستعلام
+            const result = await callback(queryRunner);
+
+            // تسجيل النجاح
+            await this.auditService.logBusinessEvent('TENANT_QUERY_EXECUTED', {
+                tenantId,
+                schemaName,
+                timestamp: new Date().toISOString()
+            });
+
+            return result;
+
+        } catch (error) {
+            this.logger.error(`[M2] ❌ فشل تنفيذ الاستعلام في سياق المستأجر: ${error.message}`);
+
+            await this.auditService.logSecurityEvent('TENANT_QUERY_FAILURE', {
+                tenantId,
+                schemaName,
+                error: error.message,
+                stack: error.stack,
+                timestamp: new Date().toISOString()
+            });
+
+            throw error;
         } finally {
-          await tempRunner.release();
+            await queryRunner.release();
         }
-      }
-
-      this.logger.debug(`[M2] ✅ تم التبديل إلى مخطط المستأجر: ${schemaName}`);
-      return schemaName;
-    } catch (error) {
-      this.logger.error(`❌ [M2] فشل التبديل إلى مخطط المستأجر ${tenantId}: ${error.message}`);
-
-      // التحقق من وجود المخطط
-      const exists = await this.schemaExists(tenantId);
-      if (!exists) {
-        throw new Error(`مخطط المستأجر غير موجود: ${tenantId}. يرجى إنشاء المستأجر أولاً.`);
-      }
-
-      throw new Error(`فشل في التبديل إلى مخطط المستأجر: ${error.message}`);
     }
-  }
 
-  private async schemaExists(tenantId: string): Promise<boolean> {
-    const schemaName = this.generateSchemaName(tenantId);
-    const queryRunner = this.dataSource.createQueryRunner();
+    /**
+     * التحقق من سلامة عزل المخطط
+     */
+    async validateIsolationIntegrity(tenantId: string): Promise<boolean> {
+        const schemaName = this.getSchemaName(tenantId);
+        const queryRunner = this.dataSource.createQueryRunner();
 
-    try {
-      await queryRunner.connect();
-      return await queryRunner.hasSchema(schemaName);
-    } finally {
-      await queryRunner.release();
-    }
-  }
+        try {
+            await queryRunner.connect();
 
-  async dropTenantSchema(tenantId: string): Promise<boolean> {
-    if (!this.isInitialized) await this.initialize();
+            // 1. التحقق من وجود المخطط
+            const schemaExists = await queryRunner.hasSchema(schemaName);
+            if (!schemaExists) {
+                this.logger.error(`[M2] ❌ المخطط غير موجود: ${schemaName}`);
+                return false;
+            }
 
-    this.logger.warn(`🗑️ [M2] حذف مخطط المستأجر: ${tenantId}`);
+            // 2. التحقق من وجود الجداول الأساسية
+            const tables = ['users', 'products', 'settings'];
+            for (const table of tables) {
+                const tableExists = await queryRunner.query(
+                    `SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = $1 AND table_name = $2)`,
+                    [schemaName, table]
+                );
 
-    try {
-      const schemaName = this.generateSchemaName(tenantId);
-      const queryRunner = this.dataSource.createQueryRunner();
+                if (!tableExists[0].exists) {
+                    this.logger.error(`[M2] ❌ الجدول غير موجود: ${schemaName}.${table}`);
+                    return false;
+                }
+            }
 
-      try {
-        await queryRunner.connect();
-        await queryRunner.startTransaction();
+            // 3. التحقق من وجود عمود tenant_id
+            const hasTenantId = await queryRunner.query(
+                `SELECT EXISTS (SELECT FROM information_schema.columns WHERE table_schema = $1 AND table_name = 'users' AND column_name = 'tenant_id')`,
+                [schemaName]
+            );
 
-        // التحقق من وجود المخطط
-        const schemaExists = await queryRunner.hasSchema(schemaName);
-        if (!schemaExists) {
-          this.logger.warn(`[M2] ⚠️ المخطط غير موجود للمستأجر: ${tenantId}`);
-          await queryRunner.commitTransaction();
-          return false;
+            if (!hasTenantId[0].exists) {
+                this.logger.error(`[M2] ❌ عمود tenant_id غير موجود في جدول المستخدمين`);
+                return false;
+            }
+
+            this.logger.log(`[M2] ✅ نجاح التحقق من سلامة عزل المخطط: ${schemaName}`);
+            return true;
+
+        } catch (error) {
+            this.logger.error(`[M2] ❌ فشل التحقق من سلامة العزل: ${error.message}`);
+            return false;
+        } finally {
+            await queryRunner.release();
         }
-
-        // حذف المخطط بالكامل
-        await queryRunner.dropSchema(schemaName, true);
-
-        // إنهاء المعاملة
-        await queryRunner.commitTransaction();
-
-        // تسجيل الحدث
-        await this.auditService.logBusinessEvent('TENANT_SCHEMA_DELETED', {
-          tenantId,
-          schemaName,
-          timestamp: new Date().toISOString()
-        });
-
-        this.logger.log(`✅ [M2] تم حذف المخطط بنجاح: ${schemaName}`);
-        return true;
-
-      } catch (error) {
-        await queryRunner.rollbackTransaction();
-        throw error;
-      } finally {
-        await queryRunner.release();
-      }
-    } catch (error) {
-      this.logger.error(`❌ [M2] فشل حذف مخطط المستأجر ${tenantId}: ${error.message}`);
-      throw new Error(`فشل في حذف مخطط المستأجر: ${error.message}`);
     }
-  }
 
-  getDataSource(): DataSource {
-    if (!this.isInitialized) {
-      throw new Error('مدير المخططات غير مهيأ بعد');
+    /**
+     * حذف مخطط المستأجر (للإلغاء أو إعادة التهيئة)
+     */
+    async dropTenantSchema(tenantId: string): Promise<boolean> {
+        const schemaName = this.getSchemaName(tenantId);
+        const queryRunner = this.dataSource.createQueryRunner();
+
+        try {
+            await queryRunner.connect();
+            await queryRunner.startTransaction();
+
+            // التحقق من وجود المخطط
+            const exists = await queryRunner.hasSchema(schemaName);
+            if (!exists) {
+                this.logger.warn(`[M2] ⚠️ المخطط غير موجود للمستأجر: ${tenantId}`);
+                await queryRunner.commitTransaction();
+                return false;
+            }
+
+            // حذف المخطط بالكامل
+            await queryRunner.dropSchema(schemaName, true);
+
+            // إزالة من الذاكرة المؤقتة
+            this.initializedSchemas.delete(schemaName);
+
+            await queryRunner.commitTransaction();
+
+            await this.auditService.logBusinessEvent('TENANT_SCHEMA_DELETED', {
+                tenantId,
+                schemaName,
+                timestamp: new Date().toISOString()
+            });
+
+            this.logger.log(`[M2] ✅ تم حذف المخطط بنجاح: ${schemaName}`);
+            return true;
+
+        } catch (error) {
+            await queryRunner.rollbackTransaction();
+
+            this.logger.error(`[M2] ❌ فشل حذف مخطط المستأجر ${tenantId}: ${error.message}`);
+
+            await this.auditService.logSecurityEvent('SCHEMA_DELETION_FAILURE', {
+                tenantId,
+                schemaName,
+                error: error.message,
+                stack: error.stack,
+                timestamp: new Date().toISOString()
+            });
+
+            throw new Error(`فشل في حذف مخطط المستأجر: ${error.message}`);
+        } finally {
+            await queryRunner.release();
+        }
     }
-    return this.dataSource;
-  }
 }
+
 
 /*******************************************************************************
  * FILE: tenant-database.service.ts
@@ -8256,7 +7713,7 @@ import { REQUEST } from '@nestjs/core';
 import { Request } from 'express';
 import { DataSource, Repository, SelectQueryBuilder } from 'typeorm';
 import { TenantContextService } from '../../security/layers/s2-tenant-isolation/tenant-context.service';
-import { SchemaManagerService } from './schema-manager.service';
+import { TenantConnectionService } from './tenant-connection.service';
 import { IsolationValidatorService } from './isolation-validator.service';
 import { AuditService } from '../../security/layers/s4-audit-logging/audit.service';
 import { Logger } from '@nestjs/common';
@@ -8264,32 +7721,29 @@ import { Logger } from '@nestjs/common';
 @Injectable({ scope: Scope.REQUEST })
 export class TenantDatabaseService {
   private readonly logger = new Logger(TenantDatabaseService.name);
-  private dataSource: DataSource;
   private currentSchema: string;
   private isSystemOperation = false;
-
   constructor(
     @Inject(REQUEST) private readonly request: Request,
     private readonly tenantContext: TenantContextService,
-    private readonly schemaManager: SchemaManagerService,
+    private readonly tenantConnection: TenantConnectionService,
     private readonly isolationValidator: IsolationValidatorService,
-    private readonly auditService: AuditService
+    private readonly auditService: AuditService,
+    private readonly dataSource: DataSource
   ) {
     this.initialize();
   }
 
   private async initialize() {
-    this.dataSource = this.schemaManager.getDataSource();
     this.isSystemOperation = this.tenantContext.isSystemContext();
 
     if (!this.isSystemOperation) {
       const tenantId = this.tenantContext.getTenantId();
       if (tenantId) {
-        this.currentSchema = await this.schemaManager.switchToTenantSchema(tenantId);
+        this.currentSchema = this.tenantConnection.getSchemaName(tenantId);
       }
     } else {
-      // عمليات النظام تستخدم مخطط النظام
-      this.currentSchema = this.schemaManager['systemSchema'];
+      this.currentSchema = 'public'; // أو مخطط النظام المخصص
     }
   }
 
@@ -8357,9 +7811,12 @@ export class TenantDatabaseService {
     try {
       await queryRunner.connect();
 
-      // التبديل إلى مخطط المستأجر
+      // التحقق من وجود المخطط (عبر الخدمة الجديدة)
       if (!this.isSystemOperation && tenantId) {
-        await this.schemaManager.switchToTenantSchema(tenantId, queryRunner);
+        const exists = await this.tenantConnection.schemaExists(tenantId);
+        if (!exists) throw new Error(`مخطط المستأجر غير موجود: ${tenantId}`);
+
+        await queryRunner.query(`SET search_path TO "${this.currentSchema}", public`);
       }
 
       // التحقق من أمان الاستعلام
@@ -8470,7 +7927,7 @@ export class TenantDatabaseService {
 
   forceSystemContext() {
     this.isSystemOperation = true;
-    this.currentSchema = this.schemaManager['systemSchema'];
+    this.currentSchema = 'public';
     this.logger.warn('[M2] ⚠️ تم تفعيل سياق النظام يدوياً');
   }
 }

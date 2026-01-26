@@ -16,11 +16,12 @@ export class TenantScopedGuard implements CanActivate {
     const handler = context.getHandler();
     const className = context.getClass().name;
 
-    // 1. التحقق من الإعفاء (Exemption)
-    const isPublic = this.reflector.get<boolean>('isPublic', handler) ||
-      this.reflector.get<boolean>('isPublic', context.getClass());
+    // 1. استثناء مسارات الإدارة والمسارات العامة
+    const isPublic = this.reflector?.get<boolean>('isPublic', handler) ||
+      this.reflector?.get<boolean>('isPublic', context.getClass());
 
-    if (isPublic) {
+    if (isPublic || request.url?.includes('/api/tenants')) {
+      this.logger.debug(`[S2] ✅ استثناء مسار عام أو إداري: ${request.url}`);
       return true;
     }
 
