@@ -90,9 +90,8 @@ async function bootstrap() {
       handler: (req, res) => {
         logger.warn(`[S6] 🚨 تجاوز حد المعدل من IP: ${req.ip}`);
 
-        // الحصول على سياق المستأجر لإرسال تنبيه مخصص
-        const tenantContext = app.get(TenantContextService);
-        const tenantId = tenantContext.getTenantId() || 'system';
+        // استخراج سياق المستأجر يدوياً من الهيدر لتجنب مشاكل Scoped Services في main.ts
+        const tenantId = req.headers['x-tenant-id']?.toString() || 'system';
 
         res.status(429).json({
           statusCode: 429,
@@ -103,8 +102,7 @@ async function bootstrap() {
         });
       },
       keyGenerator: (req) => {
-        const tenantContext = app.get(TenantContextService);
-        const tenantId = tenantContext.getTenantId() || 'system';
+        const tenantId = req.headers['x-tenant-id']?.toString() || 'system';
         return `${req.ip}:${tenantId}`;
       }
     });
@@ -127,14 +125,10 @@ async function bootstrap() {
           value: err.value
         }));
 
-        const tenantContext = app.get(TenantContextService);
-        const tenantId = tenantContext.getTenantId() || 'system';
-
         return {
           statusCode: 400,
           message: 'مدخلات غير صالحة',
-          errors: errorMessages,
-          tenantId
+          errors: errorMessages
         };
       }
     }));
@@ -145,10 +139,7 @@ async function bootstrap() {
     // S4 & S2: يتم تفعيل تسجيل التدقيق وعزل المستأجرين عبر AppModule
     logger.log('✅ [S4 & S2] تم تفعيل تسجيل التدقيق وعزل المستأجرين');
 
-    // S5: معالجة الأخطاء الآمنة
-    const auditService = app.get(AuditService);
-    const tenantContext = app.get(TenantContextService);
-    app.useGlobalFilters(new AllExceptionsFilter(auditService, tenantContext));
+    // S5: يتم تفعيل معالجة الأخطاء الآمنة عبر AppModule (APP_FILTER)
     logger.log('✅ [S5] تم تفعيل معالجة الأخطاء الآمنة');
 
     // Swagger Configuration (للتطوير فقط)
