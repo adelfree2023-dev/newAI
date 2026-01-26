@@ -18,16 +18,13 @@ export class SchemaInitializerService implements OnModuleInit {
     async onModuleInit() {
         if (this.isInitialized) return;
 
-        this.logger.log('🔄 [M2] بدء تهيئة مخططات المستأجرين النشطين...');
+        this.safeLog('info', '🔄 [M2] بدء تهيئة مخططات المستأجرين النشطين...');
 
         try {
             // تهيئة مخطط النظام
             await this.initializeSystemSchema();
 
             // تحميل وتهيئة المستأجرين النشطين
-            // في الإصدار الحقيقي، سيتم جلبهم من قاعدة البيانات
-            // هنا نستخدم بيانات محاكاة
-
             const mockTenants = [
                 { id: 'tenant1', name: 'متجر الإلكتروني الأول' },
                 { id: 'tenant2', name: 'العيادة الطبية' },
@@ -37,18 +34,28 @@ export class SchemaInitializerService implements OnModuleInit {
             for (const tenant of mockTenants) {
                 try {
                     await this.tenantConnection.initializeTenantSchema(tenant.id, tenant.name);
-                    this.logger.log(`[M2] ✅ تم تهيئة المستأجر: ${tenant.name}`);
+                    this.safeLog('info', `[M2] ✅ تم تهيئة المستأجر: ${tenant.name}`);
                 } catch (error) {
-                    this.logger.error(`[M2] ❌ فشل تهيئة المستأجر ${tenant.name}: ${error.message}`);
+                    this.safeLog('error', `[M2] ❌ فشل تهيئة المستأجر ${tenant.name}: ${error.message}`);
                 }
             }
 
             this.isInitialized = true;
-            this.logger.log('✅ [M2] اكتملت تهيئة مخططات المستأجرين');
+            this.safeLog('info', '✅ [M2] اكتملت تهيئة مخططات المستأجرين');
 
         } catch (error) {
-            this.logger.error(`[M2] ❌ فشل تهيئة مخططات المستأجرين: ${error.message}`);
+            this.safeLog('error', `[M2] ❌ فشل تهيئة مخططات المستأجرين: ${error.message}`);
             throw error;
+        }
+    }
+
+    private safeLog(level: 'info' | 'error' | 'warn', message: string) {
+        if (this.logger && typeof this.logger.log === 'function') {
+            if (level === 'info') this.logger.log(message);
+            if (level === 'error') this.logger.error(message);
+            if (level === 'warn') this.logger.warn(message);
+        } else {
+            console.log(`[SAFE-LOG] [${level.toUpperCase()}] ${message}`);
         }
     }
 
@@ -58,14 +65,14 @@ export class SchemaInitializerService implements OnModuleInit {
             const systemSchemaExists = await this.tenantConnection.schemaExists('system');
 
             if (!systemSchemaExists) {
-                this.logger.warn('[M2] ⚠️ إنشاء مخطط النظام...');
+                this.safeLog('warn', '[M2] ⚠️ إنشاء مخطط النظام...');
                 await this.tenantConnection.initializeTenantSchema('system', 'System Schema');
             }
 
-            this.logger.log('[M2] ✅ مخطط النظام جاهز');
+            this.safeLog('info', '[M2] ✅ مخطط النظام جاهز');
 
         } catch (error) {
-            this.logger.error(`[M2] ❌ فشل تهيئة مخطط النظام: ${error.message}`);
+            this.safeLog('error', `[M2] ❌ فشل تهيئة مخطط النظام: ${error.message}`);
             throw error;
         }
     }
@@ -78,7 +85,7 @@ export class SchemaInitializerService implements OnModuleInit {
             const success = await this.tenantConnection.initializeTenantSchema(tenantId, tenantName);
 
             if (success) {
-                this.logger.log(`[M2] ✅ تم تهيئة مخطط المستأجر الجديد: ${tenantName}`);
+                this.safeLog('info', `[M2] ✅ تم تهيئة مخطط المستأجر الجديد: ${tenantName}`);
 
                 await this.auditService.logBusinessEvent('NEW_TENANT_INITIALIZED', {
                     tenantId,
@@ -90,7 +97,7 @@ export class SchemaInitializerService implements OnModuleInit {
             return success;
 
         } catch (error) {
-            this.logger.error(`[M2] ❌ فشل تهيئة مخطط المستأجر الجديد ${tenantName}: ${error.message}`);
+            this.safeLog('error', `[M2] ❌ فشل تهيئة مخطط المستأجر الجديد ${tenantName}: ${error.message}`);
             throw error;
         }
     }
