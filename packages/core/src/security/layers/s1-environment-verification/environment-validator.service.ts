@@ -5,7 +5,7 @@ import { ConfigService } from '@nestjs/config';
 export class EnvironmentValidatorService implements OnModuleInit {
   private readonly logger = new Logger(EnvironmentValidatorService.name);
 
-  constructor(private readonly configService: ConfigService) { }
+  constructor(private readonly configService?: ConfigService) { }
 
   async onModuleInit() {
     this.logger.log('🔐 [S1] بدء التحقق من البيئة والأمان...');
