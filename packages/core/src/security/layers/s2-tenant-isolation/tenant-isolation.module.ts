@@ -14,4 +14,4 @@ import { APP_GUARD } from '@nestjs/core';
   ],
   exports: [TenantContextService, TenantScopedGuard],
 })
-export class TenantIsolationModule {}
+export class TenantIsolationModule { }

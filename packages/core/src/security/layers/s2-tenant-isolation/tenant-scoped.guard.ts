@@ -1,7 +1,6 @@
-import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
-import { TenantContextService } from './tenant-context.service';
+import { Injectable, CanActivate, ExecutionContext, ForbiddenException, Logger } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { Logger } from '@nestjs/common';
+import { TenantContextService } from './tenant-context.service';
 
 @Injectable()
 export class TenantScopedGuard implements CanActivate {
@@ -10,80 +9,55 @@ export class TenantScopedGuard implements CanActivate {
   constructor(
     private readonly tenantContext: TenantContextService,
     private readonly reflector: Reflector
-  ) {}
+  ) { }
 
-  canActivate(context: ExecutionContext): boolean {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
     const handler = context.getHandler();
     const className = context.getClass().name;
-    const handlerName = handler.name;
 
-    // التحقق مما إذا كانت هذه العملية معفاة من التحقق
-    const isExempt = this.reflector.get<boolean>('tenant-exempt', handler) || 
-                    this.reflector.get<boolean>('tenant-exempt', context.getClass());
-    
-    if (isExempt) {
-      this.logger.debug(`[S2] ✅ العملية معفاة من فحص المستأجر: ${className}.${handlerName}`);
+    // 1. التحقق من الإعفاء (Exemption)
+    const isPublic = this.reflector.get<boolean>('isPublic', handler) ||
+      this.reflector.get<boolean>('isPublic', context.getClass());
+
+    if (isPublic) {
       return true;
     }
 
-    // استخراج tenantId من الطلب
-    const requestedTenantId = this.extractTenantIdFromRequest(request, context);
-    
-    if (!requestedTenantId) {
-      this.logger.error(`[S2] ❌ لا يمكن تحديد المستأجر للعملية: ${className}.${handlerName}`);
-      throw new ForbiddenException('لا يمكن تحديد السياق الأمني للمستأجر');
+    // 2. الحصول على معرف المستأجر من السياق الحالي (الذي تم استخراجه في Middleware)
+    const tenantId = this.tenantContext.getTenantId();
+
+    // 3. السماح لعمليات النظام (System Operations)
+    if (this.tenantContext.isSystemContext()) {
+      this.logger.debug(`[S2] ✅ السماح بعملية نظام: ${className}.${handler.name}`);
+      return true;
     }
 
-    // التحقق من الصلاحية
-    const hasAccess = this.tenantContext.validateTenantAccess(requestedTenantId);
-    
-    if (!hasAccess) {
+    // 4. التحقق الإلزامي من وجود المستأجر
+    if (!tenantId) {
+      this.logger.error(`[S2] 🚨 محاولة وصول مجهولة مرفوضة: ${className}.${handler.name}`);
+      throw new ForbiddenException('يجب تحديد معرف المستأجر للوصول لهذه الموارد');
+    }
+
+    // 5. التحقق من سلامة العزل (Cross-tenant check)
+    // نتحقق مما إذا كان المستأجر يحاول الوصول لمعرف مستأجر آخر في معلمات الطلب
+    const requestedTenantIdInParams = this.extractRequestedTenantId(request);
+
+    if (requestedTenantIdInParams && requestedTenantIdInParams !== tenantId) {
       this.logger.error(
-        `[S2] 🚨 رفض الوصول: ${this.tenantContext.getTenantId()} لا يستطيع الوصول إلى ${requestedTenantId} - ${className}.${handlerName}`
+        `[S2] 🚨 محاولة اختراق عزل المستأجرين: ${tenantId} حاول الوصول إلى ${requestedTenantIdInParams}`
       );
-      throw new ForbiddenException('رفض الوصول: المستأجر غير مصرح له');
+      throw new ForbiddenException('غير مصرح لك بالوصول لبيانات هذا المستأجر');
     }
 
-    this.logger.debug(`[S2] ✅ المستأجر ${requestedTenantId} مفوض للوصول إلى ${className}.${handlerName}`);
+    this.logger.debug(`[S2] ✅ تم التحقق من أمان المستأجر: ${tenantId}`);
     return true;
   }
 
-  private extractTenantIdFromRequest(request: any, context: ExecutionContext): string | null {
-    // البحث في معلمات المسار
-    if (request.params && request.params.tenantId) {
-      return request.params.tenantId;
-    }
-    
-    if (request.params && request.params.storeId) {
-      return request.params.storeId;
-    }
-    
-    // البحث في الاستعلام
-    if (request.query && request.query.tenantId) {
-      return request.query.tenantId;
-    }
-    
-    // البحث في الجسم
-    if (request.body && request.body.tenantId) {
-      return request.body.tenantId;
-    }
-    
-    // البحث في الرؤوس
-    if (request.headers['x-tenant-id']) {
-      return request.headers['x-tenant-id'].toString();
-    }
-    
-    // بالنسبة لبعض المحارس الخاصة
-    const handler = context.getHandler();
-    const className = context.getClass().name;
-    
-    // السماح لبعض العمليات النظامية
-    if (className.includes('AuthController') || className.includes('HealthController')) {
-      return this.tenantContext.getTenantId();
-    }
-    
-    this.logger.warn(`[S2] ⚠️ لا يمكن العثور على tenantId للطلب: ${className}.${handler.name}`);
-    return this.tenantContext.getTenantId();
+  private extractRequestedTenantId(request: any): string | null {
+    return request.params?.tenantId ||
+      request.query?.tenantId ||
+      request.body?.tenantId ||
+      null;
   }
 }

@@ -1,41 +1,21 @@
-import { Injectable, Scope, Inject } from '@nestjs/common';
+import { Injectable, Scope, Inject, Logger } from '@nestjs/common';
 import { REQUEST } from '@nestjs/core';
 import { Request } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import { Logger } from '@nestjs/common';
 
 @Injectable({ scope: Scope.REQUEST })
 export class TenantContextService {
   private readonly logger = new Logger(TenantContextService.name);
-  private tenantId: string;
-  private tenantSchema: string;
+  private tenantId: string | null = null;
+  private tenantSchema: string | null = null;
   private isSystemOperation = false;
 
   constructor(@Inject(REQUEST) private readonly request: Request) {
-    // Only initialize if we're in a request context and not manually initialized
-    if (this.request && !this.tenantId) {
-      this.initializeFromRequest();
-    }
-  }
-
-  public initializeTenantContext(tenantId: string | null, req?: Request) {
-    if (tenantId) {
-      this.tenantId = tenantId;
-      this.tenantSchema = `tenant_${this.sanitizeTenantId(this.tenantId)}`;
-      this.isSystemOperation = false;
-    } else {
-      this.isSystemOperation = true;
-    }
-  }
-
-  public forceTenantContext(tenantId: string) {
-    this.tenantId = tenantId;
-    this.tenantSchema = `tenant_${this.sanitizeTenantId(this.tenantId)}`;
-    this.isSystemOperation = false;
+    this.initializeFromRequest();
   }
 
   private initializeFromRequest() {
-    // محاولة استخراج tenantId من عدة مصادر
+    // استخراج tenantId من عدة مصادر
     this.tenantId =
       this.request.headers['x-tenant-id']?.toString() ||
       this.request.subdomains[0] ||
@@ -44,7 +24,7 @@ export class TenantContextService {
 
     if (this.tenantId) {
       this.tenantSchema = `tenant_${this.sanitizeTenantId(this.tenantId)}`;
-      this.logger.debug(`[S2] تم تعيين سياق المستأجر: ${this.tenantId} -> ${this.tenantSchema}`);
+      this.logger.debug(`[S2] تم تعيين سياق المستأجر: ${this.tenantId}`);
     } else {
       // عمليات النظام لا تحتوي على tenantId
       this.isSystemOperation = true;
@@ -75,18 +55,21 @@ export class TenantContextService {
   }
 
   getTenantId(): string | null {
-    return this.tenantId || null;
+    return this.tenantId;
   }
 
   getTenantSchema(): string | null {
-    return this.tenantSchema || null;
+    return this.tenantSchema;
   }
 
   isSystemContext(): boolean {
     return this.isSystemOperation;
   }
 
-  async validateTenantAccess(requestedTenantId: string): Promise<boolean> {
+  /**
+   * التحقق من صلاحية الوصول للمستأجر
+   */
+  validateTenantAccess(requestedTenantId: string): boolean {
     // السماح لعمليات النظام بالوصول إلى أي مستأجر
     if (this.isSystemOperation) {
       this.logger.warn(`[S2] ⚠️ عملية نظام تحاول الوصول إلى مستأجر: ${requestedTenantId}`);
@@ -114,7 +97,7 @@ export class TenantContextService {
     return isValid;
   }
 
-  logSecurityIncident(type: string, details: any) {
+  private logSecurityIncident(type: string, details: any) {
     const incidentId = uuidv4();
     this.logger.error(`[S2] 🔒 حادث أمني [${incidentId}] - النوع: ${type}`);
     this.logger.error(JSON.stringify({
@@ -123,11 +106,21 @@ export class TenantContextService {
       details,
       stack: new Error().stack
     }, null, 2));
-
-    // هنا يمكن إرسال تنبيه فوري للمشرفين
-    // this.securityAlertService.sendAlert(type, details);
   }
 
+  /**
+   * تعيين سياق المستأجر يدوياً (للعمليات النظامية)
+   */
+  forceTenantContext(tenantId: string) {
+    this.tenantId = tenantId;
+    this.tenantSchema = `tenant_${this.sanitizeTenantId(tenantId)}`;
+    this.isSystemOperation = false;
+    this.logger.warn(`[S2] ⚠️ تم تعيين سياق المستأجر يدوياً: ${tenantId}`);
+  }
+
+  /**
+   * تفعيل سياق النظام يدوياً
+   */
   forceSystemContext() {
     this.isSystemOperation = true;
     this.tenantId = 'system';

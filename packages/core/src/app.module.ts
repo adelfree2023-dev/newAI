@@ -1,40 +1,39 @@
-import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { AISupervisorModule } from './security/ai-supervisor/ai-supervisor.module';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { TenantModule } from './tenants/tenant.module';
-import { AuditLoggerMiddleware } from './security/layers/s4-audit-logging/audit-logger.middleware';
-import { TenantContextMiddleware } from './tenants/context/tenant-context.middleware';
-import { ProductModule } from './products/product.module';
-import { SecurityValidationMiddleware } from './security/layers/s3-input-validation/security-validation.middleware';
-
-import { APP_FILTER } from '@nestjs/core';
-import { AllExceptionsFilter } from './security/layers/s5-error-handling/exceptions/secure-exception.filter';
+import { TenantIsolationModule } from './security/layers/s2-tenant-isolation/tenant-isolation.module';
+import { EnvironmentVerificationModule } from './security/layers/s1-environment-verification/environment-validator.module';
+import { InputValidationModule } from './security/layers/s3-input-validation/input-validation.module';
+import { AuditModule } from './security/layers/s4-audit-logging/audit.module';
+import { ErrorHandlingModule } from './security/layers/s5-error-handling/error-handling.module';
+import { RateLimitingModule } from './security/layers/s6-rate-limiting/rate-limit.module';
+import { EncryptionModule } from './security/layers/s7-encryption/encryption.module';
+import { WebProtectionModule } from './security/layers/s8-web-protection/web-protection.module';
 
 @Module({
     imports: [
         ConfigModule.forRoot({
             isGlobal: true,
-            envFilePath: ['.env.production', '.env.example'],
+            envFilePath: ['.env.local', '.env']
         }),
-        AISupervisorModule,
+        TypeOrmModule.forRoot({
+            type: 'postgres',
+            url: process.env.DATABASE_URL,
+            entities: [],
+            synchronize: false,
+            logging: process.env.NODE_ENV === 'development',
+            schema: 'public' // المخطط الافتراضي
+        }),
         TenantModule,
-        ProductModule,
-    ],
-    providers: [
-        {
-            provide: APP_FILTER,
-            useClass: AllExceptionsFilter,
-        },
+        TenantIsolationModule,
+        EnvironmentVerificationModule,
+        InputValidationModule,
+        AuditModule,
+        ErrorHandlingModule,
+        RateLimitingModule,
+        EncryptionModule,
+        WebProtectionModule
     ],
 })
-export class AppModule implements NestModule {
-    configure(consumer: MiddlewareConsumer) {
-        consumer
-            .apply(AuditLoggerMiddleware)
-            .forRoutes('*')
-            .apply(SecurityValidationMiddleware)
-            .forRoutes('*')
-            .apply(TenantContextMiddleware)
-            .forRoutes('*');
-    }
-}
+export class AppModule { }
