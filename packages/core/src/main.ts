@@ -2,11 +2,8 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
-import * as rateLimit from 'express-rate-limit';
-import { AllExceptionsFilter } from './security/layers/s5-error-handling/exceptions/secure-exception.filter';
-import { AuditLoggerMiddleware } from './security/layers/s4-audit-logging/audit-logger.middleware';
+import rateLimit from 'express-rate-limit';
 import { EnvironmentValidatorService } from './security/layers/s1-environment-verification/environment-validator.service';
-import { TenantConnectionService } from './tenants/database/tenant-connection.service';
 import { SchemaInitializerService } from './tenants/database/schema-initializer.service';
 
 async function bootstrap() {
@@ -64,13 +61,8 @@ async function bootstrap() {
     }));
     logger.log('✅ [S3] تم تفعيل التحقق من المدخلات');
 
-    // S4: تسجيل التدقيق
-    app.use(AuditLoggerMiddleware());
-    logger.log('✅ [S4] تم تفعيل تسجيل التدقيق');
-
-    // S5: معالجة الأخطاء
-    app.useGlobalFilters(new AllExceptionsFilter());
-    logger.log('✅ [S5] تم تفعيل معالجة الأخطاء الآمنة');
+    // ملاحظة: تم نقل S4 (AuditLogger) و S5 (ExceptionFilter) إلى AppModule 
+    // لضمان التعامل الصحيح مع التبعات (Dependencies)
 
     // تهيئة CORS
     app.enableCors({

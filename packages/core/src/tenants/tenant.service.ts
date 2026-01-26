@@ -98,12 +98,13 @@ export class TenantService {
 
       for (const tenant of mockTenants) {
         try {
-          // محاولة إنشاء المخطط إذا لم يكن موجوداً
-          const schemaResult = await this.schemaManager.createTenantSchema(tenant.id, tenant.name);
+          // محاولة تهيئة المخطط إذا لم يكن موجوداً
+          await this.schemaInitializer.initializeNewTenant(tenant.id, tenant.name);
+          const schemaName = this.tenantConnection.getSchemaName(tenant.id);
 
           this.activeTenants.set(tenant.id, {
             ...tenant,
-            schemaName: schemaResult.schemaName,
+            schemaName: schemaName,
             loadedAt: new Date().toISOString()
           });
 

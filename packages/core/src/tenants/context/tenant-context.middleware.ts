@@ -18,21 +18,24 @@ export class TenantContextMiddleware implements NestMiddleware {
       // 1. استخراج tenantId من الطلب
       const tenantId = this.extractTenantId(req);
 
-      // 2. تهيئة سياق المستأجر
-      this.tenantContext.initializeTenantContext(tenantId, req);
+      // 2. تهيئة سياق المستأجر يدوياً إذا وجد
+      if (tenantId) {
+        this.tenantContext.forceTenantContext(tenantId);
+      }
 
       // 3. تسجيل بداية الطلب
       this.logRequestStart(req, tenantId, startTime);
 
       // 4. التحقق من العزل قبل معالجة الطلب
-      this.tenantContext.validateTenantAccess(tenantId).catch(error => {
-        this.logger.error(`[M2] ❌ فشل التحقق من عزل المستأجر: ${error.message}`);
+      if (tenantId && !this.tenantContext.validateTenantAccess(tenantId)) {
+        this.logger.error(`[M2] ❌ فشل التحقق من عزل المستأجر: ${tenantId}`);
         res.status(403).json({
           statusCode: 403,
           message: 'فشل التحقق من سياق الأمان',
           error: 'TENANT_ISOLATION_FAILURE'
         });
-      });
+        return;
+      }
 
       // 5. تتبُّع انتهاء الطلب
       res.on('finish', () => {

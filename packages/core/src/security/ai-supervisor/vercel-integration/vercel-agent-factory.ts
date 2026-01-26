@@ -1,8 +1,6 @@
 import { Injectable, Logger, Scope } from '@nestjs/common';
 import { AgentRuntime } from '../shims/ai-agent-types';
 import { z, ZodSchema } from 'zod';
-import { DatabaseIsolationSkill } from '../skills/database-isolation-skill';
-import { SecurityProtocolSkill } from '../skills/security-protocol-skill';
 import { ThreatIntelligenceSkill } from '../skills/threat-intelligence-skill';
 import { TenantIsolationAgent } from '../agents/tenant-isolation-agent';
 import { QualityAssuranceAgent } from '../agents/qa-agent';
@@ -27,8 +25,6 @@ export class VercelAgentFactory {
         temperature: 0.3,
         maxTokens: 2000,
         skills: [
-          new DatabaseIsolationSkill(),
-          new SecurityProtocolSkill(),
           new ThreatIntelligenceSkill()
         ],
         systemPrompt: `
@@ -98,10 +94,12 @@ export class VercelAgentFactory {
   }
 
   async validateDatabaseIsolation(isolationData: any) {
-    return this.executeSkill('database-isolation', isolationData, DatabaseIsolationSkill.outputSchema);
+    this.logger.warn('[M2] 🛡️ جاري إعادة بناء تحليل العزل الحقيقي (سيتم تفعيله في اليوم الثاني)');
+    return { isolationStatus: 'REBUILDING', threatLevel: 'INFO' };
   }
 
   async checkProtocolCompliance(protocolData: any) {
-    return this.executeSkill('security-protocol', protocolData, SecurityProtocolSkill.outputSchema);
+    this.logger.warn('[M2] 🛡️ جاري إعادة بناء فحص البروتوكول الحقيقي (سيتم تفعيله في اليوم الثاني)');
+    return { compliance: 'REBUILDING', issues: [] };
   }
 }

@@ -57,12 +57,10 @@ export class TenantContextInterceptor implements NestInterceptor {
           // 4. التعامل مع الأخطاء
           this.logger.error(`[M2] ❌ خطأ في ${className}.${methodName}: ${error.message}`);
 
-          // تسجيل حدث أمني
-          this.tenantContext.logSecurityIncident('TENANT_OPERATION_FAILURE', {
+          // تسجيل خطأ أمني (عبر الـ Logger حالياً لأن الطريقة الأصلية خاصة)
+          this.logger.error(`[M2] 🔒 حادث أمني - فشل عملية مستأجر: ${error.message}`, {
             className,
             methodName,
-            error: error.message,
-            stack: error.stack,
             tenantId: this.tenantContext.getTenantId() || 'unknown'
           });
 

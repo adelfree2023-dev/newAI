@@ -3,7 +3,7 @@ import { REQUEST } from '@nestjs/core';
 import { Request } from 'express';
 import { DataSource, Repository, SelectQueryBuilder } from 'typeorm';
 import { TenantContextService } from '../../security/layers/s2-tenant-isolation/tenant-context.service';
-import { SchemaManagerService } from './schema-manager.service';
+import { TenantConnectionService } from './tenant-connection.service';
 import { IsolationValidatorService } from './isolation-validator.service';
 import { AuditService } from '../../security/layers/s4-audit-logging/audit.service';
 import { Logger } from '@nestjs/common';
@@ -11,32 +11,27 @@ import { Logger } from '@nestjs/common';
 @Injectable({ scope: Scope.REQUEST })
 export class TenantDatabaseService {
   private readonly logger = new Logger(TenantDatabaseService.name);
-  private dataSource: DataSource;
-  private currentSchema: string;
-  private isSystemOperation = false;
-
   constructor(
     @Inject(REQUEST) private readonly request: Request,
     private readonly tenantContext: TenantContextService,
-    private readonly schemaManager: SchemaManagerService,
+    private readonly tenantConnection: TenantConnectionService,
     private readonly isolationValidator: IsolationValidatorService,
-    private readonly auditService: AuditService
+    private readonly auditService: AuditService,
+    private readonly dataSource: DataSource
   ) {
     this.initialize();
   }
 
   private async initialize() {
-    this.dataSource = this.schemaManager.getDataSource();
     this.isSystemOperation = this.tenantContext.isSystemContext();
 
     if (!this.isSystemOperation) {
       const tenantId = this.tenantContext.getTenantId();
       if (tenantId) {
-        this.currentSchema = await this.schemaManager.switchToTenantSchema(tenantId);
+        this.currentSchema = this.tenantConnection.getSchemaName(tenantId);
       }
     } else {
-      // عمليات النظام تستخدم مخطط النظام
-      this.currentSchema = this.schemaManager['systemSchema'];
+      this.currentSchema = 'public'; // أو مخطط النظام المخصص
     }
   }
 
@@ -104,9 +99,12 @@ export class TenantDatabaseService {
     try {
       await queryRunner.connect();
 
-      // التبديل إلى مخطط المستأجر
+      // التحقق من وجود المخطط (عبر الخدمة الجديدة)
       if (!this.isSystemOperation && tenantId) {
-        await this.schemaManager.switchToTenantSchema(tenantId, queryRunner);
+        const exists = await this.tenantConnection.schemaExists(tenantId);
+        if (!exists) throw new Error(`مخطط المستأجر غير موجود: ${tenantId}`);
+
+        await queryRunner.query(`SET search_path TO "${this.currentSchema}", public`);
       }
 
       // التحقق من أمان الاستعلام
@@ -217,7 +215,7 @@ export class TenantDatabaseService {
 
   forceSystemContext() {
     this.isSystemOperation = true;
-    this.currentSchema = this.schemaManager['systemSchema'];
+    this.currentSchema = 'public';
     this.logger.warn('[M2] ⚠️ تم تفعيل سياق النظام يدوياً');
   }
 }

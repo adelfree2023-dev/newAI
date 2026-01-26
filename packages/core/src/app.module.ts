@@ -10,6 +10,10 @@ import { ErrorHandlingModule } from './security/layers/s5-error-handling/error-h
 import { RateLimitingModule } from './security/layers/s6-rate-limiting/rate-limit.module';
 import { EncryptionModule } from './security/layers/s7-encryption/encryption.module';
 import { WebProtectionModule } from './security/layers/s8-web-protection/web-protection.module';
+import { APP_FILTER } from '@nestjs/core';
+import { AllExceptionsFilter } from './security/layers/s5-error-handling/exceptions/secure-exception.filter';
+import { AuditLoggerMiddleware } from './security/layers/s4-audit-logging/audit-logger.middleware';
+import { NestModule, MiddlewareConsumer } from '@nestjs/common';
 
 @Module({
     imports: [
@@ -35,5 +39,17 @@ import { WebProtectionModule } from './security/layers/s8-web-protection/web-pro
         EncryptionModule,
         WebProtectionModule
     ],
+    providers: [
+        {
+            provide: APP_FILTER,
+            useClass: AllExceptionsFilter,
+        },
+    ],
 })
-export class AppModule { }
+export class AppModule implements NestModule {
+    configure(consumer: MiddlewareConsumer) {
+        consumer
+            .apply(AuditLoggerMiddleware)
+            .forRoutes('*');
+    }
+}
