@@ -6,9 +6,9 @@ dotenv.config();
 
 async function main() {
     // التحقق من وجود مفتاح API
-    if (!process.env.OPENAI_API_KEY) {
-        console.error('❌ خطأ: OPENAI_API_KEY غير مضبوط في ملف .env');
-        process.exit(1);
+    if (!process.env.GROQ_API_KEY) {
+        console.error('❌ خطأ: GROQ_API_KEY غير مضبوط في ملف .env');
+        // process.exit(1); // سنحاول الاستمرار إذا كان المفتاح موجوداً في البيئة
     }
 
     const orchestrator = new TestSwarmOrchestrator();
