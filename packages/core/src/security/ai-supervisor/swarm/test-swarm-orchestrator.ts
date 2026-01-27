@@ -1,4 +1,4 @@
-import { SmartTestGenerationAgent } from './agents/test-generation-agent';
+import { SmartTestGenerationAgent } from '../agents/test-generation-agent';
 import * as fs from 'fs';
 import * as path from 'path';
 
