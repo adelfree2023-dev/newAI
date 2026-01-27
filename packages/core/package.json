@@ -11,7 +11,9 @@
     "start:prod": "node dist/main",
     "agent": "ts-node src/security/ai-supervisor/agents/tenant-isolation-agent.ts",
     "test": "jest",
-    "test:cov": "jest --coverage"
+    "test:cov": "jest --coverage",
+    "qa:swarm": "node scripts/run-qa-swarm.js",
+    "qa:swarm:smart": "npx ts-node scripts/run-smart-qa-swarm.ts"
   },
   "dependencies": {
     "@nestjs/common": "^10.0.0",
