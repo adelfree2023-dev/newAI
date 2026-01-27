@@ -30,10 +30,15 @@ STRICT RULES:
 6. MOCK TYPEORM REPOSITORIES using 'Repository<Entity>' and 'jest.fn()'.
 7. DON'T access private members directly. Use '(service as any).privateMethod' if absolutely necessary, but prioritize public API.
 8. IMPORT PATHS:
-   - User entity: 'src/auth/entities/user.entity'
-   - Session entity: 'src/auth/entities/session.entity'
+   - User entity: 'src/auth/entities/user.entity' (Class name: User)
+   - Session entity: 'src/auth/entities/session.entity' (Class name: Session)
+   - TenantConnectionService: 'src/tenants/database/tenant-connection.service'
    - Use absolute-like paths starting with 'src/' or correct relative paths.
-9. THE OUTPUT MUST START WITH 'import' AND END WITH '});'.`,
+9. KNOWN CLASS NAMES:
+   - Use 'User', NOT 'UserEntity'.
+   - Use 'Session', NOT 'SessionEntity'.
+   - Use 'AuthService', NOT 'UserService'.
+10. THE OUTPUT MUST START WITH 'import' AND END WITH '});'.`,
                 prompt: `حلل الكود التالي لملف [\${fileName}] وأنشئ ملف اختبار .spec.ts كامل واحترافي: \n\n \`\`\`typescript\n\${input.content}\n\`\`\``,
             });
 
