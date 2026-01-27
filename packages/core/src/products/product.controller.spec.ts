@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ProductController } from './product.controller';
 import { ProductService } from './product.service';
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { HttpException } from '@nestjs/common';
 
 describe('ProductController', () => {
     let controller: ProductController;
@@ -11,8 +11,7 @@ describe('ProductController', () => {
         const mockProductService = {
             createProduct: jest.fn(),
             getProducts: jest.fn(),
-            createCustomer: jest.fn(),
-            getCustomers: jest.fn(),
+            deleteProduct: jest.fn(),
         };
 
         const module: TestingModule = await Test.createTestingModule({
@@ -40,7 +39,7 @@ describe('ProductController', () => {
 
         it('should call service with tenantId and product', async () => {
             const product = { name: 'P' };
-            service.createProduct.mockResolvedValue({ id: '1', ...product });
+            service.createProduct.mockResolvedValue({ id: '1', ...product } as any);
             const result = await controller.createProduct('t1', product);
             expect(result).toEqual({ id: '1', ...product });
             expect(service.createProduct).toHaveBeenCalledWith('t1', product);
@@ -49,26 +48,18 @@ describe('ProductController', () => {
 
     describe('findAllProducts', () => {
         it('should fetch products', async () => {
-            service.getProducts.mockResolvedValue([{ id: '1' }]);
+            service.getProducts.mockResolvedValue([{ id: '1' }] as any);
             const result = await controller.findAllProducts('t1');
             expect(result).toEqual([{ id: '1' }]);
         });
     });
 
-    describe('createCustomer', () => {
-        it('should call service for customer creation', async () => {
-            const customer = { email: 'c@a.c' };
-            service.createCustomer.mockResolvedValue({ id: 'u1', ...customer });
-            const result = await controller.createCustomer('t1', customer);
-            expect(result).toEqual({ id: 'u1', ...customer });
-        });
-    });
-
-    describe('findAllCustomers', () => {
-        it('should fetch customers', async () => {
-            service.getCustomers.mockResolvedValue([]);
-            const result = await controller.findAllCustomers('t1');
-            expect(result).toEqual([]);
+    describe('deleteProduct', () => {
+        it('should delete product', async () => {
+            service.deleteProduct.mockResolvedValue({ success: true, message: 'Deleted' } as any);
+            const result = await controller.deleteProduct('t1', 'p1');
+            expect(result.success).toBe(true);
+            expect(service.deleteProduct).toHaveBeenCalledWith('t1', 'p1');
         });
     });
 });
