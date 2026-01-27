@@ -249,7 +249,8 @@ export class RateLimiterService {
   }
 
   private getUserId(): string | null {
-    return this.request.user?.id ||
+    const user = this.request.user as any;
+    return user?.id ||
       this.request.headers['x-user-id']?.toString() ||
       null;
   }
