@@ -80,5 +80,11 @@ export class AuthModule implements OnModuleInit {
     onModuleInit() {
         this.logger.log('🔐 [S2] تم تهيئة وحدة المصادقة واستراتيجيات Passport');
         this.logger.log('✅ [S2] استراتيجية JWT: ' + (this.jwtStrategy ? 'مشحونة' : 'مفقودة'));
+        this.logger.log('✅ [S2] استراتيجية Local: ' + (this.localStrategy ? 'مشحونة' : 'مفقودة'));
+
+        // التحقق من تسجيل الاستراتيجية في Passport العالمي
+        const passport = require('passport');
+        const registeredStrategies = Object.keys(passport._strategies || {});
+        this.logger.log('🌐 الاستراتيجيات المسجلة في Passport: ' + registeredStrategies.join(', '));
     }
 }

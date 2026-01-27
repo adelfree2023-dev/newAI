@@ -1,9 +1,15 @@
-import { Controller, Get, Post, Body, Headers, HttpException, HttpStatus, Delete, Param } from '@nestjs/common';
+import { Controller, Get, Post, Body, Headers, HttpException, HttpStatus, Delete, Param, OnModuleInit, Logger } from '@nestjs/common';
 import { ProductService } from './product.service';
 
 @Controller('products')
-export class ProductController {
+export class ProductController implements OnModuleInit {
+    private readonly logger = new Logger(ProductController.name);
+
     constructor(private readonly productService: ProductService) { }
+
+    onModuleInit() {
+        this.logger.log('✅ ProductController initialized and mapped');
+    }
 
     @Post()
     async createProduct(@Headers('X-Tenant-ID') tenantId: string, @Body() product: any) {

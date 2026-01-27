@@ -147,9 +147,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
           : exception.message
       };
     } else if (statusCode === HttpStatus.UNAUTHORIZED) {
+      const message = exception.message || '';
       return {
         ...baseResponse,
-        message: 'غير مصرح به (Unauthorized)'
+        message: message.includes('Account Locked')
+          ? `غير مصرح به (${message})`
+          : 'غير مصرح به (Unauthorized)'
       };
     } else if (statusCode === HttpStatus.FORBIDDEN) {
       return {
