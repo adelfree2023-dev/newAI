@@ -20,10 +20,10 @@ describe('EncryptionService', () => {
         service = module.get<EncryptionService>(EncryptionService);
     });
 
-    it('should encrypt and decrypt', () => {
+    it('should encrypt and decrypt', async () => {
         const text = 'secret';
-        const encrypted = service.encrypt(text);
-        const decrypted = service.decrypt(encrypted);
+        const encrypted = await service.encryptSensitiveData(text);
+        const decrypted = await service.decryptSensitiveData(encrypted);
         expect(decrypted).toBe(text);
     });
 });

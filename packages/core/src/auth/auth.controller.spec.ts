@@ -35,7 +35,7 @@ describe('AuthController', () => {
         it('should return login result', async () => {
             const mockUser = { email: 'a@b.c' } as any;
             service.login.mockResolvedValue({ accessToken: 'token' });
-            const result = await controller.login({ user: mockUser } as any);
+            const result = await controller.login({} as any, { user: mockUser } as any);
             expect(result).toEqual({ accessToken: 'token' });
         });
     });
