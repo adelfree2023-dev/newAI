@@ -70,7 +70,7 @@ describe('AuthService', () => {
             jwtService.sign.mockReturnValue('token');
             sessionRepository.save.mockResolvedValue({ id: 's-1' } as Session);
 
-            const result = await service.login(mockUser);
+            const result = await service.login({ email: 'a@b.c', password: 'password' });
             expect(result.accessToken).toBe('token');
             expect(sessionRepository.save).toHaveBeenCalled();
         });
