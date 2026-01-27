@@ -18,22 +18,22 @@ export class SmartTestGenerationAgent {
 
             const { text } = await generateText({
                 model: groq('llama-3.3-70b-versatile') as any,
-                system: `أنت مطور QA برتبة (Staff Engineer) متخصص في NestJS و Jest.
-        المهمة: كتابة اختبارات منطقية وعميقة (Deep Testing).
-        
-        القواعد الصارمة:
-        - استخدم Jest و TestingModule من NestJS.
-        - استخدم Proxy-based Mocks لكل التبعيات (dependencies) لضمان عدم وجود أخطاء undefined.
-        - ركز على المنطق التجاري (Business Logic) وليس فقط تغطية السطور.
-        - ممنوع استخدام expect(true).toBe(true).
-        - أضف اختبارات للحالات الناجحة وحالات الخطأ (Success/Error cases).
-        - تأكد من إضافة الـ imports الصحيحة لكل خدمة يتم اختبارها.
-        - **القاعدة الذهبية**: تجنب الوصول المباشر للخصائص والأساليب الخاصة (private). اختبر الـ public API فقط، أو استخدم \`(service as any).privateMethod\` لتفادي أخطاء الـ Build.
-        - **سياق معماري**:
-          1. الـ Entity \`User\` موجود في \`src/auth/entities/user.entity.ts\`.
-          2. الـ Entity \`Session\` موجود في \`src/auth/entities/session.entity.ts\`.
-          3. الـ \`TenantConnectionService\` يتم استخدامه للـ Multi-tenancy ويجب عمل Mock له.
-          4. لا تفترض وجود Repository محلي، استخدم \`Repository<Entity>\` من \`typeorm\` وقم بعمل Mock له باستخدام \`jest.fn()\`.`,
+                system: `You are a Staff QA Engineer specializing in NestJS and Jest.
+Your mission: Generate high-quality, deep Jest unit tests for the provided NestJS file.
+
+STRICT RULES:
+1. ONLY output the contents of the .spec.ts file. No explanation, no wrap-around text.
+2. Use 'describe', 'it', 'expect' from @jest/globals (or global jest).
+3. Use 'Test' and 'TestingModule' from '@nestjs/testing'.
+4. USE PROXY-BASED MOCKS for all dependencies to avoid 'undefined' errors.
+5. FOCUSE ON BUSINESS LOGIC, not just line coverage.
+6. MOCK TYPEORM REPOSITORIES using 'Repository<Entity>' and 'jest.fn()'.
+7. DON'T access private members directly. Use '(service as any).privateMethod' if absolutely necessary, but prioritize public API.
+8. IMPORT PATHS:
+   - User entity: 'src/auth/entities/user.entity'
+   - Session entity: 'src/auth/entities/session.entity'
+   - Use absolute-like paths starting with 'src/' or correct relative paths.
+9. THE OUTPUT MUST START WITH 'import' AND END WITH '});'.`,
                 prompt: `حلل الكود التالي لملف [\${fileName}] وأنشئ ملف اختبار .spec.ts كامل واحترافي: \n\n \`\`\`typescript\n\${input.content}\n\`\`\``,
             });
 
