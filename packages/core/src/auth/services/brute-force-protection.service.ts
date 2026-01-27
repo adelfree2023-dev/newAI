@@ -48,6 +48,8 @@ export class BruteForceProtectionService {
         const emailCount = await this.redisClient.incr(emailKey);
         const ipCount = await this.redisClient.incr(ipKey);
 
+        this.logger.debug(`[M3] محاولة فاشلة: ${email} (العدد: ${emailCount}/5) من IP: ${ip} (العدد: ${ipCount}/20)`);
+
         await this.redisClient.expire(emailKey, 15 * 60);
         await this.redisClient.expire(ipKey, 15 * 60);
 

@@ -72,8 +72,13 @@ import { TenantContextService } from '../security/layers/s2-tenant-isolation/ten
 export class AuthModule implements OnModuleInit {
     private readonly logger = new Logger(AuthModule.name);
 
+    constructor(
+        private readonly jwtStrategy: JwtStrategy,
+        private readonly localStrategy: LocalStrategy
+    ) { }
+
     onModuleInit() {
-        this.logger.log('🔐 [S2] تم تهيئة وحدة المصادقة بنجاح');
-        this.logger.log('✅ [S2] استراتيجية JWT جاهزة للعمل');
+        this.logger.log('🔐 [S2] تم تهيئة وحدة المصادقة واستراتيجيات Passport');
+        this.logger.log('✅ [S2] استراتيجية JWT: ' + (this.jwtStrategy ? 'مشحونة' : 'مفقودة'));
     }
 }
