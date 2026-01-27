@@ -17,6 +17,15 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
             ignoreExpiration: false,
             secretOrKey: configService.get<string>('JWT_SECRET')
         });
+
+        // Manual registration to prevent race conditions or multiple passport instances
+        try {
+            const passport = require('passport');
+            passport.use('jwt', this);
+            this.logger.log('🛡️ [S2] JWT Strategy registered manually in constructor');
+        } catch (e) {
+            this.logger.error('❌ Failed manual registration: ' + e.message);
+        }
     }
 
     async validate(payload: any) {

@@ -41,6 +41,15 @@ export class TenantIsolationInterceptor implements NestInterceptor {
             // 2. التحقق من الصلاحيات
             if (!this.tenantContext.isSystemContext()) {
                 const requestedTenantId = this.extractTenantIdFromRequest(request, context);
+
+                // التحقق من صحة المستأجر في سياق المستخدم المصادق عليه
+                const authenticatedUser = request.user;
+                if (authenticatedUser && authenticatedUser.tenantId && requestedTenantId) {
+                    if (authenticatedUser.tenantId !== requestedTenantId && !authenticatedUser.isSuperAdmin) {
+                        return throwError(() => new ForbiddenException(`وصول غير مصرح به للمستأجر [Mismatch: ${authenticatedUser.tenantId} vs ${requestedTenantId}]`));
+                    }
+                }
+
                 if (requestedTenantId && !this.tenantContext.validateTenantAccess(requestedTenantId)) {
                     return throwError(() => new ForbiddenException('وصول غير مصرح به للمستأجر (Tenant Access Forbidden)'));
                 }

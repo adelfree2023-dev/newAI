@@ -1,7 +1,12 @@
-import { Controller, Get, Post, Body, Headers, HttpException, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Body, Headers, HttpException, HttpStatus, Delete, Param, UseGuards } from '@nestjs/common';
 import { ProductService } from './product.service';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { UserRole } from '../auth/entities/user.entity';
 
 @Controller('business')
+@UseGuards(JwtAuthGuard)
 export class BusinessController {
     constructor(private readonly productService: ProductService) { }
 
@@ -15,6 +20,13 @@ export class BusinessController {
     async findAllProducts(@Headers('X-Tenant-ID') tenantId: string) {
         if (!tenantId) throw new HttpException('X-Tenant-ID mandatory', HttpStatus.FORBIDDEN);
         return this.productService.getProducts(tenantId);
+    }
+
+    @Delete('products/:id')
+    @UseGuards(RolesGuard)
+    @Roles(UserRole.TENANT_ADMIN)
+    async deleteProduct(@Param('id') id: string) {
+        return { message: 'Product deleted', id };
     }
 
     @Post('customers')
