@@ -6,6 +6,17 @@ import { AuditService } from '../s4-audit-logging/audit.service';
 import { TenantContextService } from '../s2-tenant-isolation/tenant-context.service';
 import { AnomalyDetectionService } from './anomaly-detection.service';
 
+// Mock Redis
+jest.mock('ioredis', () => {
+    return jest.fn().mockImplementation(() => {
+        return {
+            on: jest.fn(),
+            incr: jest.fn().mockResolvedValue(1),
+            expire: jest.fn().mockResolvedValue(1),
+        };
+    });
+});
+
 describe('RateLimiterService', () => {
     let service: RateLimiterService;
 
@@ -27,12 +38,15 @@ describe('RateLimiterService', () => {
             ],
         }).compile();
 
-        // Prevent Redis initialization error by mocking the constructor or bypassing it
-        // In a real test we'd mock Redis client, for now we just want it to compile and run 'be defined'
-        service = module.get<RateLimiterService>(RateLimiterService);
+        service = await module.resolve<RateLimiterService>(RateLimiterService);
     });
 
     it('should be defined', () => {
         expect(service).toBeDefined();
+    });
+
+    it('should check rate limit', async () => {
+        const result = await service.checkRateLimit('test', 10, 60);
+        expect(result.allowed).toBe(true);
     });
 });

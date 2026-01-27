@@ -21,11 +21,15 @@ describe('AuditService', () => {
             ],
         }).compile();
 
-        service = module.get<AuditService>(AuditService);
+        service = await module.resolve<AuditService>(AuditService);
+    });
+
+    it('should be defined', () => {
+        expect(service).toBeDefined();
     });
 
     it('should log a security event', async () => {
-        // Mocking fs.appendFile to avoid actual file system calls
+        // Mocking fs.appendFile
         const fs = require('fs').promises;
         jest.spyOn(fs, 'appendFile').mockResolvedValue(undefined as any);
         jest.spyOn(fs, 'mkdir').mockResolvedValue(undefined as any);

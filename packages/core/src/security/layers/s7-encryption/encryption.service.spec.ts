@@ -26,8 +26,7 @@ describe('EncryptionService', () => {
             ],
         }).compile();
 
-        service = module.get<EncryptionService>(EncryptionService);
-        // Manually trigger initialization if needed or mock onModuleInit
+        service = await module.resolve<EncryptionService>(EncryptionService);
         await service.onModuleInit();
     });
 
