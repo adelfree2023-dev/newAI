@@ -7,15 +7,16 @@ import { TenantContextService } from '../s2-tenant-isolation/tenant-context.serv
 import { AnomalyDetectionService } from './anomaly-detection.service';
 
 // Mock Redis
-jest.mock('ioredis', () => {
-    return jest.fn().mockImplementation(() => {
+jest.mock('ioredis', () => ({
+    Redis: jest.fn().mockImplementation(() => {
         return {
             on: jest.fn(),
             incr: jest.fn().mockResolvedValue(1),
             expire: jest.fn().mockResolvedValue(1),
+            quit: jest.fn().mockResolvedValue('OK'),
         };
-    });
-});
+    }),
+}));
 
 describe('RateLimiterService', () => {
     let service: RateLimiterService;
