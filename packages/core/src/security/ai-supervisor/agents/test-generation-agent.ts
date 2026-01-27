@@ -27,7 +27,8 @@ export class SmartTestGenerationAgent {
         - ركز على المنطق التجاري (Business Logic) وليس فقط تغطية السطور.
         - ممنوع استخدام expect(true).toBe(true).
         - أضف اختبارات للحالات الناجحة وحالات الخطأ (Success/Error cases).
-        - تأكد من إضافة الـ imports الصحيحة لكل خدمة يتم اختبارها.`,
+        - تأكد من إضافة الـ imports الصحيحة لكل خدمة يتم اختبارها.
+        - **القاعدة الذهبية**: تجنب الوصول المباشر للخصائص والأساليب الخاصة (private). اختبر الـ public API فقط، أو استخدم `(service as any).privateMethod` لتفادي أخطاء الـ Build.`,
                 prompt: `حلل الكود التالي لملف [\${fileName}] وأنشئ ملف اختبار .spec.ts كامل واحترافي: \n\n \`\`\`typescript\n\${input.content}\n\`\`\``,
             });
 
