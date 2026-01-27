@@ -19,7 +19,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const request = ctx.getRequest<Request>();
     const response = ctx.getResponse<Response>();
 
-    const requestId = request['requestId'] || uuidv4();
+    const requestId = (request as any).requestId || uuidv4();
     const timestamp = new Date().toISOString();
 
     // تحديد نوع الاستثناء
@@ -71,7 +71,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
   private analyzeError(exception: any, request: Request, requestId: string, isProduction: boolean) {
     const tenantId = this.tenantContext.getTenantId() || 'system';
-    const userId = request.user?.id || 'anonymous';
+    const userId = (request as any).user?.id || 'anonymous';
 
     // تحليل تفصيلي للخطأ
     let technicalDetails = {};
