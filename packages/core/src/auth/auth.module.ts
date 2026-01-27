@@ -24,8 +24,8 @@ import { TenantContextService } from '../security/layers/s2-tenant-isolation/ten
 @Global()
 @Module({
     imports: [
-        ConfigModule,
         PassportModule.register({ defaultStrategy: 'jwt' }),
+        ConfigModule,
         JwtModule.registerAsync({
             imports: [ConfigModule],
             useFactory: async (configService: ConfigService) => ({

@@ -11,41 +11,30 @@ export class BruteForceProtectionService {
     private readonly logger = new Logger(BruteForceProtectionService.name);
     private redisClient: Redis;
 
-    constructor(
-        @Inject(REQUEST) private readonly request: Request,
-        private readonly configService: ConfigService,
-        private readonly auditService: AuditService,
-        private readonly tenantContext: TenantContextService
-    ) {
-        this.initializeRedis();
+    async onModuleInit() {
+        if (!this.redisClient) return;
+        try {
+            await this.redisClient.ping();
+            this.logger.log('✅ Redis connected successfully for Brute Force Protection');
+        } catch (error) {
+            this.logger.error(`❌ Redis connection failed: ${error.message}`);
+        }
     }
 
-    private initializeRedis() {
-        try {
-            const redisUrl = this.configService.get<string>('REDIS_URL', 'redis://localhost:6379');
-            this.redisClient = new Redis(redisUrl);
-
-            this.redisClient.on('error', (error) => {
-                this.logger.error(`[M3] ❌ خطأ في اتصال Redis: ${error.message}`);
-            });
-
-            this.logger.log('[M3] ✅ تم تهيئة خدمة الحماية من هجمات القوة الغاشمة');
-        } catch (error) {
-            this.logger.error(`[M3] ❌ فشل تهيئة Redis: ${error.message}`);
-            // لا نعطل النظام بالكامل إذا تعطل Redis، لكننا نسجل ذلك
-        }
+    private getBaseKey(email: string, context: string): string {
+        const tenantId = this.tenantContext.getTenantId() || 'system';
+        const env = process.env.NODE_ENV || 'development';
+        return `auth:failed:${context}:${env}:${tenantId}:${email}`;
     }
 
     async recordFailedAttempt(email: string, context: string = 'login'): Promise<void> {
         if (!this.redisClient) return;
 
         const ip = this.getClientIp();
-        const tenantId = this.tenantContext.getTenantId() || 'system';
+        const baseKey = this.getBaseKey(email, context);
+        const ipKey = `auth:failed:${context}:${process.env.NODE_ENV || 'dev'}:ip:${ip}`;
 
-        const emailKey = `auth:failed:${context}:${tenantId}:${email}`;
-        const ipKey = `auth:failed:${context}:${ip}`;
-
-        const emailCount = await this.redisClient.incr(emailKey);
+        const emailCount = await this.redisClient.incr(baseKey);
         const ipCount = await this.redisClient.incr(ipKey);
 
         this.logger.debug(`[M3] محاولة فاشلة: ${email} (العدد: ${emailCount}/5) من IP: ${ip} (العدد: ${ipCount}/20)`);
@@ -83,9 +72,7 @@ export class BruteForceProtectionService {
     async isAccountLocked(email: string, context: string = 'login'): Promise<boolean> {
         if (!this.redisClient) return false;
 
-        const tenantId = this.tenantContext.getTenantId() || 'system';
-        const key = `auth:failed:${context}:${tenantId}:${email}`;
-
+        const key = this.getBaseKey(email, context);
         const count = await this.redisClient.get(key);
         return count ? parseInt(count) >= 5 : false;
     }
@@ -93,10 +80,10 @@ export class BruteForceProtectionService {
     async resetFailedAttempts(email: string, context: string = 'login'): Promise<void> {
         if (!this.redisClient) return;
 
-        const tenantId = this.tenantContext.getTenantId() || 'system';
-        const key = `auth:failed:${context}:${tenantId}:${email}`;
-        await this.redisClient.del(key);
+        const emailKey = this.getBaseKey(email, context);
+        await this.redisClient.del(emailKey);
 
+        const tenantId = this.tenantContext.getTenantId() || 'system';
         await this.auditService.logSecurityEvent('FAILED_ATTEMPTS_RESET', {
             email,
             tenantId,

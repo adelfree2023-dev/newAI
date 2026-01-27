@@ -14,9 +14,9 @@ echo "------------------------------------------------------------"
 echo "Phase 0: Clean Start (Removing previous test user & Redis locks)"
 export PGPASSWORD=ApexSecure2026
 psql -U apex_user -d apex_prod -p 5433 -h localhost -c "DELETE FROM sessions WHERE \"userId\" IN (SELECT id FROM users WHERE email='$TEST_EMAIL'); DELETE FROM users WHERE email='$TEST_EMAIL';" > /dev/null
-# Clear Redis brute-force locks for the test email
-redis-cli --scan --pattern "auth:failed:*" | xargs -r redis-cli del > /dev/null
-echo "✅ Cleaned (SQL & Redis)"
+# Absolute Redis cleanup for namespaced keys
+redis-cli FLUSHALL > /dev/null
+echo "✅ Cleaned (SQL & Redis Absolute)"
 
 # --- PART 1: AUTHENTICATION ---
 

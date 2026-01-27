@@ -17,7 +17,9 @@ export class TenantIsolationInterceptor implements NestInterceptor {
         const methodName = context.getHandler().name;
 
         try {
-            TenantIsolationInterceptor.logger.debug(`[S2] 🔄 بدء اعتراض الطلب: ${className}.${methodName}`);
+            const rawUrl = request.url;
+            const url = rawUrl.replace(/^\/api/, '');
+            TenantIsolationInterceptor.logger.debug(`[S2] 🔄 بدء اعتراض الطلب: ${className}.${methodName} (${url})`);
 
             // 1. التحقق من سياق المستأجر
             const tenantId = this.tenantContext.getTenantId();
