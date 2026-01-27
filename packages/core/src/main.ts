@@ -21,6 +21,9 @@ async function bootstrap() {
       logger: ['log', 'error', 'warn', 'debug']
     });
 
+    // تعيين البادئة العالمية للـ API
+    app.setGlobalPrefix('api');
+
     // S8: الحماية من هجمات الويب
     app.use(helmet({
       contentSecurityPolicy: {
