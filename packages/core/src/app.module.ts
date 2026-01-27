@@ -2,6 +2,9 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { TenantModule } from './tenants/tenant.module';
+import { AuthModule } from './auth/auth.module';
+import { User } from './auth/entities/user.entity';
+import { Session } from './auth/entities/session.entity';
 import { TenantIsolationModule } from './security/layers/s2-tenant-isolation/tenant-isolation.module';
 import { EnvironmentVerificationModule } from './security/layers/s1-environment-verification/environment-validator.module';
 import { InputValidationModule } from './security/layers/s3-input-validation/input-validation.module';
@@ -15,6 +18,8 @@ import { AllExceptionsFilter } from './security/layers/s5-error-handling/excepti
 import { AuditLoggerMiddleware } from './security/layers/s4-audit-logging/audit-logger.middleware';
 import { NestModule, MiddlewareConsumer } from '@nestjs/common';
 
+import { ProductModule } from './products/product.module';
+
 @Module({
     imports: [
         ConfigModule.forRoot({
@@ -24,12 +29,14 @@ import { NestModule, MiddlewareConsumer } from '@nestjs/common';
         TypeOrmModule.forRoot({
             type: 'postgres',
             url: process.env.DATABASE_URL,
-            entities: [],
+            entities: [User, Session],
             synchronize: false,
             logging: process.env.NODE_ENV === 'development',
             schema: 'public' // المخطط الافتراضي
         }),
         TenantModule,
+        AuthModule,
+        ProductModule,
         TenantIsolationModule,
         EnvironmentVerificationModule,
         InputValidationModule,

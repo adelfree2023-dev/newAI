@@ -23,8 +23,7 @@ export class TestGenerationSkill {
   async execute(input: z.infer<typeof TestGenerationSkill.inputSchema>) {
     try {
       const className = input.filePath.split('/').pop()?.replace('.ts', '') || 'Service';
-      const parts = className.split('.');
-      const pascalName = parts.map(s => s.charAt(0).toUpperCase() + s.slice(1)).join('');
+      const pascalName = className.split(/[.-]/).map(s => s.charAt(0).toUpperCase() + s.slice(1)).join('');
 
       // 1. تحليل الكود واستخراج المعلومات
       const analysis = this.analyzeCode(input.content, pascalName);

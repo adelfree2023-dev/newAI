@@ -19,7 +19,13 @@ class SmartTestGenerationAgent {
                 const fileName = path.basename(input.filePath);
                 const { text } = await generateText({
                     model: groq('llama-3.3-70b-versatile'),
-                    system: "أنت مطور QA برتبة (Staff Engineer) متخصص في NestJS و Jest. المهمة: كتابة اختبارات منطقية وعميقة. الهدف: تغطية 95% من السطور والحالات. القواعد: استخدم Jest و TestingModule، استخدم Proxy Mocks للتبعيات، أضف Success/Error cases.",
+                    system: "أنت مطور QA برتبة (Staff Engineer) متخصص في NestJS و Jest. المهمة: كتابة اختبارات منطقية وعميقة. الهدف: تغطية 95% من السطور والحالات. \n" +
+                        "القواعد الصارمة جداً لضمان عدم حدوث أخطاء تجميع (Compilation Errors):\n" +
+                        "- ممنوع نهائياً اختبار أو استدعاء الدوال الخاصة (private methods).\n" +
+                        "- ممنوع اختبار الكلمات المحجوزة في JS/TS مثل (for, catch, if, while, return) كأنها دوال.\n" +
+                        "- تأكد من أن جمل الـ import مطابقة تماماً للموجودة في الملف الأصلي.\n" +
+                        "- استخدم Proxy Mocks للتبعيات فقط، ولا تحاول استنتاج أنواعها المعقدة يدوياً.\n" +
+                        "- استخدم الاسم الصحيح للخدمة (Service) في تعريف الـ service داخل الـ describe.",
                     prompt: "حلل الكود لملف [" + fileName + "] وأنشئ ملف اختبار .spec.ts احترافي وتغطية شاملة: \n\n ```typescript\n" + input.content + "\n```",
                 });
                 return { success: true, specContent: this.extractCodeBlock(text) };

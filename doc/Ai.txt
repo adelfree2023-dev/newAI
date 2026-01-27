@@ -1,0 +1,10 @@
+# تثبيت مهارات الوكيل من Vercel
+npx skills add vercel-labs/agent-skills
+
+# تثبيت الحزم الإضافية للدمج مع المشروع الحالي
+npm install @vercel/ai @langchain/core zod
+
+
+اربط مع groq 
+مفتاح 
+[GROQ_API_KEY_PLACEHOLDER]

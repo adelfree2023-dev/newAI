@@ -17,7 +17,7 @@ export class SmartTestGenerationAgent {
             const fileName = path.basename(input.filePath);
 
             const { text } = await generateText({
-                model: groq('llama-3.3-70b-versatile'),
+                model: groq('llama-3.3-70b-versatile') as any,
                 system: `أنت مطور QA برتبة (Staff Engineer) متخصص في NestJS و Jest.
         المهمة: كتابة اختبارات منطقية وعميقة (Deep Testing).
         

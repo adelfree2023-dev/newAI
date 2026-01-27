@@ -6,7 +6,7 @@ import * as path from 'path';
 const CONCURRENCY_LIMIT = 70;
 const targetDir = path.join(process.cwd(), 'src');
 
-async function getAllFiles(dirPath: string, arrayOfFiles: string[] = []) {
+function getAllFiles(dirPath: string, arrayOfFiles: string[] = []) {
     const files = fs.readdirSync(dirPath);
 
     files.forEach(function (file) {
@@ -25,7 +25,7 @@ async function getAllFiles(dirPath: string, arrayOfFiles: string[] = []) {
 async function runSwarm() {
     console.log('🚀 [AI QA Swarm] إطلاق جيش الـ 70 وكيل (القائد: Apex AI)...');
 
-    const allFiles = await getAllFiles(targetDir);
+    const allFiles = getAllFiles(targetDir);
     console.log(`📂 تم العثور على \${allFiles.length} ملف برمجي. تخصيص وكيل لكل ملف...`);
 
     const skill = new TestGenerationSkill();
