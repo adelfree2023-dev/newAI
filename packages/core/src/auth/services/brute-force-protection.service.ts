@@ -11,6 +11,30 @@ export class BruteForceProtectionService {
     private readonly logger = new Logger(BruteForceProtectionService.name);
     private redisClient: Redis;
 
+    constructor(
+        @Inject(REQUEST) private readonly request: Request,
+        private readonly configService: ConfigService,
+        private readonly auditService: AuditService,
+        private readonly tenantContext: TenantContextService
+    ) {
+        this.initializeRedis();
+    }
+
+    private initializeRedis() {
+        try {
+            const redisUrl = this.configService.get<string>('REDIS_URL', 'redis://localhost:6379');
+            this.redisClient = new Redis(redisUrl);
+
+            this.redisClient.on('error', (error) => {
+                this.logger.error(`[M3] ❌ خطأ في اتصال Redis: ${error.message}`);
+            });
+
+            this.logger.log('[M3] ✅ تم تهيئة خدمة الحماية من هجمات القوة الغاشمة');
+        } catch (error) {
+            this.logger.error(`[M3] ❌ فشل تهيئة Redis: ${error.message}`);
+        }
+    }
+
     async onModuleInit() {
         if (!this.redisClient) return;
         try {
@@ -33,13 +57,14 @@ export class BruteForceProtectionService {
         const ip = this.getClientIp();
         const baseKey = this.getBaseKey(email, context);
         const ipKey = `auth:failed:${context}:${process.env.NODE_ENV || 'dev'}:ip:${ip}`;
+        const tenantId = this.tenantContext.getTenantId() || 'system';
 
         const emailCount = await this.redisClient.incr(baseKey);
         const ipCount = await this.redisClient.incr(ipKey);
 
         this.logger.debug(`[M3] محاولة فاشلة: ${email} (العدد: ${emailCount}/5) من IP: ${ip} (العدد: ${ipCount}/20)`);
 
-        await this.redisClient.expire(emailKey, 15 * 60);
+        await this.redisClient.expire(baseKey, 15 * 60);
         await this.redisClient.expire(ipKey, 15 * 60);
 
         await this.auditService.logSecurityEvent('FAILED_LOGIN_ATTEMPT', {
