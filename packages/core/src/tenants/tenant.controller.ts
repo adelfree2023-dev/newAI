@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Body, Headers, UseGuards, HttpException, HttpStatus } from '@nestjs/common';
 import { TenantService } from './tenant.service';
 
-@Controller('api/tenants')
+@Controller('tenants')
 export class TenantController {
     constructor(private readonly tenantService: TenantService) { }
 

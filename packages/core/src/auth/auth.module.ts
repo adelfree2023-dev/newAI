@@ -82,9 +82,20 @@ export class AuthModule implements OnModuleInit {
         this.logger.log('✅ [S2] استراتيجية JWT: ' + (this.jwtStrategy ? 'مشحونة' : 'مفقودة'));
         this.logger.log('✅ [S2] استراتيجية Local: ' + (this.localStrategy ? 'مشحونة' : 'مفقودة'));
 
-        // التحقق من تسجيل الاستراتيجية في Passport العالمي
+        // تسجيل الاستراتيجيات يدوياً لضمان استقرار Passport
         const passport = require('passport');
+
+        if (this.jwtStrategy) {
+            passport.use('jwt', this.jwtStrategy as any);
+            this.logger.log('🛡️ [S2] تم فرض تسجيل استراتيجية JWT يدوياً');
+        }
+
+        if (this.localStrategy) {
+            passport.use('local', this.localStrategy as any);
+            this.logger.log('🛡️ [S2] تم فرض تسجيل استراتيجية Local يدوياً');
+        }
+
         const registeredStrategies = Object.keys(passport._strategies || {});
-        this.logger.log('🌐 الاستراتيجيات المسجلة في Passport: ' + registeredStrategies.join(', '));
+        this.logger.log('🌐 الاستراتيجيات النشطة حالياً: ' + registeredStrategies.join(', '));
     }
 }
