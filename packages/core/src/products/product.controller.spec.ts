@@ -1,10 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { BusinessController } from './business.controller';
+import { ProductController } from './product.controller';
 import { ProductService } from './product.service';
 import { HttpException, HttpStatus } from '@nestjs/common';
 
-describe('BusinessController', () => {
-    let controller: BusinessController;
+describe('ProductController', () => {
+    let controller: ProductController;
     let service: jest.Mocked<ProductService>;
 
     beforeEach(async () => {
@@ -16,7 +16,7 @@ describe('BusinessController', () => {
         };
 
         const module: TestingModule = await Test.createTestingModule({
-            controllers: [BusinessController],
+            controllers: [ProductController],
             providers: [
                 {
                     provide: ProductService,
@@ -25,7 +25,7 @@ describe('BusinessController', () => {
             ],
         }).compile();
 
-        controller = module.get<BusinessController>(BusinessController);
+        controller = module.get<ProductController>(ProductController);
         service = module.get(ProductService);
     });
 

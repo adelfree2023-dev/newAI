@@ -10,16 +10,16 @@ export class Session {
     @PrimaryGeneratedColumn('uuid')
     id: string;
 
-    @Column({ type: 'varchar', length: 255, unique: true })
+    @Column({ type: 'text', unique: true })
     token: string;
 
-    @Column({ type: 'varchar', length: 255 })
+    @Column({ type: 'text' })
     refreshToken: string;
 
     @Column({ type: 'varchar', length: 45 })
     ipAddress: string;
 
-    @Column({ type: 'varchar', length: 255, nullable: true })
+    @Column({ type: 'text', nullable: true })
     userAgent: string | null;
 
     @Column({ type: 'uuid' })
@@ -44,7 +44,7 @@ export class Session {
     @UpdateDateColumn({ type: 'timestamp' })
     updatedAt: Date;
 
-    @Column({ type: 'uuid', nullable: true })
+    @Column({ type: 'varchar', length: 50, nullable: true })
     tenantId: string | null;
 
     constructor(partial: Partial<Session>) {

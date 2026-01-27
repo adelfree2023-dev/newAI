@@ -5,6 +5,7 @@ import { TenantModule } from './tenants/tenant.module';
 import { AuthModule } from './auth/auth.module';
 import { User } from './auth/entities/user.entity';
 import { Session } from './auth/entities/session.entity';
+import { Tenant } from './tenants/entities/tenant.entity';
 import { TenantIsolationModule } from './security/layers/s2-tenant-isolation/tenant-isolation.module';
 import { EnvironmentVerificationModule } from './security/layers/s1-environment-verification/environment-validator.module';
 import { InputValidationModule } from './security/layers/s3-input-validation/input-validation.module';
@@ -29,8 +30,8 @@ import { ProductModule } from './products/product.module';
         TypeOrmModule.forRoot({
             type: 'postgres',
             url: process.env.DATABASE_URL,
-            entities: [User, Session],
-            synchronize: false,
+            entities: [User, Session, Tenant],
+            synchronize: true,
             logging: process.env.NODE_ENV === 'development',
             schema: 'public' // المخطط الافتراضي
         }),

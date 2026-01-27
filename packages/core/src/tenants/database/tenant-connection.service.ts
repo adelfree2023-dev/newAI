@@ -127,15 +127,17 @@ export class TenantConnectionService implements OnModuleInit {
         // إنشاء جدول المستخدمين
         await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS "${schemaName}"."users" (
-        id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid(),
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         email VARCHAR(255) UNIQUE NOT NULL,
-        password_hash VARCHAR(255) NOT NULL,
-        first_name VARCHAR(100),
-        last_name VARCHAR(100),
-        role VARCHAR(20) DEFAULT 'USER' CHECK (role IN ('USER', 'ADMIN', 'STORE_MANAGER')),
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-        tenant_id VARCHAR(36) NOT NULL DEFAULT '${tenantId}'
+        "passwordHash" VARCHAR(255) NOT NULL,
+        "firstName" VARCHAR(100),
+        "lastName" VARCHAR(100),
+        role VARCHAR(20) DEFAULT 'CUSTOMER',
+        status VARCHAR(20) DEFAULT 'ACTIVE',
+        "tenantId" VARCHAR(50) DEFAULT '${tenantId}',
+        "isTwoFactorEnabled" BOOLEAN DEFAULT FALSE,
+        "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
@@ -147,14 +149,14 @@ export class TenantConnectionService implements OnModuleInit {
         // إنشاء جدول المنتجات
         await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS "${schemaName}"."products" (
-        id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid(),
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         name VARCHAR(255) NOT NULL,
         description TEXT,
         price DECIMAL(10, 2) NOT NULL,
-        stock_quantity INTEGER DEFAULT 0,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-        tenant_id VARCHAR(36) NOT NULL DEFAULT '${tenantId}'
+        "stockQuantity" INTEGER DEFAULT 0,
+        "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        "tenantId" VARCHAR(50) DEFAULT '${tenantId}'
       )
     `);
 
@@ -166,11 +168,11 @@ export class TenantConnectionService implements OnModuleInit {
         // إنشاء جدول الإعدادات
         await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS "${schemaName}"."settings" (
-        id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid(),
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         key VARCHAR(100) NOT NULL UNIQUE,
         value TEXT NOT NULL,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       )
     `);
 

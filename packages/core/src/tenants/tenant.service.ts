@@ -1,4 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Tenant } from './entities/tenant.entity';
 import { TenantConnectionService } from './database/tenant-connection.service';
 import { SchemaInitializerService } from './database/schema-initializer.service';
 import { AuditService } from '../security/layers/s4-audit-logging/audit.service';
@@ -9,6 +12,8 @@ export class TenantService {
   private activeTenants: Map<string, any> = new Map();
 
   constructor(
+    @InjectRepository(Tenant)
+    private readonly tenantRepository: Repository<Tenant>,
     private readonly tenantConnection: TenantConnectionService,
     private readonly schemaInitializer: SchemaInitializerService,
     private readonly auditService: AuditService
@@ -34,18 +39,24 @@ export class TenantService {
         timestamp: new Date().toISOString()
       });
 
-      // 4. تحميل المستأجر إلى الذاكرة
-      const tenantInfo = {
-        ...tenantData,
-        schemaName: schemaName,
-        createdAt: new Date().toISOString(),
-        status: 'ACTIVE'
-      };
+      // 4. حفظ المستأجر في قاعدة البيانات
+      const tenant = this.tenantRepository.create({
+        id: tenantData.id,
+        name: tenantData.name,
+        domain: tenantData.domain,
+        businessType: tenantData.businessType,
+        contactEmail: tenantData.contactEmail,
+        status: 'ACTIVE',
+        schemaName: schemaName
+      });
 
-      this.activeTenants.set(tenantData.id, tenantInfo);
+      await this.tenantRepository.save(tenant);
 
-      this.logger.log(`✅ [M2] تم إنشاء المستأجر بنجاح: ${tenantData.name} (${tenantData.id})`);
-      return tenantInfo;
+      // 5. تحميل المستأجر إلى الذاكرة
+      this.activeTenants.set(tenant.id, tenant);
+
+      this.logger.log(`✅ [M2] تم إنشاء المستأجر بنجاح: ${tenant.name} (${tenant.id})`);
+      return tenant;
 
     } catch (error) {
       this.logger.error(`❌ [M2] فشل إنشاء المستأجر: ${error.message}`);

@@ -33,9 +33,12 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
         if (!user || user.status !== 'ACTIVE') {
             throw new UnauthorizedException('المستخدم غير موجود أو غير نشط');
         }
-        if (payload.tenantId && payload.tenantId !== user.tenantId) {
+
+        // التحقق من تطابق المستأجر إذا كان موجوداً في التوكن
+        if (payload.tenantId && user.tenantId && payload.tenantId !== user.tenantId) {
             throw new UnauthorizedException('وصول غير مصرح به للمستأجر');
         }
+
         return {
             userId: user.id,
             email: user.email,

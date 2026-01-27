@@ -79,10 +79,8 @@ export class AuthModule implements OnModuleInit {
 
     onModuleInit() {
         this.logger.log('🔐 [S2] تم تهيئة وحدة المصادقة واستراتيجيات Passport');
-        this.logger.log('✅ [S2] استراتيجية JWT: ' + (this.jwtStrategy ? 'مشحونة' : 'مفقودة'));
-        this.logger.log('✅ [S2] استراتيجية Local: ' + (this.localStrategy ? 'مشحونة' : 'مفقودة'));
 
-        // تسجيل الاستراتيجيات يدوياً لضمان استقرار Passport
+        // تسجيل الاستراتيجيات يدوياً لضمان استقرار Passport ومنع خطأ Unknown strategy
         const passport = require('passport');
 
         if (this.jwtStrategy) {

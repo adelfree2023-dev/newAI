@@ -44,7 +44,7 @@ export class User {
     @Column({ type: 'enum', enum: UserStatus, default: UserStatus.ACTIVE })
     status: UserStatus;
 
-    @Column({ type: 'uuid', nullable: true })
+    @Column({ type: 'varchar', length: 50, nullable: true })
     tenantId: string | null;
 
     @Column({ type: 'boolean', default: false })
