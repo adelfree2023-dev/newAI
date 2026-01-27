@@ -65,7 +65,7 @@ export class AuthService {
     async login(loginDto: LoginDto): Promise<any> {
         this.logger.log(`[M3] 🔐 محاولة تسجيل دخول: ${loginDto.email}`);
         const isLocked = await this.bruteForceService.isAccountLocked(loginDto.email);
-        if (isLocked) throw new UnauthorizedException('الحساب مقفل مؤقتاً بسبب محاولات فاشلة متعددة');
+        if (isLocked) throw new UnauthorizedException('الحساب مقفل مؤقتاً بسبب محاولات فاشلة متعددة (Account Locked)');
 
         const user = await this.userService.findByEmail(loginDto.email);
         if (!user || !(await user.validatePassword(loginDto.password))) {
@@ -108,6 +108,25 @@ export class AuthService {
         }
     }
 
+    async logoutAll(userId: string): Promise<void> {
+        await this.sessionService.invalidateAllUserSessions(userId);
+    }
+
+    async enable2FA(userId: string): Promise<any> {
+        const user = await this.userService.findById(userId);
+        if (!user) throw new UnauthorizedException('المستخدم غير موجود');
+
+        // محاكاة تفعيل 2FA للاختبار
+        user.isTwoFactorEnabled = true;
+        await this.userService.save(user);
+
+        return {
+            success: true,
+            secret: 'MOCK_SECRET_FOR_TESTING',
+            qrCode: 'data:image/png;base64,mock_qr_code'
+        };
+    }
+
     async changePassword(userId: string, changePasswordDto: ChangePasswordDto): Promise<void> {
         const user = await this.userService.findById(userId);
         if (!user || !(await user.validatePassword(changePasswordDto.currentPassword))) {
@@ -119,12 +138,25 @@ export class AuthService {
     }
 
     private async createSession(user: User, ipAddress?: string, userAgent?: string) {
-        const accessToken = this.jwtService.sign({
-            sub: user.id, email: user.email, role: user.role, tenantId: user.tenantId, isSuperAdmin: user.isSuperAdmin()
-        });
         const refreshToken = uuidv4();
+        const sessionId = uuidv4();
+
+        const accessToken = this.jwtService.sign({
+            sub: user.id,
+            email: user.email,
+            role: user.role,
+            tenantId: user.tenantId,
+            isSuperAdmin: user.isSuperAdmin(),
+            sid: sessionId // لضمان تفرد التوكن حتى لو تم تسجيل الدخول في نفس الثانية
+        });
+
         await this.sessionService.create({
-            userId: user.id, token: accessToken, refreshToken, ipAddress: ipAddress || 'unknown', userAgent: userAgent || 'unknown', tenantId: user.tenantId
+            userId: user.id,
+            token: accessToken,
+            refreshToken,
+            ipAddress: ipAddress || 'unknown',
+            userAgent: userAgent || 'unknown',
+            tenantId: user.tenantId
         });
         return { accessToken, refreshToken };
     }

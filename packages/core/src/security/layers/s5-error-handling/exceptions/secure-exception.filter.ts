@@ -1,4 +1,4 @@
-import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus, Logger, Scope, Injectable } from '@nestjs/common';
+import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus, Logger, Scope, Injectable, BadRequestException } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { AuditService } from '../../s4-audit-logging/audit.service';
@@ -105,6 +105,14 @@ export class AllExceptionsFilter implements ExceptionFilter {
       this.logger.warn(`[S5] خطأ في التحقق من المدخلات: ${JSON.stringify((sensitiveData as any).validationErrors)}`);
     }
 
+    // إضافة تفاصيل التحقق للرسالة الأصلية إذا كانت BadRequest
+    if (exception instanceof BadRequestException && (exception as any).response?.message) {
+      technicalDetails = {
+        ...technicalDetails,
+        validationErrorDetails: (exception as any).response.message
+      };
+    }
+
     return {
       requestId,
       timestamp: new Date().toISOString(),
@@ -135,18 +143,22 @@ export class AllExceptionsFilter implements ExceptionFilter {
       return {
         ...baseResponse,
         message: isProduction
-          ? 'حدث خطأ داخلي في الخادم. تم تسجيل المشكلة وسنقوم بإصلاحها قريباً.'
+          ? 'حدث خطأ في النظام (System Error - S5). تم تسجيل المشكلة وسنقوم بإصلاحها قريباً.'
           : exception.message
       };
     } else if (statusCode === HttpStatus.UNAUTHORIZED) {
       return {
         ...baseResponse,
-        message: 'غير مصرح به. يرجى تسجيل الدخول أولاً.'
+        message: exception.message && exception.message !== 'Unauthorized'
+          ? `${exception.message} (Unauthorized)`
+          : 'غير مصرح به. يرجى تسجيل الدخول أولاً. (Unauthorized)'
       };
     } else if (statusCode === HttpStatus.FORBIDDEN) {
       return {
         ...baseResponse,
-        message: 'وصول مرفوض. ليس لديك الصلاحيات الكافية لهذا الإجراء.'
+        message: exception.message && exception.message !== 'Forbidden'
+          ? `${exception.message} (Forbidden)`
+          : 'وصول مرفوض. ليس لديك الصلاحيات الكافية لهذا الإجراء. (Forbidden)'
       };
     } else if (statusCode === HttpStatus.NOT_FOUND) {
       return {
@@ -156,7 +168,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
     } else if (statusCode === HttpStatus.CONFLICT) {
       return {
         ...baseResponse,
-        message: 'تعارض في البيانات. قد تكون تحاول إنشاء عنصر موجود مسبقاً.'
+        message: exception.message && exception.message !== 'Conflict'
+          ? `${exception.message} (Conflict)`
+          : 'تعارض في البيانات. قد تكون تحاول إنشاء عنصر موجود مسبقاً. (Conflict)'
       };
     }
 

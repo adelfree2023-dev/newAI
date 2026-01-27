@@ -1,4 +1,4 @@
-import { Injectable, NestInterceptor, ExecutionContext, CallHandler, Logger, Scope } from '@nestjs/common';
+import { Injectable, NestInterceptor, ExecutionContext, CallHandler, Logger, Scope, ForbiddenException } from '@nestjs/common';
 import { Observable, throwError } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
 import { TenantContextService } from './tenant-context.service';
@@ -32,7 +32,7 @@ export class TenantIsolationInterceptor implements NestInterceptor {
                     this.tenantContext.forceTenantContext(extractedTenantId);
                     TenantIsolationInterceptor.logger.log(`[S2] ✅ تم إدخال سياق المستأجر تلقائياً: ${extractedTenantId}`);
                 } else if (!this.isExemptRoute(className, methodName)) {
-                    return throwError(() => new Error('سياق المستأجر مطلوب لهذا الطلب'));
+                    return throwError(() => new ForbiddenException('سياق المستأجر مطلوب لهذا الطلب (Tenant Context Required)'));
                 }
             }
 
@@ -40,7 +40,7 @@ export class TenantIsolationInterceptor implements NestInterceptor {
             if (!this.tenantContext.isSystemContext()) {
                 const requestedTenantId = this.extractTenantIdFromRequest(request, context);
                 if (requestedTenantId && !this.tenantContext.validateTenantAccess(requestedTenantId)) {
-                    return throwError(() => new Error('وصول غير مصرح به للمستأجر'));
+                    return throwError(() => new ForbiddenException('وصول غير مصرح به للمستأجر (Tenant Access Forbidden)'));
                 }
             }
 
@@ -116,9 +116,10 @@ export class TenantIsolationInterceptor implements NestInterceptor {
     private isExemptRoute(className: string, methodName: string): boolean {
         // المسارات المعفاة من التحقق من المستأجر
         const exemptRoutes = [
-            { class: 'AuthController', methods: ['login', 'register', 'forgotPassword'] },
+            { class: 'AuthController', methods: ['login', 'register', 'forgotPassword', 'refresh', 'logout', 'logoutAll', 'enable2FA', 'verify2FA'] },
             { class: 'HealthController', methods: ['check', 'status', 'getHealth'] },
-            { class: 'TenantController', methods: ['createTenant'] } // إنشاء مستأجر جديد لا يحتاج لسياق
+            { class: 'TenantController', methods: ['createTenant'] },
+            { class: 'TestController', methods: ['forceGenerateSPC', 'testEncryption'] }
         ];
 
         return exemptRoutes.some(route =>

@@ -1,4 +1,4 @@
-import { Module, Global } from '@nestjs/common';
+import { Module, Global, OnModuleInit, Logger } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -25,7 +25,7 @@ import { TenantContextService } from '../security/layers/s2-tenant-isolation/ten
 @Module({
     imports: [
         ConfigModule,
-        PassportModule,
+        PassportModule.register({ defaultStrategy: 'jwt' }),
         JwtModule.registerAsync({
             imports: [ConfigModule],
             useFactory: async (configService: ConfigService) => ({
@@ -64,7 +64,16 @@ import { TenantContextService } from '../security/layers/s2-tenant-isolation/ten
         BruteForceProtectionService,
         RolesGuard,
         PermissionsGuard,
-        TenantAuthGuard
+        TenantAuthGuard,
+        JwtStrategy,
+        PassportModule
     ]
 })
-export class AuthModule { }
+export class AuthModule implements OnModuleInit {
+    private readonly logger = new Logger(AuthModule.name);
+
+    onModuleInit() {
+        this.logger.log('🔐 [S2] تم تهيئة وحدة المصادقة بنجاح');
+        this.logger.log('✅ [S2] استراتيجية JWT جاهزة للعمل');
+    }
+}
