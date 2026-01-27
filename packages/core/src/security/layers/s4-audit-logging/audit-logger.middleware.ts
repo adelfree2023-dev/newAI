@@ -34,7 +34,7 @@ export class AuditLoggerMiddleware implements NestMiddleware {
 
   private logRequestStart(req: Request, requestId: string) {
     const tenantId = this.tenantContext.getTenantId() || 'system';
-    const userId = req.user?.id || 'anonymous';
+    const userId = (req as any).user?.id || 'anonymous';
 
     this.auditService.logSystemEvent('REQUEST_STARTED', {
       requestId,
