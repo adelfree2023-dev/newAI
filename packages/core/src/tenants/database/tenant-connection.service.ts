@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, NotFoundException } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { TenantContextService } from '../../security/layers/s2-tenant-isolation/tenant-context.service';
@@ -188,7 +188,7 @@ export class TenantConnectionService implements OnModuleInit {
     ): Promise<T> {
         // التأكد من تهيئة المخطط
         if (!(await this.schemaExists(tenantId))) {
-            throw new Error(`مخطط المستأجر غير موجود: ${tenantId}`);
+            throw new NotFoundException(`مخطط المستأجر غير موجود: ${tenantId}`);
         }
 
         const schemaName = this.getSchemaName(tenantId);
