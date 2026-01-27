@@ -4,296 +4,187 @@ const path = require('path');
 const targetDir = path.join(process.cwd(), 'src');
 
 function getAllFiles(dirPath, arrayOfFiles = []) {
-    const files = fs.readdirSync(dirPath);
-
-    files.forEach(function (file) {
-        const fullPath = path.join(dirPath, file);
-        if (fs.statSync(fullPath).isDirectory()) {
-            arrayOfFiles = getAllFiles(fullPath, arrayOfFiles);
-        } else {
-            if (file.endsWith('.ts') &&
-                !file.endsWith('.spec.ts') &&
-                !file.endsWith('.module.ts') &&
-                !file.endsWith('.dto.ts') &&
-                !file.endsWith('.entity.ts') &&
-                !file.endsWith('.constants.ts') &&
-                !file.includes('test-generation-skill')) {
+    try {
+        const files = fs.readdirSync(dirPath);
+        files.forEach(file => {
+            const fullPath = path.join(dirPath, file);
+            if (fs.statSync(fullPath).isDirectory()) {
+                arrayOfFiles = getAllFiles(fullPath, arrayOfFiles);
+            } else if (
+                file.endsWith('.service.ts') ||
+                file.endsWith('.controller.ts') ||
+                (file.endsWith('.ts') &&
+                    !file.endsWith('.spec.ts') &&
+                    !file.endsWith('.module.ts') &&
+                    !file.endsWith('.dto.ts') &&
+                    !file.endsWith('.entity.ts') &&
+                    !file.endsWith('.constants.ts') &&
+                    !file.includes('test-generation-skill'))
+            ) {
                 arrayOfFiles.push(fullPath);
             }
-        }
-    });
-
+        });
+    } catch (e) {
+        console.warn('⚠️ تخطي مجلد:', dirPath);
+    }
     return arrayOfFiles;
 }
 
-function analyzeCode(content, className) {
+function analyzeCode(content) {
     const methods = [];
     const dependencies = [];
-    const properties = [];
 
-    // استخراج الطرق
-    const methodRegex = /(async\s+)?(public|private|protected)?\s*(\w+)\s*\(([^)]*)\)\s*:\s*([A-Za-z0-9<>\[\]]+)?\s*{/g;
-    let methodMatch;
-    while ((methodMatch = methodRegex.exec(content)) !== null) {
-        const isAsync = methodMatch[1] !== undefined;
-        const methodName = methodMatch[3];
-        const params = methodMatch[4].split(',').filter(p => p.trim()).map(p => {
-            const paramMatch = p.trim().match(/(\w+)(?:\s*:\s*([A-Za-z0-9<>\[\]]+))?/);
-            return paramMatch ? { name: paramMatch[1], type: paramMatch[2] || 'any' } : null;
-        }).filter(Boolean);
-
-        const returnType = methodMatch[5] || 'any';
-
-        methods.push({
-            name: methodName,
-            isAsync,
-            params,
-            returnType,
-            isPrivate: methodMatch[2] === 'private'
-        });
-    }
-
-    // استخراج التبعيات
+    // استخراج التبعيات من الـ constructor (بدون افتراضات خاطئة)
     const constructorMatch = content.match(/constructor\s*\(([^)]*)\)/s);
     if (constructorMatch) {
         const params = constructorMatch[1].split(',').map(p => p.trim());
-        for (const param of params) {
-            const typeMatch = param.match(/:\s*([A-Z][A-Za-z0-9]+)/);
-            const nameMatch = param.match(/(\w+)\s*:/);
-            if (typeMatch && nameMatch) {
-                const type = typeMatch[1];
-                const name = nameMatch[1];
-                if (type !== 'Logger' && type !== 'ConfigService') {
-                    dependencies.push({
-                        type,
-                        name,
-                        mockMethods: getMockMethodsForType(type)
-                    });
+        params.forEach(param => {
+            const match = param.match(/(?:private|protected|public)?\s*(?:readonly\s*)?(\w+)\s*:\s*([A-Z][A-Za-z0-9]+)/);
+            if (match) {
+                const name = match[1];
+                const type = match[2];
+                // استثناء التبعيات القياسية التي يوفرها NestJS
+                if (!['Logger', 'ConfigService'].includes(type)) {
+                    dependencies.push({ name, type });
                 }
             }
-        }
-    }
-
-    // استخراج الخصائص
-    const propertyRegex = /(private|public|protected)?\s*(readonly)?\s*(\w+)\s*:\s*([A-Za-z0-9<>\[\]]+)/g;
-    let propertyMatch;
-    while ((propertyMatch = propertyRegex.exec(content)) !== null) {
-        properties.push({
-            name: propertyMatch[3],
-            type: propertyMatch[4],
-            isPrivate: propertyMatch[1] === 'private',
-            isReadonly: propertyMatch[2] !== undefined
         });
     }
 
-    return { methods, dependencies, properties };
-}
+    // استخراج الطرق العامة فقط (بدون طرق خاصة)
+    const methodRegex = /(?:public\s+)?(\w+)\s*\(([^)]*)\)\s*(?::\s*([A-Za-z0-9<>\[\]]+))?\s*\{/g;
+    let match;
+    while ((match = methodRegex.exec(content)) !== null) {
+        const methodName = match[1];
+        // تخطي الطرق الخاصة والمتداخلة
+        if (methodName.startsWith('_') || methodName === 'constructor') continue;
 
-function getMockMethodsForType(type) {
-    const mockMap = {
-        'AuditService': ['logBusinessEvent', 'logSecurityEvent', 'logSystemEvent'],
-        'TenantConnectionService': ['getConnection', 'initializeConnection'],
-        'SchemaInitializerService': ['initializeNewTenant', 'getSchemaName'],
-        'TenantContextService': ['getCurrentTenant', 'setTenant'],
-        'ConfigService': ['get', 'has'],
-        'Repository': ['find', 'findOne', 'save', 'delete', 'query'],
-        'EntityManager': ['query', 'transaction', 'createQueryBuilder']
-    };
+        // تخطي الطرق الموروثة تلقائياً
+        if (['onModuleInit', 'onModuleDestroy', 'ngOnDestroy'].includes(methodName)) continue;
 
-    return mockMap[type] || ['mockMethod1', 'mockMethod2'];
+        methods.push({
+            name: methodName,
+            params: match[2].split(',').filter(p => p.trim()).map(p => p.trim().split(':')[0].trim()),
+            isAsync: content.substring(match.index - 10, match.index).includes('async')
+        });
+    }
+
+    return { methods, dependencies };
 }
 
 function generateTestContent(filePath, content) {
     const fileName = path.basename(filePath);
     const classNameBase = fileName.replace('.ts', '');
-    const parts = classNameBase.split('.');
-    const pascalName = parts.map(s => s.charAt(0).toUpperCase() + s.slice(1)).join('');
+    const pascalName = classNameBase
+        .split(/[.-]/)
+        .map(s => s.charAt(0).toUpperCase() + s.slice(1))
+        .join('');
 
-    // تحليل الكود
-    const analysis = analyzeCode(content, pascalName);
-    const { methods, dependencies, properties } = analysis;
+    const { methods, dependencies } = analyzeCode(content);
 
-    // إنشاء جمل الاستيراد
-    const importStatements = generateImportStatements(dependencies, pascalName, filePath);
-
-    // إنشاء مزيفات التبعيات
-    const providers = generateProviders(dependencies);
-
-    // إنشاء اختبارات الطرق
-    const methodTests = generateMethodTests(methods, pascalName);
-
-    // إنشاء اختبارات الخصائص
-    const propertyTests = generatePropertyTests(properties, pascalName);
-
-    // إنشاء اختبارات الحالات الحافة
-    const edgeCaseTests = generateEdgeCaseTests(methods, pascalName);
-
-    return "import { Test, TestingModule } from '@nestjs/testing';\n" +
-        "import { " + pascalName + " } from './" + classNameBase + "';\n" +
-        importStatements.join('\n') + "\n\n" +
-        "describe('" + pascalName + " (97% Coverage Target)', () => {\n" +
-        "  let service: " + pascalName + ";\n" +
-        generateMockDeclarations(dependencies) + "\n" +
-        "  beforeEach(async () => {\n" +
-        generateMockInitializations(dependencies) + "\n" +
-        "    const module: TestingModule = await Test.createTestingModule({\n" +
-        "      providers: [\n" +
-        "        " + pascalName + ",\n" +
-        "        " + providers.join(',\n        ') + "\n" +
-        "      ],\n" +
-        "    }).compile();\n\n" +
-        "    service = module.get<" + pascalName + ">(" + pascalName + ");\n" +
-        generateMockAssignments(dependencies) + "\n" +
-        "  });\n\n" +
-        "  afterEach(() => {\n" +
-        "    jest.clearAllMocks();\n" +
-        "  });\n\n" +
-        "  it('should be defined', () => {\n" +
-        "    expect(service).toBeDefined();\n" +
-        "  });\n\n" +
-        propertyTests + "\n" +
-        methodTests + "\n" +
-        edgeCaseTests + "\n" +
-        "});\n";
-}
-
-function generateImportStatements(dependencies, className, filePath) {
-    const importStatements = [];
-    const importMap = {
-        'AuditService': '../security/layers/s4-audit-logging/audit.service',
-        'TenantConnectionService': './database/tenant-connection.service',
-        'SchemaInitializerService': './database/schema-initializer.service',
-        'TenantContextService': './context/tenant-context.service',
-        'ConfigService': '@nestjs/config',
-        'Repository': 'typeorm',
-        'EntityManager': 'typeorm'
-    };
-
-    dependencies.forEach(dep => {
-        if (importMap[dep.type]) {
-            importStatements.push("import { " + dep.type + " } from '" + importMap[dep.type] + "';");
+    // توليد مزيفات ذكية وآمنة
+    const mockProviders = dependencies.map(dep => {
+        // مزيف عام يتعامل مع أي استدعاء بطريقة آمنة
+        return `{ 
+      provide: ${dep.type}, 
+      useValue: new Proxy({}, {
+        get: (target, prop) => {
+          if (typeof prop === 'string' && !target[prop]) {
+            target[prop] = jest.fn(() => Promise.resolve());
+          }
+          return target[prop] || jest.fn(() => Promise.resolve());
         }
+      }) 
+    }`;
     });
 
-    return importStatements;
-}
+    // توليد اختبارات آمنة (لا تفترض سلوكاً)
+    const safeTests = methods.map(method => {
+        const params = method.params.length > 0
+            ? method.params.map(p => `null /* TODO: replace with valid ${p} */`).join(', ')
+            : '';
 
-function generateProviders(dependencies) {
-    return dependencies.map(dep => {
-        const mockMethods = dep.mockMethods.map(m => m + ": jest.fn()");
-        return "{ provide: " + dep.type + ", useValue: { " + mockMethods.join(', ') + " } }";
+        return `
+  describe('${method.name}', () => {
+    it('should not throw error with minimal input (TODO: add real assertions)', async () => {
+      try {
+        ${method.isAsync ? 'await ' : ''}service.${method.name}(${params});
+        expect(true).toBe(true); // ✅ Basic safety check passed
+      } catch (error) {
+        // ❌ This test will fail if method throws - developer must fix
+        throw error;
+      }
     });
-}
+  });`;
+    }).join('\n');
 
-function generateMethodTests(methods, className) {
-    const tests = [];
+    return `import { Test, TestingModule } from '@nestjs/testing';
+import { ${pascalName} } from './${classNameBase}';
 
-    methods.forEach(method => {
-        if (method.isPrivate) return;
+// ⚠️ AUTO-GENERATED TEST - REVIEW AND ENHANCE MANUALLY
+// Target: Basic instantiation + safety checks (NOT 97% coverage)
+// TODO: Replace placeholder assertions with real business logic tests
 
-        if (method.isAsync) {
-            tests.push("\n  describe('" + method.name + "', () => {\n" +
-                "    it('should execute successfully', async () => {\n" +
-                "      await expect(service." + method.name + "(" + method.params.map(() => 'null').join(', ') + ")).resolves.toBeDefined();\n" +
-                "    });\n" +
-                "    it('should handle errors', async () => {\n" +
-                "      await expect(service." + method.name + "(" + method.params.map(() => 'undefined').join(', ') + ")).rejects.toThrow();\n" +
-                "    });\n" +
-                "  });");
-        } else {
-            tests.push("\n  describe('" + method.name + "', () => {\n" +
-                "    it('should execute successfully', () => {\n" +
-                "      expect(() => service." + method.name + "(" + method.params.map(() => 'null').join(', ') + ")).not.toThrow();\n" +
-                "    });\n" +
-                "  });");
-        }
-    });
+describe('${pascalName} (Auto-Generated Foundation)', () => {
+  let service: ${pascalName};
 
-    return tests.join('\n');
-}
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        ${pascalName},
+        ${mockProviders.join(',\n        ')}
+      ],
+    }).compile();
 
-function generatePropertyTests(properties, className) {
-    const tests = [];
+    service = module.get<${pascalName}>(${pascalName});
+  });
 
-    properties.forEach(prop => {
-        if (prop.isPrivate) return;
+  it('✅ should be defined (basic sanity check)', () => {
+    expect(service).toBeDefined();
+  });
 
-        tests.push("\n  describe('property: " + prop.name + "', () => {\n" +
-            "    it('should exist', () => {\n" +
-            "      expect(service).toHaveProperty('" + prop.name + "');\n" +
-            "    });\n" +
-            "  });");
-    });
-
-    return tests.join('\n');
-}
-
-function generateEdgeCaseTests(methods, className) {
-    const edgeCases = [];
-
-    methods.forEach(method => {
-        if (method.isPrivate) return;
-
-        edgeCases.push("\n  describe('" + method.name + " - Edge Cases', () => {\n" +
-            "    it('should handle invalid inputs safely', async () => {\n" +
-            "      try {\n" +
-            "        " + (method.isAsync ? 'await ' : '') + "service." + method.name + "(" + method.params.map(() => 'null').join(', ') + ");\n" +
-            "      } catch (e) {}\n" +
-            "      expect(true).toBe(true);\n" +
-            "    });\n" +
-            "  });");
-    });
-
-    return edgeCases.join('\n');
-}
-
-function generateMockDeclarations(dependencies) {
-    if (dependencies.length === 0) return '';
-    return dependencies.map(dep => "  let mock" + dep.type + ": any;").join('\n');
-}
-
-function generateMockInitializations(dependencies) {
-    if (dependencies.length === 0) return '';
-    return dependencies.map(dep =>
-        "    mock" + dep.type + " = { " + dep.mockMethods.map(m => m + ": jest.fn()").join(', ') + " };"
-    ).join('\n');
-}
-
-function generateMockAssignments(dependencies) {
-    if (dependencies.length === 0) return '';
-    return dependencies.map(dep => "    (service as any)." + dep.name + " = mock" + dep.type + ";").join('\n');
+  ${safeTests || `
+  // ℹ️ No public methods detected - add manual tests for business logic
+  it('ℹ️ placeholder test - implement real tests', () => {
+    expect(true).toBe(true);
+  });`}
+});
+`;
 }
 
 async function runSwarm() {
-    console.log('🚀 [AI QA Swarm] إطلاق جيش الـ 70 وكيل (الإصدار المطور - 97% Coverage)...');
-    console.log('🎯 Target Coverage: 97%+');
+    console.log('🚀 [REALISTIC QA SWARM] - Building TEST FOUNDATION (not fake 97%)');
+    console.log('💡 Strategy: Safe instantiation + minimal safety checks');
+    console.log('⚠️  Warning: Real coverage requires MANUAL test development');
 
     const allFiles = getAllFiles(targetDir);
-    console.log('📂 جاري معالجة ' + allFiles.length + ' ملف...');
+    console.log(\`📂 Found \${allFiles.length} testable files\`);
 
-    let completedCount = 0;
-    let errorCount = 0;
+  let success = 0;
+  let failed = 0;
 
-    allFiles.forEach((filePath) => {
-        try {
-            const content = fs.readFileSync(filePath, 'utf-8');
-            const specContent = generateTestContent(filePath, content);
-            const specPath = filePath.replace('.ts', '.spec.ts');
+  allFiles.forEach(filePath => {
+    try {
+      const content = fs.readFileSync(filePath, 'utf8');
+      const specContent = generateTestContent(filePath, content);
+      const specPath = filePath.replace(/\.ts$/, '.spec.ts');
+      
+      // حفظ حتى لو كان الملف موجوداً (لتحديث الإصدارات القديمة)
+      fs.writeFileSync(specPath, specContent, 'utf8');
+      success++;
+      process.stdout.write('.');
+    } catch (err) {
+      failed++;
+      console.error(\`\\n❌ \${path.basename(filePath)}: \${err.message}\`);
+    }
+  });
 
-            // الكتابة دائماً لتحديث الملفات السابقة الفاشلة
-            fs.writeFileSync(specPath, specContent);
-            completedCount++;
-            process.stdout.write('.');
-        } catch (err) {
-            errorCount++;
-            console.error('\n❌ فشل وكيل الملف ' + filePath + ': ' + err.message);
-        }
-    });
-
-    console.log('\n🏁 [AI QA Swarm] اكتمل الهجوم الشامل المطور!');
-    console.log('✅ تم إنشاء ' + completedCount + ' ملف اختبار ذكي بنجاح.');
-    console.log('⚠️  عدد الأخطاء: ' + errorCount);
-    console.log('📊 التغطية المستهدفة: 97%+');
+  console.log(\`\\n\\n✅ Generated \${success} test files\`);
+  console.log(\`⚠️  Failed: \${failed}\`);
+  console.log(\`\\n📊 REALISTIC EXPECTATIONS:\`);
+  console.log(\`   • Initial coverage: ~30-40% (instantiation + basic calls)\`);
+  console.log(\`   • Target 97%: Requires MANUAL test development by developers\`);
+  console.log(\`   • Next step: Run 'npm test -- --coverage' and enhance failing tests\`);
 }
 
 runSwarm().catch(console.error);
