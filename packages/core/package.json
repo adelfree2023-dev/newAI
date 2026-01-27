@@ -16,6 +16,7 @@
     "qa:swarm:smart": "npx ts-node scripts/run-smart-qa-swarm.ts"
   },
   "dependencies": {
+    "@ai-sdk/groq": "^0.0.1",
     "@nestjs/common": "^10.0.0",
     "@nestjs/config": "^3.1.1",
     "@nestjs/core": "^10.0.0",
@@ -25,7 +26,7 @@
     "@nestjs/swagger": "^7.0.0",
     "@nestjs/typeorm": "^10.0.0",
     "@redis/client": "^1.5.14",
-    "@ai-sdk/groq": "^0.0.1",
+    "@types/redis": "^4.0.10",
     "ai": "^3.0.0",
     "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",
@@ -39,6 +40,7 @@
     "passport-local": "^1.0.0",
     "pg": "^8.11.3",
     "qrcode": "^1.5.4",
+    "redis": "^5.10.0",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.1",
     "speakeasy": "^2.0.0",
