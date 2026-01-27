@@ -11,10 +11,12 @@ TENANT_ID="official-m3-tenant"
 echo "🏆 Starting Official M3 Verification - 14 Comprehensive Tests"
 echo "------------------------------------------------------------"
 
-echo "Phase 0: Clean Start (Removing previous test user)"
+echo "Phase 0: Clean Start (Removing previous test user & Redis locks)"
 export PGPASSWORD=ApexSecure2026
 psql -U apex_user -d apex_prod -p 5433 -h localhost -c "DELETE FROM sessions WHERE \"userId\" IN (SELECT id FROM users WHERE email='$TEST_EMAIL'); DELETE FROM users WHERE email='$TEST_EMAIL';" > /dev/null
-echo "✅ Cleaned"
+# Clear Redis brute-force locks for the test email
+redis-cli --scan --pattern "auth:failed:*" | xargs -r redis-cli del > /dev/null
+echo "✅ Cleaned (SQL & Redis)"
 
 # --- PART 1: AUTHENTICATION ---
 
