@@ -152,8 +152,9 @@ export class BruteForceProtectionService implements OnModuleInit, OnModuleDestro
 
             const emailKey = `brute_force:${env}:${context}:${tenantId}:${email}`;
             const attempts = await this.redisClient.get(emailKey);
+            const attemptsStr = attempts ? String(attempts) : '0';
 
-            return parseInt(attempts || '0') >= 5;
+            return parseInt(attemptsStr, 10) >= 5;
         } catch (error) {
             this.logger.error(`[S6] ❌ Error checking account lock: ${error.message}`);
             return false;
