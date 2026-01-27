@@ -1,11 +1,11 @@
-import { Injectable, UnauthorizedException, Logger } from '@nestjs/common';
+import { Injectable, UnauthorizedException, Logger, OnModuleInit } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
 import { UserService } from '../services/user.service';
 
 @Injectable()
-export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
+export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') implements OnModuleInit {
     private readonly logger = new Logger(JwtStrategy.name);
 
     constructor(
@@ -15,27 +15,37 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
         super({
             jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
             ignoreExpiration: false,
-            secretOrKey: configService.get<string>('JWT_SECRET')
+            secretOrKey: configService.get<string>('JWT_SECRET'),
         });
 
-        // Manual registration to prevent race conditions or multiple passport instances
-        try {
-            const passport = require('passport');
-            passport.use('jwt', this);
-            this.logger.log('🛡️ [S2] JWT Strategy registered manually in constructor');
-        } catch (e) {
-            this.logger.error('❌ Failed manual registration: ' + e.message);
-        }
+        // ✅ ضمان التسجيل الفوري
+        const passport = require('passport');
+        passport.use('jwt', this);
+        this.logger.log('🛡️ [S2] JWT Strategy registered in constructor');
+    }
+
+    // ✅ ضمان التحميل في دورة الحياة
+    onModuleInit() {
+        this.logger.log('✅ [S2] JWT Strategy initialized successfully');
     }
 
     async validate(payload: any) {
+        this.logger.debug(`[M3] 🔐 التحقق من التوكن: ${payload.email}`);
+
         const user = await this.userService.findById(payload.sub);
-        if (!user || user.status !== 'ACTIVE') {
-            throw new UnauthorizedException('المستخدم غير موجود أو غير نشط');
+        if (!user) {
+            this.logger.warn(`[M3] ❌ المستخدم غير موجود: ${payload.sub}`);
+            throw new UnauthorizedException('المستخدم غير موجود');
         }
 
-        // التحقق من تطابق المستأجر إذا كان موجوداً في التوكن
-        if (payload.tenantId && user.tenantId && payload.tenantId !== user.tenantId) {
+        if (user.status !== 'ACTIVE') {
+            this.logger.warn(`[M3] ⚠️ حساب غير نشط: ${user.email}`);
+            throw new UnauthorizedException('المستخدم غير نشط');
+        }
+
+        // ✅ التحقق من تطابق المستأجر
+        if (payload.tenantId && payload.tenantId !== user.tenantId) {
+            this.logger.error(`[M3] 🔴 محاولة اختراق: ${user.email} - tenant mismatch`);
             throw new UnauthorizedException('وصول غير مصرح به للمستأجر');
         }
 
@@ -44,7 +54,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
             email: user.email,
             role: user.role,
             tenantId: user.tenantId,
-            isSuperAdmin: user.isSuperAdmin()
+            isSuperAdmin: user.isSuperAdmin(),
         };
     }
 }

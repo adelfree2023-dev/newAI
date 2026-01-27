@@ -1,11 +1,14 @@
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { TenantModule } from './tenants/tenant.module';
+import { APP_FILTER } from '@nestjs/core';
+
+// ✅ استيراد PassportModule في المستوى الجذري
+import { PassportModule } from '@nestjs/passport';
+
+// Modules
 import { AuthModule } from './auth/auth.module';
-import { User } from './auth/entities/user.entity';
-import { Session } from './auth/entities/session.entity';
-import { Tenant } from './tenants/entities/tenant.entity';
+import { TenantModule } from './tenants/tenant.module';
 import { TenantIsolationModule } from './security/layers/s2-tenant-isolation/tenant-isolation.module';
 import { EnvironmentVerificationModule } from './security/layers/s1-environment-verification/environment-validator.module';
 import { InputValidationModule } from './security/layers/s3-input-validation/input-validation.module';
@@ -14,38 +17,50 @@ import { ErrorHandlingModule } from './security/layers/s5-error-handling/error-h
 import { RateLimitingModule } from './security/layers/s6-rate-limiting/rate-limit.module';
 import { EncryptionModule } from './security/layers/s7-encryption/encryption.module';
 import { WebProtectionModule } from './security/layers/s8-web-protection/web-protection.module';
-import { APP_FILTER } from '@nestjs/core';
+import { ProductModule } from './products/product.module';
+
+// Services
 import { AllExceptionsFilter } from './security/layers/s5-error-handling/exceptions/secure-exception.filter';
 import { AuditLoggerMiddleware } from './security/layers/s4-audit-logging/audit-logger.middleware';
-import { NestModule, MiddlewareConsumer } from '@nestjs/common';
 
-import { ProductModule } from './products/product.module';
+// Entities
+import { User } from './auth/entities/user.entity';
+import { Session } from './auth/entities/session.entity';
+import { Tenant } from './tenants/entities/tenant.entity';
 
 @Module({
     imports: [
+        // ✅ PassportModule في المستوى الجذري
+        PassportModule.register({ defaultStrategy: 'jwt' }),
+
         ConfigModule.forRoot({
             isGlobal: true,
-            envFilePath: ['.env.local', '.env']
+            envFilePath: ['.env.local', '.env'],
         }),
+
         TypeOrmModule.forRoot({
             type: 'postgres',
             url: process.env.DATABASE_URL,
             entities: [User, Session, Tenant],
-            synchronize: true,
+            synchronize: false,
             logging: process.env.NODE_ENV === 'development',
-            schema: 'public' // المخطط الافتراضي
+            schema: 'public',
         }),
-        TenantModule,
-        AuthModule,
-        ProductModule,
-        TenantIsolationModule,
+
+        // Security Layers
         EnvironmentVerificationModule,
+        TenantIsolationModule,
         InputValidationModule,
         AuditModule,
         ErrorHandlingModule,
         RateLimitingModule,
         EncryptionModule,
-        WebProtectionModule
+        WebProtectionModule,
+
+        // Business Modules
+        AuthModule,
+        TenantModule,
+        ProductModule,
     ],
     providers: [
         {
@@ -56,8 +71,7 @@ import { ProductModule } from './products/product.module';
 })
 export class AppModule implements NestModule {
     configure(consumer: MiddlewareConsumer) {
-        consumer
-            .apply(AuditLoggerMiddleware)
-            .forRoutes('*');
+        // ✅ تطبيق وسطاء التدقيق
+        consumer.apply(AuditLoggerMiddleware).forRoutes('*');
     }
 }
