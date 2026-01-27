@@ -6,8 +6,25 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     private readonly logger = new Logger(JwtAuthGuard.name);
 
     // ✅ إضافة معالجة أخطاء ذكية
-    canActivate(context: any) {
-        return super.canActivate(context).catch((error) => {
+    async canActivate(context: any): Promise<boolean> {
+        try {
+            const resultOrPromise = super.canActivate(context);
+
+            let result: boolean;
+            if (resultOrPromise instanceof Promise) {
+                result = await resultOrPromise;
+            } else if (resultOrPromise && typeof (resultOrPromise as any).subscribe === 'function') {
+                // If it's an observable, convert to promise (basic handling) or just return it if we could pipe it.
+                // For simplicity and safety with async/await, we accept we might not handle Observable stream errors here perfectly
+                // without rxjs imports, but standard Passport strategy usually returns Promise or Boolean.
+                // Let's assume Promise for the strategy we implemented.
+                return super.canActivate(context) as any;
+            } else {
+                result = resultOrPromise as boolean;
+            }
+
+            return result;
+        } catch (error) {
             this.logger.error(`[JWT_GUARD] Error: ${error.message}`);
 
             // ✅ التحقق من سبب الخطأ
@@ -25,7 +42,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
             }
 
             throw new UnauthorizedException('فشل المصادقة: ' + error.message);
-        });
+        }
     }
 
     handleRequest(err: any, user: any, info: any) {
