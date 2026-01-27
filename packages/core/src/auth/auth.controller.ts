@@ -32,6 +32,14 @@ export class AuthController {
         return this.authService.verify2FA(verifyDto);
     }
 
+    @Post('2fa/enable')
+    @ApiBearerAuth()
+    @UseGuards(JwtAuthGuard)
+    @ApiOperation({ summary: 'تفعيل المصادقة الثنائية' })
+    async enable2FA(@Request() req) {
+        return this.authService.enable2FA(req.user.userId);
+    }
+
     @Post('refresh')
     @ApiOperation({ summary: 'تجديد توكن الوصول' })
     async refresh(@Body('refreshToken') refreshToken: string) {
@@ -48,6 +56,15 @@ export class AuthController {
         const refreshToken = req.body.refreshToken;
         await this.authService.logout(accessToken, refreshToken);
         return { message: 'تم تسجيل الخروج بنجاح' };
+    }
+
+    @Post('logout-all')
+    @ApiBearerAuth()
+    @UseGuards(JwtAuthGuard)
+    @ApiOperation({ summary: 'تسجيل الخروج من جميع الأجهزة' })
+    async logoutAll(@Request() req) {
+        await this.authService.logoutAll(req.user.userId);
+        return { message: 'تم تسجيل الخروج من جميع الأجهزة بنجاح' };
     }
 
     @Put('change-password')

@@ -143,22 +143,18 @@ export class AllExceptionsFilter implements ExceptionFilter {
       return {
         ...baseResponse,
         message: isProduction
-          ? 'حدث خطأ في النظام (System Error - S5). تم تسجيل المشكلة وسنقوم بإصلاحها قريباً.'
+          ? 'حدث خطأ في النظام. تم تسجيل المشكلة وسنقوم بإصلاحها قريباً.'
           : exception.message
       };
     } else if (statusCode === HttpStatus.UNAUTHORIZED) {
       return {
         ...baseResponse,
-        message: exception.message && exception.message !== 'Unauthorized'
-          ? `${exception.message} (Unauthorized)`
-          : 'غير مصرح به. يرجى تسجيل الدخول أولاً. (Unauthorized)'
+        message: 'غير مصرح به (Unauthorized)'
       };
     } else if (statusCode === HttpStatus.FORBIDDEN) {
       return {
         ...baseResponse,
-        message: exception.message && exception.message !== 'Forbidden'
-          ? `${exception.message} (Forbidden)`
-          : 'وصول مرفوض. ليس لديك الصلاحيات الكافية لهذا الإجراء. (Forbidden)'
+        message: 'وصول مرفوض (Forbidden)'
       };
     } else if (statusCode === HttpStatus.NOT_FOUND) {
       return {
@@ -168,9 +164,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     } else if (statusCode === HttpStatus.CONFLICT) {
       return {
         ...baseResponse,
-        message: exception.message && exception.message !== 'Conflict'
-          ? `${exception.message} (Conflict)`
-          : 'تعارض في البيانات. قد تكون تحاول إنشاء عنصر موجود مسبقاً. (Conflict)'
+        message: 'تعارض في البيانات (Conflict)'
       };
     }
 

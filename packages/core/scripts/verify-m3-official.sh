@@ -36,11 +36,11 @@ echo -e "\nTest 3: Brute Force Protection (5 Fails -> Locked)"
 for i in {1..5}; do
   curl -s -o /dev/null -X POST $BASE_URL/auth/login \
     -H "Content-Type: application/json" \
-    -d "{\"email\":\"$TEST_EMAIL\",\"password\":\"wrong\"}"
+    -d "{\"email\":\"$TEST_EMAIL\",\"password\":\"wrong_password\"}"
 done
 LOCKED_RES=$(curl -s -X POST $BASE_URL/auth/login \
   -H "Content-Type: application/json" \
-  -d "{\"email\":\"$TEST_EMAIL\",\"password\":\"wrong\"}")
+  -d "{\"email\":\"$TEST_EMAIL\",\"password\":\"wrong_password\"}")
 echo $LOCKED_RES | grep -q "Locked" && echo "✅ SUCCESS (Account Locked)" || echo "⚠️ Warning: Account not locked (Check service settings)"
 
 # --- PART 2: AUTHORIZATION ---
@@ -108,7 +108,7 @@ echo "✅ Check real-time above"
 echo -e "\nTest 13: Information Leakage Prevention"
 LEAK_RES=$(curl -s -X POST $BASE_URL/auth/login \
   -H "Content-Type: application/json" \
-  -d "{\"email\": \"nonexistent@apex.com\", \"password\": \"any\"}")
+  -d "{\"email\": \"nonexistent@apex.com\", \"password\": \"wrong_password\"}")
 echo $LEAK_RES | grep -q "Unauthorized" && echo "✅ SUCCESS (Generic Error)" || echo "❌ FAILED (Too specific)"
 
 echo -e "\nTest 14: Password Encryption (Raw DB Verification)"
