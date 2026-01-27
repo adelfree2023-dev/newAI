@@ -22,7 +22,7 @@ export class Session {
     @Column({ type: 'varchar', length: 255, nullable: true })
     userAgent: string | null;
 
-    @Column({ type: 'varchar', length: 36 })
+    @Column({ type: 'uuid' })
     userId: string;
 
     @ManyToOne(() => User)
@@ -44,7 +44,7 @@ export class Session {
     @UpdateDateColumn({ type: 'timestamp' })
     updatedAt: Date;
 
-    @Column({ type: 'varchar', length: 36, nullable: true })
+    @Column({ type: 'uuid', nullable: true })
     tenantId: string | null;
 
     constructor(partial: Partial<Session>) {
