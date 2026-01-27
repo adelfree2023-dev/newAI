@@ -17,14 +17,8 @@ class SmartTestGenerationAgent {
             const fileName = path.basename(input.filePath);
             const { text } = await generateText({
                 model: groq('llama-3.3-70b-versatile'),
-                system: `أنت مطور QA برتبة (Staff Engineer) متخصص في NestJS و Jest. 🦾
-        المهمة: كتابة اختبارات منطقية وعميقة (Deep Testing).
-        الهدف: تغطية 95% من السطور والحالات.
-        القواعد الصارمة: ⚓
-        - استخدم Jest و TestingModule.
-        - استخدم Proxy-based Mocks لكل التبعيات.
-        - أضف اختبارات للحالات الناجحة (Success) وحالات الخطأ (Error).`,
-                prompt: `حلل الكود التالي لملف [\${fileName}] وأنشئ ملف اختبار .spec.ts احترافي: \n\n \`\`\`typescript\n\${input.content}\n\`\`\``,
+                system: "أنت مطور QA برتبة (Staff Engineer) متخصص في NestJS و Jest. المهمة: كتابة اختبارات منطقية وعميقة. الهدف: تغطية 95% من السطور والحالات. القواعد: استخدم Jest و TestingModule، استخدم Proxy Mocks للتبعيات، أضف Success/Error cases.",
+                prompt: "حلل الكود لملف [" + fileName + "] وأنشئ ملف اختبار .spec.ts احترافي: \n\n ```typescript\n" + input.content + "\n```",
             });
             return { success: true, specContent: this.extractCodeBlock(text) };
         } catch (error) {
@@ -56,26 +50,25 @@ async function runSwarm() {
 
     console.log('🚀 [ELITE AI SWARM] Launching Groq + Llama 3.3 Agents...');
     const files = getAllFiles(targetDir);
-    console.log(\`📂 Found \${files.length} files. Starting parallel processing...\`);
+    console.log('📂 Found ' + files.length + ' files. Starting parallel processing...');
 
-  // دفعة لكل ملف بالتوازي (Groq يتحمل هذا بفضل سرعته)
-  await Promise.all(files.map(async (file) => {
-    const fileName = path.basename(file);
-    try {
-      const content = fs.readFileSync(file, 'utf-8');
-      const result = await agent.execute({ filePath: file, content });
-      if (result.success) {
-        fs.writeFileSync(file.replace('.ts', '.spec.ts'), result.specContent);
-        console.log(\`✅ \${fileName} -> Spec Created.\`);
-      } else {
-        console.error(\`❌ \${fileName} -> Failed: \${result.error}\`);
-      }
-    } catch (err) {
-      console.error(\`❌ \${fileName} -> Error: \${err.message}\`);
-    }
-  }));
+    await Promise.all(files.map(async (file) => {
+        const fileName = path.basename(file);
+        try {
+            const content = fs.readFileSync(file, 'utf-8');
+            const result = await agent.execute({ filePath: file, content });
+            if (result.success) {
+                fs.writeFileSync(file.replace('.ts', '.spec.ts'), result.specContent);
+                console.log('✅ ' + fileName + ' -> Spec Created.');
+            } else {
+                console.error('❌ ' + fileName + ' -> Failed: ' + result.error);
+            }
+        } catch (err) {
+            console.error('❌ ' + fileName + ' -> Error: ' + err.message);
+        }
+    }));
 
-  console.log('\n🏁 Mission Accomplished. Every file captured. 🛡️');
+    console.log('\n🏁 Mission Accomplished. Every file captured. 🛡️');
 }
 
 runSwarm().catch(console.error);
