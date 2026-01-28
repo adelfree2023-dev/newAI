@@ -13,9 +13,7 @@ import { ConfigModule } from '@nestjs/config';
     providers: [
         AlertNotifierService,
         AutomatedResponseService,
-        AuditService,
-        BruteForceProtectionService,
-        EncryptionService
+        BruteForceProtectionService
     ],
     exports: [AlertNotifierService, AutomatedResponseService]
 })

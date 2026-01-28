@@ -17,11 +17,6 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') implements On
             ignoreExpiration: false,
             secretOrKey: configService.get<string>('JWT_SECRET'),
         });
-
-        // ✅ ضمان التسجيل الفوري
-        const passport = require('passport');
-        passport.use('jwt', this);
-        this.logger.log('🛡️ [S2] JWT Strategy registered in constructor');
     }
 
     // ✅ ضمان التحميل في دورة الحياة

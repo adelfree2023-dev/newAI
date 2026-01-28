@@ -15,8 +15,6 @@ import { TestController } from '../test/test.controller';
   controllers: [TestController],
   providers: [
     AISecuritySupervisorService,
-    AuditService,
-    EncryptionService,
     VercelAgentFactory,
     TestGenerationSkill,
     {
@@ -28,9 +26,7 @@ import { TestController } from '../test/test.controller';
     AISecuritySupervisorService,
     VercelAgentFactory,
     VercelSkillMapper,
-    TestGenerationSkill,
-    AuditService,
-    EncryptionService
+    TestGenerationSkill
   ]
 })
 export class AISupervisorModule { }

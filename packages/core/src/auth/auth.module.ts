@@ -23,7 +23,7 @@ import { RateLimiterService } from '../security/layers/s6-rate-limiting/rate-lim
 @Global()
 @Module({
     imports: [
-        PassportModule.register({ defaultStrategy: 'jwt' }),
+        PassportModule.register({ defaultStrategy: 'jwt', property: 'user', session: false }),
         ConfigModule,
         JwtModule.registerAsync({
             imports: [ConfigModule],
@@ -48,10 +48,7 @@ import { RateLimiterService } from '../security/layers/s6-rate-limiting/rate-lim
         LocalStrategy,
         RolesGuard,
         PermissionsGuard,
-        TenantAuthGuard,
-        AuditService,
-        EncryptionService,
-        RateLimiterService
+        TenantAuthGuard
     ],
     controllers: [AuthController],
     exports: [
@@ -70,28 +67,7 @@ import { RateLimiterService } from '../security/layers/s6-rate-limiting/rate-lim
 export class AuthModule implements OnModuleInit {
     private readonly logger = new Logger(AuthModule.name);
 
-    constructor(
-        private readonly jwtStrategy: JwtStrategy,
-        private readonly localStrategy: LocalStrategy
-    ) { }
-
     onModuleInit() {
-        this.logger.log('🔐 [S2] تم تهيئة وحدة المصادقة واستراتيجيات Passport');
-
-        // تسجيل الاستراتيجيات يدوياً لضمان استقرار Passport ومنع خطأ Unknown strategy
-        const passport = require('passport');
-
-        if (this.jwtStrategy) {
-            passport.use('jwt', this.jwtStrategy as any);
-            this.logger.log('🛡️ [S2] تم فرض تسجيل استراتيجية JWT يدوياً');
-        }
-
-        if (this.localStrategy) {
-            passport.use('local', this.localStrategy as any);
-            this.logger.log('🛡️ [S2] تم فرض تسجيل استراتيجية Local يدوياً');
-        }
-
-        const registeredStrategies = Object.keys(passport._strategies || {});
-        this.logger.log('🌐 الاستراتيجيات النشطة حالياً: ' + registeredStrategies.join(', '));
+        this.logger.log('🔐 [S2] Authentication Module initialized');
     }
 }

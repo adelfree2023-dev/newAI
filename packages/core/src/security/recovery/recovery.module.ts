@@ -11,9 +11,7 @@ import { ConfigModule } from '@nestjs/config';
     imports: [ConfigModule],
     providers: [
         DataSnapshotService,
-        RollbackService,
-        AuditService,
-        EncryptionService
+        RollbackService
     ],
     exports: [DataSnapshotService, RollbackService]
 })

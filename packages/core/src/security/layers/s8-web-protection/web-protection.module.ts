@@ -9,8 +9,7 @@ import { TenantContextService } from '../s2-tenant-isolation/tenant-context.serv
 @Module({
   imports: [ConfigModule],
   providers: [
-    CSPConfigService,
-    AuditService
+    CSPConfigService
   ],
   exports: [CSPConfigService],
 })
