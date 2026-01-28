@@ -19,10 +19,21 @@ export class EncryptionService implements OnModuleInit {
   ) { }
 
   async onModuleInit() {
-    this.logger.log('🔐 [S7] بدء تهيئة خدمات التشفير...');
-    await this.initializeMasterKey();
-    await this.validateEncryptionStrength();
-    this.logger.log('✅ [S7] اكتملت تهيئة خدمات التشفير بنجاح');
+    this.logger.log('🔐 [S7] بدء تهيئة خدمات التشفير (onModuleInit)...');
+    try {
+      await this.initializeMasterKey();
+      await this.validateEncryptionStrength();
+      this.logger.log('✅ [S7] اكتملت تهيئة خدمات التشفير بنجاح');
+    } catch (error) {
+      this.logger.error(`❌ [S7] فشل تهيئة خدمات التشفير في onModuleInit: ${error.message}`);
+    }
+  }
+
+  private async ensureMasterKeyInitialized() {
+    if (!EncryptionService.masterKey) {
+      this.logger.warn('[S7] ⚠️ المفتاح الرئيسي غير مهيأ. محاولة التهيئة التلقائية...');
+      await this.initializeMasterKey();
+    }
   }
 
   private async initializeMasterKey() {
@@ -197,6 +208,9 @@ export class EncryptionService implements OnModuleInit {
       if (this.hkdfCache.has(keyId)) {
         return this.hkdfCache.get(keyId);
       }
+
+      // التأكد من تهيئة المفتاح الرئيسي
+      await this.ensureMasterKeyInitialized();
 
       // الحصول على الملح الخاص بالمفتاح
       const salt = await this.getTenantSalt(tenantId);

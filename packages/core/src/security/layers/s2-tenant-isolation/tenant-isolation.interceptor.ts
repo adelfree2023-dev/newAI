@@ -43,6 +43,8 @@ export class TenantIsolationInterceptor implements NestInterceptor {
                 const requestedTenantId = this.extractTenantIdFromRequest(request, context);
                 const authenticatedUser = request.user;
 
+                TenantIsolationInterceptor.logger.debug(`[S2] Debug Isolation: requested=${requestedTenantId}, user=${authenticatedUser ? authenticatedUser.email : 'anonymous'}, userTenant=${authenticatedUser ? authenticatedUser.tenantId : 'none'}`);
+
                 // منع استكشاف المستأجرين: إذا تم تحديد مستأجر ولكن لا يوجد مستخدم مصادق، ارمِ 403 فوراً
                 if (requestedTenantId && !authenticatedUser && !this.isExemptRoute(className, methodName)) {
                     TenantIsolationInterceptor.logger.warn(`[S2] ⛔ محاولة وصول لبيانات مستأجر من مستخدم غير مصرح: ${requestedTenantId}`);
