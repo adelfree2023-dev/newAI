@@ -39,7 +39,7 @@ export class AuthService {
     }
 
     async register(registerDto: RegisterDto): Promise<{ user: any; token: string }> {
-        this.logger.log(`[M3] 📝 بدء تسجيل مستخدم جديد: ${registerDto.email}`);
+        this.logger.log(`[M3] 📝 بدء تسجيل مستخدم جديد: ${registerDto.email} للمستأجر: ${registerDto.tenantId || 'auto'}`);
         try {
             const existingUser = await this.userService.findByEmail(registerDto.email);
             if (existingUser) {
@@ -51,7 +51,7 @@ export class AuthService {
                 firstName: registerDto.firstName,
                 lastName: registerDto.lastName,
                 role: registerDto.role || 'CUSTOMER' as any,
-                tenantId: this.tenantContext.getTenantId() || null,
+                tenantId: registerDto.tenantId || this.tenantContext.getTenantId() || null,
                 emailVerified: false
             });
             const { accessToken } = await this.createSession(user);
