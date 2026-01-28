@@ -19,7 +19,6 @@ import { ConfigModule } from '@nestjs/config';
         AuditService,
         AuditArchiverService,
         BruteForceProtectionService,
-        TenantContextService,
         EncryptionService
     ],
     exports: [

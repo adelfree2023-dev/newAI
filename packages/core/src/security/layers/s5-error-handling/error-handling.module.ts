@@ -9,7 +9,6 @@ import { TenantContextService } from '../s2-tenant-isolation/tenant-context.serv
 @Module({
   providers: [
     AuditService,
-    TenantContextService,
     {
       provide: APP_FILTER,
       useClass: AllExceptionsFilter,
@@ -20,4 +19,4 @@ import { TenantContextService } from '../s2-tenant-isolation/tenant-context.serv
     },
   ],
 })
-export class ErrorHandlingModule {}
+export class ErrorHandlingModule { }
