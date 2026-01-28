@@ -19,6 +19,7 @@ import { APP_FILTER } from '@nestjs/core';
 import { AllExceptionsFilter } from './security/layers/s5-error-handling/exceptions/secure-exception.filter';
 import { AuditLoggerMiddleware } from './security/layers/s4-audit-logging/audit-logger.middleware';
 import { ProductModule } from './products/product.module';
+import { SecurityMonitoringModule } from './security/monitoring/security-monitoring.module';
 
 @Module({
     imports: [
@@ -44,7 +45,8 @@ import { ProductModule } from './products/product.module';
         ErrorHandlingModule,
         RateLimitingModule,
         EncryptionModule,
-        WebProtectionModule
+        WebProtectionModule,
+        SecurityMonitoringModule
     ],
     providers: [
         {

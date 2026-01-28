@@ -88,42 +88,38 @@ export class AuditService {
   private sanitizeEventData(data: any): any {
     if (!data) return data;
 
-    // إزالة البيانات الحساسة من السجلات
+    // ✅ إصلاح المخالفة 1: إضافة جميع الحقول المالية الحساسة
     const sensitiveFields = [
       'password', 'token', 'secret', 'apiKey', 'privateKey',
-      'creditCard', 'cvv', 'cardNumber', 'ssn', 'socialSecurityNumber'
+      'creditCard', 'cvv', 'cardNumber', 'cardExpiry',
+      'iban', 'accountNumber', 'routingNumber',
+      'socialSecurityNumber', 'ssn', 'nationalId',
+      'passportNumber', 'taxId', 'pinCode'
     ];
 
-    if (typeof data === 'string') {
-      return data.replace(/(password|token|secret|apiKey|privateKey|creditCard|cvv|cardNumber|ssn|socialSecurityNumber)[:\s]*["']?[^"'\s]+["']?/gi,
-        match => {
-          const field = match.split(':')[0];
-          return `${field}: [REDACTED]`;
-        });
-    }
+    const redacted = { ...data };
 
-    if (typeof data === 'object') {
-      const sanitized = Array.isArray(data) ? [...data] : { ...data };
+    for (const key of Object.keys(redacted)) {
+      const lowerKey = key.toLowerCase();
 
-      for (const key of Object.keys(sanitized)) {
-        const lowerKey = key.toLowerCase();
-
-        // إخفاء الحقول الحساسة
-        if (sensitiveFields.some(field => lowerKey.includes(field))) {
-          sanitized[key] = '[REDACTED]';
-          continue;
-        }
-
-        // معالجة كائنات داخلية
-        if (typeof sanitized[key] === 'object' && sanitized[key] !== null) {
-          sanitized[key] = this.sanitizeEventData(sanitized[key]);
-        }
+      // إخفاء الحقول الحساسة
+      if (sensitiveFields.some(field => lowerKey.includes(field))) {
+        redacted[key] = '[REDACTED]';
+        continue;
       }
 
-      return sanitized;
+      // معالجة الكائنات الداخلية
+      if (typeof redacted[key] === 'object' && redacted[key] !== null) {
+        redacted[key] = this.sanitizeEventData(redacted[key]);
+      }
+
+      // إخفاء القيم الطويلة جداً
+      if (typeof redacted[key] === 'string' && redacted[key].length > 500) {
+        redacted[key] = redacted[key].substring(0, 500) + '... [TRUNCATED]';
+      }
     }
 
-    return data;
+    return redacted;
   }
 
   private getUserIdFromRequest(): string | null {
@@ -157,7 +153,7 @@ export class AuditService {
       await fs.appendFile(logFile, logEntry);
 
       // إذا كان حدثاً خطيراً، اكتب نسخة منفصلة
-      if (auditEntry.category === 'SECURITY' && ['TENANT_ISOLATION_VIOLATION', 'UNAUTHORIZED_ACCESS', 'DATA_BREACH_ATTEMPT'].includes(auditEntry.eventType)) {
+      if (auditEntry.category === 'SECURITY' && ['TENANT_ISOLATION_VIOLATION', 'UNAUTHORIZED_ACCESS', 'DATA_BREACH_ATTEMPT', 'ARCHIVING_FAILURE'].includes(auditEntry.eventType)) {
         const criticalFile = join(this.auditDir, `${dateStr}-critical-security.log`);
         await fs.appendFile(criticalFile, logEntry);
       }
@@ -165,6 +161,87 @@ export class AuditService {
       this.logger.error(`[S4] ❌ فشل كتابة سجل التدقيق: ${error.message}`);
       // محاولة البديل - التسجيل في وحدة التحكم
       console.error('[AUDIT_FAILURE]', JSON.stringify(auditEntry));
+    }
+  }
+
+  // ✅ إضافة: دعم التسجيل غير المتزامن لتحسين الأداء
+  private async writeAuditLogAsync(auditEntry: any) {
+    // استخدام قائمة انتظار داخلية لتجنب حظر الطلب الرئيسي
+    process.nextTick(async () => {
+      try {
+        await this.writeAuditLog(auditEntry);
+      } catch (error) {
+        this.logger.error(`[M4] ❌ فشل تسجيل الحدث في الخلفية: ${error.message}`);
+      }
+    });
+  }
+
+  // ✅ إضافة: طريقة للاستعلام عن السجلات
+  async queryAuditLogs(
+    startDate: Date,
+    endDate: Date,
+    filters?: {
+      category?: string;
+      eventType?: string;
+      tenantId?: string;
+      severity?: string
+    }
+  ): Promise<any[]> {
+    try {
+      const logs: any[] = [];
+      const currentDate = new Date(startDate);
+
+      while (currentDate <= endDate) {
+        const dateStr = currentDate.toISOString().split('T')[0];
+        const logFiles = [
+          join(this.auditDir, `${dateStr}-security.log`),
+          join(this.auditDir, `${dateStr}-business.log`),
+          join(this.auditDir, `${dateStr}-system.log`)
+        ];
+
+        for (const logFile of logFiles) {
+          try {
+            const content = await fs.readFile(logFile, 'utf-8');
+            const entries = content.split('\n')
+              .filter(line => line.trim())
+              .map(line => {
+                try {
+                  return JSON.parse(line);
+                } catch (e) {
+                  return null;
+                }
+              })
+              .filter(e => e !== null);
+
+            // تطبيق المرشحات
+            const filtered = entries.filter(entry => {
+              if (filters?.category && entry.category !== filters.category) return false;
+              if (filters?.eventType && entry.eventType !== filters.eventType) return false;
+              if (filters?.tenantId && entry.context?.tenantId !== filters.tenantId) return false;
+              if (filters?.severity && entry.severity !== filters.severity) return false;
+              return true;
+            });
+
+            logs.push(...filtered);
+          } catch (error) {
+            // تجاهل الملفات غير الموجودة
+            if ((error as any).code !== 'ENOENT') {
+              this.logger.error(`[M4] ❌ خطأ في قراءة سجلات ${logFile}: ${error.message}`);
+            }
+          }
+        }
+
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+
+      // الفرز حسب الطابع الزمني
+      return logs.sort((a, b) =>
+        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+      );
+
+    } catch (error) {
+      this.logger.error(`[M4] ❌ فشل استعلام سجلات التدقيق: ${error.message}`);
+      throw new Error('فشل في استرجاع سجلات التدقيق');
     }
   }
 
