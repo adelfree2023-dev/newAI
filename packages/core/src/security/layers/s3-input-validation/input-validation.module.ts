@@ -5,7 +5,7 @@ import { TenantContextService } from '../s2-tenant-isolation/tenant-context.serv
 
 @Global()
 @Module({
-  providers: [InputValidatorService, AuditService, TenantContextService],
+  providers: [InputValidatorService, AuditService],
   exports: [InputValidatorService],
 })
-export class InputValidationModule {}
+export class InputValidationModule { }
