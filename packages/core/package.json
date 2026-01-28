@@ -41,6 +41,10 @@
     "pg": "^8.11.3",
     "qrcode": "^1.5.4",
     "redis": "^5.10.0",
+    "nodemailer": "^6.9.7",
+    "aws-sdk": "^2.1500.0",
+    "socket.io": "^4.7.2",
+    "socket.io-client": "^4.7.2",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.1",
     "speakeasy": "^2.0.0",
@@ -70,6 +74,8 @@
     "ts-loader": "^9.4.3",
     "ts-node": "^10.9.1",
     "tsconfig-paths": "^4.2.0",
+    "@types/nodemailer": "^6.4.14",
+    "@types/aws-sdk": "^2.7.0",
     "typescript": "^5.1.3"
   }
 }

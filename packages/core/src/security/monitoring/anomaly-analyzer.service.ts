@@ -304,7 +304,7 @@ export class AnomalyAnalyzerService {
             }
 
             // توزيع وقت اليوم غير الطبيعي
-            const timeSlots = Object.values(behaviorMetrics.timeOfDayDistribution);
+            const timeSlots = Object.values(behaviorMetrics.timeOfDayDistribution) as number[];
             if (timeSlots.length > 0 && Math.max(...timeSlots) / Math.min(...timeSlots) > 5) {
                 anomalyScore += 0.3;
             }
