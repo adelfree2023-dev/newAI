@@ -9,7 +9,7 @@ import { Scope } from '@nestjs/common';
 @Injectable({ scope: Scope.REQUEST })
 export class EncryptionService implements OnModuleInit {
   private readonly logger = new Logger(EncryptionService.name);
-  private masterKey: Buffer;
+  private static masterKey: Buffer;
   private saltCache: Map<string, Buffer> = new Map();
   private hkdfCache: Map<string, Buffer> = new Map();
 
@@ -36,7 +36,7 @@ export class EncryptionService implements OnModuleInit {
     }
 
     // تحويل المفتاح إلى بايتات باستخدام HKDF
-    this.masterKey = await this.deriveKey(masterKey, 'master_encryption_key', 32);
+    EncryptionService.masterKey = await this.deriveKey(masterKey, 'master_encryption_key', 32);
     this.logger.log('✅ [S7] تم تهيئة المفتاح الرئيسي للتشفير');
   }
 
@@ -204,7 +204,7 @@ export class EncryptionService implements OnModuleInit {
 
       // اشتقاق المفتاح باستخدام HKDF
       const hkdfKey = await this.hkdf(
-        this.masterKey,
+        EncryptionService.masterKey,
         salt,
         `apex-encryption:${tenantId}:${context}`,
         32
