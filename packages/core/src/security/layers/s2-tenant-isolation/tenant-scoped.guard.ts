@@ -17,9 +17,13 @@ export class TenantScopedGuard implements CanActivate {
     // ✅ العمليات المسموح لها بدون tenantId
     const systemRoutes = [
       { class: 'TenantController', methods: ['create', 'getAll'] },
-      { class: 'AuthController', methods: ['register', 'login'] },
-      { class: 'HealthController', methods: ['check'] },
+      {
+        class: 'AuthController',
+        methods: ['register', 'login', 'forgotPassword', 'refresh', 'logout', 'logoutAll', 'enable2FA', 'verify2FA']
+      },
+      { class: 'HealthController', methods: ['check', 'status'] },
       { class: 'ProductController', methods: [] }, // سيتم التحقق من tenantId في الـ interceptor
+      { class: 'TestController', methods: ['forceGenerateSPC', 'testEncryption'] }
     ];
 
     const isSystemRoute = systemRoutes.some(route =>
