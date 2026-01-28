@@ -82,7 +82,14 @@ export class AuthService {
         }
 
         const { accessToken, refreshToken } = await this.createSession(user, loginDto.ipAddress, loginDto.userAgent);
-        return { accessToken, refreshToken, user: this.sanitizeUser(user) };
+        return {
+            accessToken,
+            refreshToken,
+            user: {
+                ...this.sanitizeUser(user),
+                isSuperAdmin: user.isSuperAdmin()
+            }
+        };
     }
 
     async verify2FA(verifyDto: Verify2FADto): Promise<any> {
@@ -116,14 +123,13 @@ export class AuthService {
         const user = await this.userService.findById(userId);
         if (!user) throw new UnauthorizedException('المستخدم غير موجود');
 
-        // محاكاة تفعيل 2FA للاختبار
-        user.isTwoFactorEnabled = true;
+        const { secret, qrCode } = await this.twoFactorService.enableTwoFactor(user);
         await this.userService.save(user);
 
         return {
             success: true,
-            secret: 'MOCK_SECRET_FOR_TESTING',
-            qrCode: 'data:image/png;base64,mock_qr_code'
+            secret,
+            qrCode
         };
     }
 
