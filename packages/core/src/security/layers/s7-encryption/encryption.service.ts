@@ -435,9 +435,6 @@ export class EncryptionService implements OnModuleInit {
       // البيانات المشفرة المتبقية
       const encryptedData = encryptedBuffer.slice(28);
 
-      // استخراج tenantId و context من keyId
-      const [keyTenantId, context] = keyId.split(':');
-
       // الحصول على مفتاح فك التشفير
       const decryptionKey = await this.getTenantEncryptionKey(keyTenantId, context || 'files');
 
