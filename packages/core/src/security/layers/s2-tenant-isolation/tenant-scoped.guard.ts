@@ -1,14 +1,12 @@
 import { Injectable, CanActivate, ExecutionContext, ForbiddenException, Logger } from '@nestjs/common';
 import { TenantContextService } from './tenant-context.service';
-import { Reflector } from '@nestjs/core';
 
 @Injectable()
 export class TenantScopedGuard implements CanActivate {
   private readonly logger = new Logger(TenantScopedGuard.name);
 
   constructor(
-    private readonly tenantContext: TenantContextService,
-    private readonly reflector: Reflector
+    private readonly tenantContext: TenantContextService
   ) { }
 
   canActivate(context: ExecutionContext): boolean {
@@ -16,8 +14,8 @@ export class TenantScopedGuard implements CanActivate {
     const tenantId = this.tenantContext.getTenantId();
 
     // ✅ استثناءات ذكية للعمليات النظامية
-    const className = context.getClass().name;
-    const methodName = context.getHandler().name;
+    const className = context.getClass()?.name || 'UnknownClass';
+    const methodName = context.getHandler()?.name || 'UnknownMethod';
 
     // ✅ العمليات المسموح لها بدون tenantId
     const systemRoutes = [
