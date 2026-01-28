@@ -33,7 +33,8 @@ export class TenantContextService {
   }
 
   private extractFromHost(): string | null {
-    const host = this.request.hostname;
+    const host = this.request?.hostname;
+    if (!host) return null;
     const parts = host.split('.');
 
     // إذا كان النطاق تحت apex-platform.com

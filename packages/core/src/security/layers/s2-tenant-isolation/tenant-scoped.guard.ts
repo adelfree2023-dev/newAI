@@ -1,7 +1,7 @@
-import { Injectable, CanActivate, ExecutionContext, ForbiddenException, Logger } from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext, ForbiddenException, Logger, Scope } from '@nestjs/common';
 import { TenantContextService } from './tenant-context.service';
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class TenantScopedGuard implements CanActivate {
   private readonly logger = new Logger(TenantScopedGuard.name);
 
@@ -10,10 +10,7 @@ export class TenantScopedGuard implements CanActivate {
   ) { }
 
   canActivate(context: ExecutionContext): boolean {
-    const request = context.switchToHttp().getRequest();
-    const tenantId = this.tenantContext.getTenantId();
-
-    // ✅ استثناءات ذكية للعمليات النظامية
+    // ✅ استثناءات ذكية للعمليات النظامية - يجب التحقق قبل استخراج tenantId
     const className = context.getClass()?.name || 'UnknownClass';
     const methodName = context.getHandler()?.name || 'UnknownMethod';
 
@@ -34,6 +31,21 @@ export class TenantScopedGuard implements CanActivate {
       this.logger.debug(`[S2] ✅ System route bypassed: ${className}.${methodName}`);
       return true;
     }
+
+    // ✅ الآن فقط نحاول استخراج tenantId
+    if (!this.tenantContext) {
+      this.logger.error(`[S2] 🔴 TenantContextService is undefined in Guard for: ${className}.${methodName}`);
+      // في حالة وجود خلل في الحقن، نتحقق يدوياً من الرؤوس كحل احتياطي أخير
+      const request = context.switchToHttp().getRequest();
+      const backupTenantId = request.headers?.['x-tenant-id'];
+      if (!backupTenantId && !isSystemRoute) {
+        throw new ForbiddenException('فشل النظام في تأمين سياق المستأجر');
+      }
+      return true;
+    }
+
+    const tenantId = this.tenantContext.getTenantId();
+
 
     // ✅ التحقق من tenantId للعمليات العادية
     if (!tenantId) {

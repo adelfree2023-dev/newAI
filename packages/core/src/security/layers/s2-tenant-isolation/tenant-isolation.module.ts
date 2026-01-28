@@ -21,6 +21,6 @@ import { Reflector } from '@nestjs/core';
       useClass: TenantIsolationInterceptor,
     },
   ],
-  exports: [TenantContextService, TenantScopedGuard, TenantIsolationInterceptor],
+  exports: [TenantContextService],
 })
 export class TenantIsolationModule { }
