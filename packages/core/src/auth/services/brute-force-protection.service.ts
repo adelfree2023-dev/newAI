@@ -160,4 +160,55 @@ export class BruteForceProtectionService implements OnModuleInit, OnModuleDestro
             return false;
         }
     }
+
+    /**
+     * ✅ [M4] حظر عنوان IP بناءً على طلب من خدمة الاستجابة التلقائية
+     */
+    async blockIpAddress(ip: string, reason: string, durationMinutes: number = 60): Promise<void> {
+        const canProceed = await this.ensureConnection();
+        if (!canProceed) return;
+
+        try {
+            const env = this.configService.get<string>('NODE_ENV', 'development');
+            const blockKey = `brute_force:${env}:blocked_ip:${ip}`;
+
+            // تسجيل الحظر في Redis بمنتهى الصلاحية
+            await this.redisClient.set(blockKey, JSON.stringify({
+                reason,
+                blockedAt: new Date().toISOString(),
+                durationMinutes
+            }), {
+                EX: durationMinutes * 60
+            });
+
+            this.logger.error(`[M4] 🚫 IP Blocked: ${ip} for ${durationMinutes}m. Reason: ${reason}`);
+
+            await this.auditService.logSecurityEvent('IP_ADDRESS_BLOCKED', {
+                ip,
+                reason,
+                durationMinutes,
+                timestamp: new Date().toISOString()
+            });
+        } catch (error) {
+            this.logger.error(`[M4] ❌ Error blocking IP address: ${error.message}`);
+        }
+    }
+
+    /**
+     * ✅ التحقق مما إذا كان العنوان محظوراً
+     */
+    async isIpBlocked(ip: string): Promise<boolean> {
+        const canProceed = await this.ensureConnection();
+        if (!canProceed) return false;
+
+        try {
+            const env = this.configService.get<string>('NODE_ENV', 'development');
+            const blockKey = `brute_force:${env}:blocked_ip:${ip}`;
+            const isBlocked = await this.redisClient.exists(blockKey);
+            return isBlocked === 1;
+        } catch (error) {
+            this.logger.error(`[S6] ❌ Error checking IP block: ${error.message}`);
+            return false;
+        }
+    }
 }
