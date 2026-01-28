@@ -258,7 +258,7 @@ export class AnomalyAnalyzerService {
                 failedLogins: 0,
                 dataAccessCount: 0,
                 adminActions: 0,
-                timeOfDayDistribution: {},
+                timeOfDayDistribution: {} as Record<number, number>,
                 ipAddressChanges: 0
             };
 
@@ -320,6 +320,49 @@ export class AnomalyAnalyzerService {
         } catch (error) {
             this.logger.error(`[M4] ❌ فشل في تحليل سلوك المستخدم: ${error.message}`);
             return null;
+        }
+    }
+
+    /**
+     * ✅ [M4] إنشاء تقرير سلوك غير طبيعي للتقرير الأمني
+     */
+    async generateAnomalyReport(startDate: Date, endDate: Date): Promise<any> {
+        try {
+            this.logger.log(`[M4] 📊 إنشاء تقرير الأنشطة المشبوهة`);
+
+            // استرجاع سجلات التدقيق للفترة المحددة
+            const events = await this.auditService.queryAuditLogs(startDate, endDate, {
+                severity: 'HIGH'
+            });
+
+            const anomalies = [];
+            let totalAnomalyScore = 0;
+
+            for (const event of events) {
+                const score = await this.analyzeEventPatterns([event]);
+                totalAnomalyScore += score;
+                if (score > 0.5) {
+                    anomalies.push({
+                        timestamp: event.timestamp,
+                        eventType: event.eventType,
+                        score,
+                        tenantId: event.context?.tenantId,
+                        ip: event.context?.ipAddress
+                    });
+                }
+            }
+
+            return {
+                period: { start: startDate, end: endDate },
+                totalAnomalies: anomalies.length,
+                totalEvents: events.length,
+                anomalyScore: events.length > 0 ? totalAnomalyScore / events.length : 0,
+                anomalies: anomalies.slice(0, 50), // الحد الأقصى 50
+                timestamp: new Date().toISOString()
+            };
+        } catch (error) {
+            this.logger.error(`[M4] ❌ فشل إنشاء تقرير الأنشطة المشبوهة: ${error.message}`);
+            return { error: error.message, totalEvents: 0, anomalyScore: 0 };
         }
     }
 

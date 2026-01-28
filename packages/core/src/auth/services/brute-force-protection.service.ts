@@ -1,14 +1,14 @@
-import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createClient, RedisClientType } from 'redis';
 import { AuditService } from '../../security/layers/s4-audit-logging/audit.service';
 import { TenantContextService } from '../../security/layers/s2-tenant-isolation/tenant-context.service';
 
 @Injectable()
-export class BruteForceProtectionService implements OnModuleInit, OnModuleDestroy {
+export class BruteForceProtectionService implements OnModuleInit {
     private readonly logger = new Logger(BruteForceProtectionService.name);
     private redisClient: RedisClientType;
-    private isConnected = false;
+    private isConnected: boolean = false;
 
     constructor(
         private readonly configService: ConfigService,
@@ -16,7 +16,6 @@ export class BruteForceProtectionService implements OnModuleInit, OnModuleDestro
         private readonly tenantContext: TenantContextService
     ) { }
 
-    // ✅ ضمان الاتصال قبل الاستخدام
     async onModuleInit() {
         try {
             const redisUrl = this.configService.get<string>('REDIS_URL', 'redis://localhost:6379');
@@ -39,19 +38,15 @@ export class BruteForceProtectionService implements OnModuleInit, OnModuleDestro
         }
     }
 
-    async onModuleDestroy() {
-        if (this.isConnected) {
-            await this.redisClient.quit();
-        }
-    }
-
-    // ✅ التحقق من الاتصال قبل كل عملية
     private async ensureConnection(): Promise<boolean> {
-        if (!this.isConnected) {
-            this.logger.warn('[S6] ⚠️ Redis not connected, brute force protection disabled');
+        if (this.isConnected) return true;
+        try {
+            await this.redisClient.connect();
+            this.isConnected = true;
+            return true;
+        } catch (error) {
             return false;
         }
-        return true;
     }
 
     async recordFailedAttempt(
@@ -61,7 +56,6 @@ export class BruteForceProtectionService implements OnModuleInit, OnModuleDestro
     ): Promise<{ locked: boolean; attempts: number }> {
         const canProceed = await this.ensureConnection();
         if (!canProceed) {
-            // ✅ وضع احتياطي: تسجيل الحدث فقط
             await this.auditService.logSecurityEvent('FAILED_LOGIN_ATTEMPT', {
                 email,
                 ip,
@@ -75,19 +69,15 @@ export class BruteForceProtectionService implements OnModuleInit, OnModuleDestro
             const tenantId = this.tenantContext.getTenantId() || 'system';
             const env = this.configService.get<string>('NODE_ENV', 'development');
 
-            // ✅ استخدام مفاتيح مميزة للبيئة
             const emailKey = `brute_force:${env}:${context}:${tenantId}:${email}`;
             const ipKey = `brute_force:${env}:${context}:ip:${ip}`;
 
-            // ✅ زيادة العداد
             const emailCount = await this.redisClient.incr(emailKey);
             const ipCount = await this.redisClient.incr(ipKey);
 
-            // ✅ تعيين مدة الانتهاء (15 دقيقة)
             await this.redisClient.expire(emailKey, 15 * 60);
             await this.redisClient.expire(ipKey, 15 * 60);
 
-            // ✅ تسجيل المحاولة الفاشلة
             await this.auditService.logSecurityEvent('FAILED_LOGIN_ATTEMPT', {
                 email,
                 ip,
@@ -98,7 +88,6 @@ export class BruteForceProtectionService implements OnModuleInit, OnModuleDestro
 
             this.logger.warn(`[S6] 🔐 Failed attempt ${emailCount}/5 for ${email}`);
 
-            // ✅ التحقق من القفل
             const maxAttempts = 5;
             const locked = emailCount >= maxAttempts;
 
@@ -127,16 +116,10 @@ export class BruteForceProtectionService implements OnModuleInit, OnModuleDestro
         try {
             const tenantId = this.tenantContext.getTenantId() || 'system';
             const env = this.configService.get<string>('NODE_ENV', 'development');
-
             const emailKey = `brute_force:${env}:${context}:${tenantId}:${email}`;
-            await this.redisClient.del(emailKey);
 
-            this.logger.log(`[S6] ✅ Reset failed attempts for ${email}`);
-            await this.auditService.logSecurityEvent('FAILED_ATTEMPTS_RESET', {
-                email,
-                context,
-                timestamp: new Date().toISOString(),
-            });
+            await this.redisClient.del(emailKey);
+            this.logger.log(`[S6] ✅ Failed attempts reset for ${email}`);
         } catch (error) {
             this.logger.error(`[S6] ❌ Error resetting failed attempts: ${error.message}`);
         }
@@ -172,7 +155,6 @@ export class BruteForceProtectionService implements OnModuleInit, OnModuleDestro
             const env = this.configService.get<string>('NODE_ENV', 'development');
             const blockKey = `brute_force:${env}:blocked_ip:${ip}`;
 
-            // تسجيل الحظر في Redis بمنتهى الصلاحية
             await this.redisClient.set(blockKey, JSON.stringify({
                 reason,
                 blockedAt: new Date().toISOString(),
