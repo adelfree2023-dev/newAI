@@ -40,7 +40,7 @@ export class TenantIsolationInterceptor implements NestInterceptor {
 
             // 2. التحقق من الصلاحيات
             if (!this.tenantContext.isSystemContext()) {
-                const requestedTenantId = this.tenantContext.getTenantId();
+                const requestedTenantId = this.extractTenantIdFromRequest(request, context);
                 const authenticatedUser = request.user;
 
                 // منع استكشاف المستأجرين: إذا تم تحديد مستأجر ولكن لا يوجد مستخدم مصادق، ارمِ 403 فوراً

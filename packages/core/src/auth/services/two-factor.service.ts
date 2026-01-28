@@ -25,7 +25,7 @@ export class TwoFactorService {
                 name: `${this.configService.get<string>('APP_NAME', 'Apex Platform')}: ${user.email}`,
                 length: 32
             });
-            const encryptedSecret = await this.encryptionService.encryptSensitiveData(secret.base32, '2fa_secret');
+            const encryptedSecret = await this.encryptionService.encryptSensitiveData(secret.base32, '2fa_secret', user.tenantId);
             user.twoFactorSecret = encryptedSecret;
             user.isTwoFactorEnabled = true;
             await this.auditService.logSecurityEvent('2FA_ENABLED', {
@@ -45,7 +45,7 @@ export class TwoFactorService {
     async verifyToken(user: User, token: string): Promise<boolean> {
         try {
             if (!user.isTwoFactorEnabled || !user.twoFactorSecret) return false;
-            const decryptedSecret = await this.encryptionService.decryptSensitiveData(user.twoFactorSecret, '2fa_secret');
+            const decryptedSecret = await this.encryptionService.decryptSensitiveData(user.twoFactorSecret, '2fa_secret', user.tenantId);
             return speakeasy.totp.verify({
                 secret: decryptedSecret,
                 encoding: 'base32',
@@ -61,7 +61,7 @@ export class TwoFactorService {
     async generateVerificationToken(user: User): Promise<string> {
         try {
             const token = speakeasy.totp({
-                secret: await this.encryptionService.decryptSensitiveData(user.twoFactorSecret, '2fa_secret'),
+                secret: await this.encryptionService.decryptSensitiveData(user.twoFactorSecret, '2fa_secret', user.tenantId),
                 encoding: 'base32',
                 step: 300
             });
