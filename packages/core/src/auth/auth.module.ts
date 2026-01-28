@@ -52,8 +52,7 @@ import { TenantContextService } from '../security/layers/s2-tenant-isolation/ten
         TenantAuthGuard,
         AuditService,
         EncryptionService,
-        RateLimiterService,
-        TenantContextService
+        RateLimiterService
     ],
     controllers: [AuthController],
     exports: [
