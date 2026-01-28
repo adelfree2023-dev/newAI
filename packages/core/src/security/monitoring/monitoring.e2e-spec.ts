@@ -1,6 +1,8 @@
 import * as request from 'supertest';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
+import { join } from 'path';
+import * as fs from 'fs/promises';
 import { SecurityMonitoringService } from './security-monitoring.service';
 import { AnomalyAnalyzerService } from './anomaly-analyzer.service';
 import { AutomatedResponseService } from '../response/automated-response.service';
