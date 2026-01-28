@@ -10,9 +10,8 @@ import { TenantContextService } from '../s2-tenant-isolation/tenant-context.serv
   imports: [ConfigModule],
   providers: [
     CSPConfigService,
-    AuditService,
-    TenantContextService
+    AuditService
   ],
   exports: [CSPConfigService],
 })
-export class WebProtectionModule {}
+export class WebProtectionModule { }

@@ -13,7 +13,6 @@ import { ConfigModule } from '@nestjs/config';
         DataSnapshotService,
         RollbackService,
         AuditService,
-        TenantContextService,
         EncryptionService
     ],
     exports: [DataSnapshotService, RollbackService]

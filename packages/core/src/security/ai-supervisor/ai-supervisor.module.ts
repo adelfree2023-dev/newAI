@@ -16,7 +16,6 @@ import { TestController } from '../test/test.controller';
   providers: [
     AISecuritySupervisorService,
     AuditService,
-    TenantContextService,
     EncryptionService,
     VercelAgentFactory,
     TestGenerationSkill,
@@ -31,7 +30,6 @@ import { TestController } from '../test/test.controller';
     VercelSkillMapper,
     TestGenerationSkill,
     AuditService,
-    TenantContextService,
     EncryptionService
   ]
 })
