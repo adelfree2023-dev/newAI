@@ -11,9 +11,7 @@ export class BruteForceProtectionService implements OnModuleInit {
     private isConnected: boolean = false;
 
     constructor(
-        private readonly configService: ConfigService,
-        private readonly auditService: AuditService,
-        private readonly tenantContext: TenantContextService
+        private readonly configService: ConfigService
     ) { }
 
     async onModuleInit() {
@@ -56,20 +54,15 @@ export class BruteForceProtectionService implements OnModuleInit {
     ): Promise<{ locked: boolean; attempts: number }> {
         const canProceed = await this.ensureConnection();
         if (!canProceed) {
-            await this.auditService.logSecurityEvent('FAILED_LOGIN_ATTEMPT', {
-                email,
-                ip,
-                context,
-                timestamp: new Date().toISOString(),
-            });
+            this.logger.warn(`[S6] 🛡️ Redis unavailable, skipping limit check for ${email}`);
             return { locked: false, attempts: 0 };
         }
 
         try {
-            const tenantId = this.tenantContext.getTenantId() || 'system';
             const env = this.configService.get<string>('NODE_ENV', 'development');
 
-            const emailKey = `brute_force:${env}:${context}:${tenantId}:${email}`;
+            // Use global key for login to prevent bypass via tenant header manipulation
+            const emailKey = `brute_force:${env}:${context}:global:${email}`;
             const ipKey = `brute_force:${env}:${context}:ip:${ip}`;
 
             const emailCount = await this.redisClient.incr(emailKey);
@@ -78,14 +71,6 @@ export class BruteForceProtectionService implements OnModuleInit {
             await this.redisClient.expire(emailKey, 15 * 60);
             await this.redisClient.expire(ipKey, 15 * 60);
 
-            await this.auditService.logSecurityEvent('FAILED_LOGIN_ATTEMPT', {
-                email,
-                ip,
-                attempts: emailCount,
-                context,
-                timestamp: new Date().toISOString(),
-            });
-
             this.logger.warn(`[S6] 🔐 Failed attempt ${emailCount}/5 for ${email}`);
 
             const maxAttempts = 5;
@@ -93,13 +78,6 @@ export class BruteForceProtectionService implements OnModuleInit {
 
             if (locked) {
                 this.logger.error(`[S6] 🔒 Account locked: ${email} (${emailCount} attempts)`);
-                await this.auditService.logSecurityEvent('ACCOUNT_LOCKED', {
-                    email,
-                    ip,
-                    attempts: emailCount,
-                    duration: '15 minutes',
-                    timestamp: new Date().toISOString(),
-                });
             }
 
             return { locked, attempts: emailCount };
@@ -114,9 +92,9 @@ export class BruteForceProtectionService implements OnModuleInit {
         if (!canProceed) return;
 
         try {
-            const tenantId = this.tenantContext.getTenantId() || 'system';
             const env = this.configService.get<string>('NODE_ENV', 'development');
-            const emailKey = `brute_force:${env}:${context}:${tenantId}:${email}`;
+            // Remove tenantId from key to make it globally consistent or use 'system' for login
+            const emailKey = `brute_force:${env}:${context}:global:${email}`;
 
             await this.redisClient.del(emailKey);
             this.logger.log(`[S6] ✅ Failed attempts reset for ${email}`);
@@ -130,10 +108,9 @@ export class BruteForceProtectionService implements OnModuleInit {
         if (!canProceed) return false;
 
         try {
-            const tenantId = this.tenantContext.getTenantId() || 'system';
             const env = this.configService.get<string>('NODE_ENV', 'development');
 
-            const emailKey = `brute_force:${env}:${context}:${tenantId}:${email}`;
+            const emailKey = `brute_force:${env}:${context}:global:${email}`;
             const attempts = await this.redisClient.get(emailKey);
             const attemptsStr = attempts ? String(attempts) : '0';
 
@@ -164,13 +141,6 @@ export class BruteForceProtectionService implements OnModuleInit {
             });
 
             this.logger.error(`[M4] 🚫 IP Blocked: ${ip} for ${durationMinutes}m. Reason: ${reason}`);
-
-            await this.auditService.logSecurityEvent('IP_ADDRESS_BLOCKED', {
-                ip,
-                reason,
-                durationMinutes,
-                timestamp: new Date().toISOString()
-            });
         } catch (error) {
             this.logger.error(`[M4] ❌ Error blocking IP address: ${error.message}`);
         }
