@@ -16,10 +16,7 @@ import { Session } from './entities/session.entity';
 import { RolesGuard } from './guards/roles.guard';
 import { PermissionsGuard } from './guards/permissions.guard';
 import { TenantAuthGuard } from './guards/tenant-auth.guard';
-import { AuditService } from '../security/layers/s4-audit-logging/audit.service';
-import { EncryptionService } from '../security/layers/s7-encryption/encryption.service';
 import { RateLimiterService } from '../security/layers/s6-rate-limiting/rate-limiter.service';
-import { TenantContextService } from '../security/layers/s2-tenant-isolation/tenant-context.service';
 
 @Global()
 @Module({
