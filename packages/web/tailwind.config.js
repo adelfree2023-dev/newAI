@@ -27,14 +27,21 @@ export default {
             },
             animation: {
                 'aurora': 'aurora 60s linear infinite',
+                'border-beam': 'border-beam var(--duration) infinite linear',
             },
             keyframes: {
                 aurora: {
                     '0%, 100%': { backgroundPosition: '0% 50%' },
                     '50%': { backgroundPosition: '100% 50%' },
                 },
+                'border-beam': {
+                    '100%': {
+                        'offset-distance': '100%',
+                    },
+                },
             },
         },
     },
     plugins: [],
 }
+

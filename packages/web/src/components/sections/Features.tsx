@@ -5,15 +5,19 @@ import { TrendingUp, Shield } from "lucide-react"
 
 
 export const Features = ({ isAr }: { isAr: boolean }) => {
+    const springTransition = { type: "spring", stiffness: 260, damping: 20 }
+
     return (
-        <section className="py-32 bg-background-light dark:bg-background-dark">
+        <section className="py-32 bg-slate-950">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <motion.div
-                    initial={{ opacity: 0, y: 20 }}
+                    initial={{ opacity: 0, y: 30 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
+                    transition={springTransition}
                     className="text-center mb-20"
                 >
+
                     <h2 className="text-4xl md:text-6xl font-black mb-6 tracking-tight">
                         {isAr ? 'كل ما تحتاجه للنجاح' : 'Everything you need to succeed'}
                     </h2>

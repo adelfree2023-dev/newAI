@@ -1,4 +1,5 @@
 import { motion } from "framer-motion"
+import { BorderBeam } from "./BorderBeam"
 
 interface BentoGridProps {
     children: React.ReactNode
@@ -19,26 +20,37 @@ interface BentoCardProps {
 }
 
 export const BentoCard = ({ children, className, delay = 0 }: BentoCardProps) => {
+    const springTransition = { type: "spring", stiffness: 260, damping: 20 }
+
     return (
         <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, scale: 0.9 }}
+            whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
-            transition={{ duration: 0.5, delay }}
-            whileHover={{ scale: 1.02 }}
+            transition={{ ...springTransition, delay: delay * 0.5 }}
+            whileHover={{ y: -5 }}
             className={`
         relative overflow-hidden
-        bg-white/50 dark:bg-slate-900/50 backdrop-blur-xl 
-        border border-white/20 dark:border-white/5 rounded-3xl 
-        p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_50px_rgba(0,0,0,0.1)] transition-all
+        bg-white/5 dark:bg-slate-900/40 backdrop-blur-2xl 
+        border border-white/10 rounded-3xl 
+        p-8 shadow-2xl transition-shadow
         group cursor-default
         ${className}
       `}
         >
-            <div className="absolute inset-0 bg-gradient-to-br from-primary-500/5 to-secondary-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <BorderBeam 
+                size={250} 
+                duration={12} 
+                delay={delay} 
+                className="opacity-0 group-hover:opacity-100 transition-opacity" 
+            />
+            
+            <div className="absolute inset-0 bg-gradient-to-br from-primary-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+            
             <div className="relative z-10 h-full flex flex-col justify-between">
                 {children}
             </div>
         </motion.div>
     )
 }
+
