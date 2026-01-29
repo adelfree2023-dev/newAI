@@ -33,7 +33,7 @@ print_warning() { echo -e "${YELLOW}⚠️  WARNING${NC}: $1"; }
 # Phase 0: Environment Cleanup
 echo "🧹 PHASE 0: Environment Cleanup & Preparation"
 export PGPASSWORD=ApexSecure2026
-psql -U apex_user -d apex_prod -p 5433 -h localhost -c "DELETE FROM sessions WHERE \"userId\" IN (SELECT id FROM users WHERE email='$TEST_EMAIL' OR email='$ADMIN_EMAIL'); DELETE FROM users WHERE email='$TEST_EMAIL' OR email='$ADMIN_EMAIL';" > /dev/null 2>&1
+psql -U apex_user -d apex_platform -p 5432 -h localhost -c "DELETE FROM sessions WHERE \"userId\" IN (SELECT id FROM users WHERE email='$TEST_EMAIL' OR email='$ADMIN_EMAIL'); DELETE FROM users WHERE email='$TEST_EMAIL' OR email='$ADMIN_EMAIL';" > /dev/null 2>&1
 redis-cli FLUSHALL > /dev/null 2>&1
 echo "✅ Environment cleaned (Database & Redis)"
 
@@ -44,7 +44,7 @@ echo -e "\n🛡️  PHASE M1: Security Foundation Tests (S1-S8)"
 
 # Test M1.1: Environment Validation (S1)
 echo "Test M1.1: Environment Security Validation (S1)"
-AGENT_RESULT=$(node packages/scripts/apex-agent/apex-agent.runner.ts 2>&1)
+AGENT_RESULT=$(cd packages/core && npx ts-node -T scripts/apex-agent.runner.ts 2>&1)
 if echo "$AGENT_RESULT" | grep -q "✅ \[S1\] اجتازت البيئة جميع اختبارات الأمان"; then
     print_success
 else
