@@ -23,6 +23,8 @@ export function OnboardingModal({ isOpen, onClose, selectedTemplate }: Onboardin
         domain: "",
         package: "free",
     });
+    const [result, setResult] = useState<any>(null);
+    const [isLoading, setIsLoading] = useState(false);
 
     const nextStep = () => setStep((s) => Math.min(s + 1, 4));
     const prevStep = () => setStep((s) => Math.max(s - 1, 1));
@@ -76,8 +78,40 @@ export function OnboardingModal({ isOpen, onClose, selectedTemplate }: Onboardin
                     <AnimatePresence mode="wait">
                         {step === 1 && <StepUserData key="step1" data={formData} setData={setFormData} onNext={nextStep} />}
                         {step === 2 && <StepDomain key="step2" data={formData} setData={setFormData} onNext={nextStep} onPrev={prevStep} />}
-                        {step === 3 && <StepPackage key="step3" data={formData} setData={setFormData} onNext={nextStep} onPrev={prevStep} />}
-                        {step === 4 && <StepSuccess key="step4" onClose={onClose} />}
+                        {step === 3 && (
+                            <StepPackage
+                                key="step3"
+                                data={formData}
+                                setData={setFormData}
+                                onNext={async (data: any) => {
+                                    setIsLoading(true);
+                                    try {
+                                        const response = await fetch("http://34.16.148.154:3001/api/onboarding/quick-start", {
+                                            method: "POST",
+                                            headers: { "Content-Type": "application/json" },
+                                            body: JSON.stringify({
+                                                storeName: data.name + "'s Store",
+                                                domain: data.domain,
+                                                email: data.email,
+                                                password: "Password@2026", // Temporary default password
+                                                businessType: "RETAIL"
+                                            }),
+                                        });
+                                        const resData = await response.json();
+                                        setResult(resData);
+                                        nextStep();
+                                    } catch (err) {
+                                        console.error("Onboarding failed", err);
+                                        alert("Onboarding failed. Please try again.");
+                                    } finally {
+                                        setIsLoading(false);
+                                    }
+                                }}
+                                onPrev={prevStep}
+                                isLoading={isLoading}
+                            />
+                        )}
+                        {step === 4 && <StepSuccess key="step4" onClose={onClose} result={result} />}
                     </AnimatePresence>
                 </div>
             </motion.div>
@@ -150,18 +184,30 @@ function StepDomain({ data, setData, onNext, onPrev }: any) {
                         className="pl-24 h-14 text-lg font-bold"
                         placeholder="mystore"
                         value={data.domain}
-                        onChange={(e) => {
-                            setData({ ...data, domain: e.target.value });
-                            setIsTaken(e.target.value === "taken"); // Mock availability
+                        onChange={async (e) => {
+                            const val = e.target.value;
+                            setData({ ...data, domain: val });
+                            if (val.length > 3) {
+                                try {
+                                    const res = await fetch(`http://34.16.148.154:3001/api/onboarding/check-domain/${val}`);
+                                    const check = await res.json();
+                                    setIsTaken(!check.available);
+                                } catch (err) {
+                                    console.error("Domain check failed", err);
+                                }
+                            }
                         }}
                     />
                     <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium border-r pr-4 border-border">
                         apex.com/
                     </div>
-                    {data.domain && !isTaken && (
-                        <div className="mt-2 text-sm text-green-500 flex items-center gap-1">
-                            <CheckCircle2 className="h-4 w-4" />
-                            {language === "ar" ? "هذا النطاق متاح!" : "Domain is available!"}
+                    {data.domain && (
+                        <div className={`mt-2 text-sm flex items-center gap-1 ${isTaken ? "text-destructive" : "text-green-500"}`}>
+                            {isTaken ? <X className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
+                            {isTaken
+                                ? (language === "ar" ? "هذا النطاق مستخدم بالفعل" : "Domain is already taken")
+                                : (language === "ar" ? "هذا النطاق متاح!" : "Domain is available!")
+                            }
                         </div>
                     )}
                 </div>
@@ -179,7 +225,7 @@ function StepDomain({ data, setData, onNext, onPrev }: any) {
     );
 }
 
-function StepPackage({ data, setData, onNext, onPrev }: any) {
+function StepPackage({ data, setData, onNext, onPrev, isLoading }: any) {
     const { language } = useLanguage();
     return (
         <motion.div
@@ -208,18 +254,23 @@ function StepPackage({ data, setData, onNext, onPrev }: any) {
             </div>
 
             <div className="flex gap-4">
-                <Button variant="outline" className="flex-1 h-12" onClick={onPrev}>
+                <Button variant="outline" className="flex-1 h-12" onClick={onPrev} disabled={isLoading}>
                     {language === "ar" ? "السابق" : "Back"}
                 </Button>
-                <Button className="flex-[2] h-12 text-lg" variant="premium" onClick={onNext}>
-                    {language === "ar" ? "إنشاء المتجر الآن" : "Create Store Now"}
+                <Button
+                    className="flex-[2] h-12 text-lg"
+                    variant="premium"
+                    onClick={() => onNext(data)}
+                    disabled={isLoading}
+                >
+                    {isLoading ? (language === "ar" ? "جاري الإنشاء..." : "Creating...") : (language === "ar" ? "إنشاء المتجر الآن" : "Create Store Now")}
                 </Button>
             </div>
         </motion.div>
     );
 }
 
-function StepSuccess({ onClose }: any) {
+function StepSuccess({ onClose, result }: any) {
     const { language, t } = useLanguage();
     return (
         <motion.div
@@ -238,11 +289,19 @@ function StepSuccess({ onClose }: any) {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <Button variant="outline" className="h-auto py-6 flex flex-col gap-2">
+                <Button
+                    variant="outline"
+                    className="h-auto py-6 flex flex-col gap-2"
+                    onClick={() => window.open(result?.storeUrl || "#", "_blank")}
+                >
                     <Globe className="h-6 w-6 text-primary" />
                     <span className="text-xs font-bold uppercase">{t("onboarding.view_store")}</span>
                 </Button>
-                <Button variant="outline" className="h-auto py-6 flex flex-col gap-2 border-primary/20 bg-primary/5">
+                <Button
+                    variant="outline"
+                    className="h-auto py-6 flex flex-col gap-2 border-primary/20 bg-primary/5"
+                    onClick={() => window.open(result?.adminUrl || "#", "_blank")}
+                >
                     <Layout className="h-6 w-6 text-primary" />
                     <span className="text-xs font-bold uppercase">{t("onboarding.manage_store")}</span>
                 </Button>
