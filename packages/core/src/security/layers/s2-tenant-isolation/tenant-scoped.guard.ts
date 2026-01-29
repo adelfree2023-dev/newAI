@@ -23,7 +23,8 @@ export class TenantScopedGuard implements CanActivate {
       },
       { class: 'HealthController', methods: ['check', 'status'] },
       { class: 'ProductController', methods: [] }, // سيتم التحقق من tenantId في الـ interceptor
-      { class: 'TestController', methods: ['forceGenerateSPC', 'testEncryption'] }
+      { class: 'TestController', methods: ['forceGenerateSPC', 'testEncryption'] },
+      { class: 'OnboardingController', methods: ['quickStart', 'checkDomain'] }
     ];
 
     const isSystemRoute = systemRoutes.some(route =>

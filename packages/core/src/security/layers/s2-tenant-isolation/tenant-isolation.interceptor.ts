@@ -139,7 +139,8 @@ export class TenantIsolationInterceptor implements NestInterceptor {
             { class: 'AuthController', methods: ['login', 'register', 'forgotPassword', 'refresh', 'logout', 'logoutAll', 'enable2FA', 'verify2FA'] },
             { class: 'HealthController', methods: ['check', 'status', 'getHealth'] },
             { class: 'TenantController', methods: ['create', 'getAll'] },
-            { class: 'TestController', methods: ['forceGenerateSPC', 'testEncryption'] }
+            { class: 'TestController', methods: ['forceGenerateSPC', 'testEncryption'] },
+            { class: 'OnboardingController', methods: ['quickStart', 'checkDomain'] }
         ];
 
         return exemptRoutes.some(route =>
