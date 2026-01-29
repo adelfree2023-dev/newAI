@@ -15,6 +15,7 @@ import { RateLimiterService } from '../security/layers/s6-rate-limiting/rate-lim
 import { AuditService } from '../security/layers/s4-audit-logging/audit.service';
 import { InputValidatorService } from '../security/layers/s3-input-validation/input-validator.service';
 import { TenantContextService } from '../security/layers/s2-tenant-isolation/tenant-context.service';
+import { EncryptionService } from '../security/layers/s7-encryption/encryption.service';
 
 describe('AuthModule', () => {
   let module: TestingModule;
@@ -30,6 +31,7 @@ describe('AuthModule', () => {
       .overrideProvider(RateLimiterService).useValue({ consume: jest.fn() })
       .overrideProvider(AuditService).useValue({ logActivity: jest.fn(), logSecurityEvent: jest.fn() })
       .overrideProvider(InputValidatorService).useValue({ secureValidate: jest.fn() })
+      .overrideProvider(EncryptionService).useValue({ encrypt: jest.fn(), decrypt: jest.fn() })
       .compile();
   });
 
