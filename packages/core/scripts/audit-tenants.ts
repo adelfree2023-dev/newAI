@@ -15,7 +15,17 @@ async function audit() {
 
     try {
         // 1. Get all registered tenants from DB
-        const registeredTenants = await tenantService.getAllActiveTenants();
+        let registeredTenants = [];
+        try {
+            registeredTenants = await tenantService.getAllActiveTenants();
+        } catch (e) {
+            logger.warn('⚠️ Failed to get tenants from service, trying direct SQL...');
+        }
+
+        if (registeredTenants.length === 0) {
+            registeredTenants = await dataSource.query(`SELECT id, name FROM tenants WHERE status = 'ACTIVE'`);
+        }
+
         const registeredIds = new Set(registeredTenants.map(t => t.id));
         const registeredSchemas = new Set(registeredTenants.map(t => `tenant_${t.id.toLowerCase().replace(/[^a-z0-9]/g, '_')}`));
 

@@ -9,7 +9,7 @@ import { AuditService } from '../security/layers/s4-audit-logging/audit.service'
 @Injectable()
 export class TenantService {
   private readonly logger = new Logger(TenantService.name);
-  private activeTenants: Map<string, any> = new Map();
+  private activeTenants: Map<string, any> = new Map<string, any>();
 
   constructor(
     @InjectRepository(Tenant)
@@ -142,6 +142,9 @@ export class TenantService {
   }
 
   getAllActiveTenants(): any[] {
+    if (!this.activeTenants) {
+      this.activeTenants = new Map<string, any>();
+    }
     return Array.from(this.activeTenants.values());
   }
 
