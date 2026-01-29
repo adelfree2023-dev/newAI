@@ -4,8 +4,9 @@ import { ConfigService } from '@nestjs/config';
 import { TenantContextService } from '../s2-tenant-isolation/tenant-context.service';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { AnomalyDetectionService } from './anomaly-detection.service';
-import { createMockPrisma } from '../../../../test/test-utils';
+import { createMockPrisma, getCommonProviders } from '../../../../test/test-utils';
 import { REQUEST } from '@nestjs/core';
+import { AuditService } from '../s4-audit-logging/audit.service';
 
 describe('RateLimiterService', () => {
     let service: RateLimiterService;
@@ -34,8 +35,7 @@ describe('RateLimiterService', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 RateLimiterService,
-                { provide: ConfigService, useValue: mockConfig },
-                { provide: TenantContextService, useValue: { getTenantId: jest.fn() } },
+                ...getCommonProviders([RateLimiterService]),
                 { provide: PrismaService, useValue: mockPrisma },
                 { provide: AnomalyDetectionService, useValue: mockAnomaly },
                 { provide: REQUEST, useValue: { get: jest.fn(), ip: '127.0.0.1' } },
