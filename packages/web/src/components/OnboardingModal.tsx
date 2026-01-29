@@ -107,11 +107,16 @@ export function OnboardingModal({ isOpen, onClose, selectedTemplate }: Onboardin
                                             }),
                                         });
                                         const resData = await response.json();
-                                        setResult(resData);
-                                        nextStep();
+
+                                        if (response.ok) {
+                                            setResult(resData);
+                                            nextStep();
+                                        } else {
+                                            alert(resData.message || (language === "ar" ? "فشل إنشاء المتجر. يرجى المحاولة مرة أخرى." : "Onboarding failed. Please try again."));
+                                        }
                                     } catch (err) {
                                         console.error("Onboarding failed", err);
-                                        alert("Onboarding failed. Please try again.");
+                                        alert(language === "ar" ? "خطأ في الاتصال بالسيرفر" : "Connection error to server");
                                     } finally {
                                         setIsLoading(false);
                                     }

@@ -29,7 +29,10 @@ export class OnboardingService {
         }
 
         try {
-            // 2. إنشاء المستأجر (هذا ينشئ الـ Schema تلقائياً)
+            // 2. البحث عن المستخدم مسبقاً
+            const existingUser = await this.userService.findByEmail(dto.email);
+
+            // 3. إنشاء المستأجر (هذا ينشئ الـ Schema تلقائياً)
             const tenant = await this.tenantService.createTenant({
                 id: dto.domain,
                 name: dto.storeName,
@@ -38,16 +41,24 @@ export class OnboardingService {
                 contactEmail: dto.email,
             });
 
-            // 3. إنشاء مدير المتجر (Owner) في الجدول المركزي
-            await this.userService.create({
-                email: dto.email,
-                passwordHash: dto.password,
-                firstName: 'Store',
-                lastName: 'Owner',
-                role: UserRole.TENANT_ADMIN,
-                tenantId: tenant.id,
-                emailVerified: true,
-            });
+            if (existingUser) {
+                // تحديث المستخدم الحالي لربطه بالمتجر الجديد
+                this.logger.log(`🔗 ربط المستخدم الموجود ${dto.email} بالمتجر الجديد: ${tenant.id}`);
+                existingUser.tenantId = tenant.id;
+                existingUser.role = UserRole.TENANT_ADMIN;
+                await this.userService.save(existingUser);
+            } else {
+                // إنشاء مستخدم جديد
+                await this.userService.create({
+                    email: dto.email,
+                    passwordHash: dto.password,
+                    firstName: 'Store',
+                    lastName: 'Owner',
+                    role: UserRole.TENANT_ADMIN,
+                    tenantId: tenant.id,
+                    emailVerified: true,
+                });
+            }
 
             this.logger.log(`✅ تم إنشاء المتجر والمدير بنجاح لـ: ${dto.domain}`);
 
