@@ -2,7 +2,7 @@ import { Module, Global } from '@nestjs/common';
 import { SecurityMonitoringModule } from './monitoring/security-monitoring.module';
 import { ResponseModule } from './response/response.module';
 import { RecoveryModule } from './recovery/recovery.module';
-import { TenantIsolationModule } from './layers/s2-tenant-isolation/tenant-isolation.module';
+import { TenantContextModule } from './layers/s2-tenant-isolation/tenant-context.module';
 import { EnvironmentVerificationModule } from './layers/s1-environment-verification/environment-validator.module';
 import { InputValidationModule } from './layers/s3-input-validation/input-validation.module';
 import { AuditModule } from './layers/s4-audit-logging/audit.module';

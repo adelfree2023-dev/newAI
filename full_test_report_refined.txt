@@ -12171,5 +12171,5 @@ FAIL packages/core/src/security/layers/s4-audit-logging/audit.module.spec.ts
 Test Suites: 63 failed, 63 total
 Tests:       0 total
 Snapshots:   0 total
-Time:        14.477 s
+Time:        17.861 s
 Ran all test suites.

@@ -200,8 +200,7 @@ describe('${className} (97% Coverage Target)', () => {
       'SchemaInitializerService': './database/schema-initializer.service',
       'TenantContextService': './context/tenant-context.service',
       'ConfigService': '@nestjs/config',
-      'Repository': 'typeorm',
-      'EntityManager': 'typeorm'
+      'PrismaService': '../../prisma/prisma.service'
     };
 
     dependencies.forEach(dep => {

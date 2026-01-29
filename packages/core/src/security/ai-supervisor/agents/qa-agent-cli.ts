@@ -22,8 +22,9 @@ async function bootstrapQA() {
 
     // محاكاة سياق NestJS للتشغيل المستقل
     const mockRequest = { headers: {} } as any;
+    const mockPrisma = { auditLog: { create: jest?.fn() || (() => { }) } } as any;
     const tenantContext = new TenantContextService(mockRequest);
-    const auditService = new AuditService(mockRequest, tenantContext);
+    const auditService = new AuditService(mockRequest, tenantContext, mockPrisma);
     const factory = new VercelAgentFactory(null as any); // سيستخدم مفاتيح البيئة مباشرة
 
     // تهيئة الوكيل

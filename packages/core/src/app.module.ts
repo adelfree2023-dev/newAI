@@ -2,7 +2,7 @@ import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TenantModule } from './tenants/tenant.module';
 import { AuthModule } from './auth/auth.module';
-import { TenantIsolationModule } from './security/layers/s2-tenant-isolation/tenant-isolation.module';
+import { TenantContextModule } from './security/layers/s2-tenant-isolation/tenant-context.module';
 import { EnvironmentVerificationModule } from './security/layers/s1-environment-verification/environment-validator.module';
 import { InputValidationModule } from './security/layers/s3-input-validation/input-validation.module';
 import { AuditModule } from './security/layers/s4-audit-logging/audit.module';
@@ -28,7 +28,7 @@ import { PrismaModule } from './prisma/prisma.module';
         TenantModule,
         AuthModule,
         ProductModule,
-        TenantIsolationModule,
+        TenantContextModule,
         EnvironmentVerificationModule,
         InputValidationModule,
         AuditModule,
