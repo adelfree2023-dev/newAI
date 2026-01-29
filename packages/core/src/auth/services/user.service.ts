@@ -19,7 +19,8 @@ export class UserService {
     ) { }
 
     async create(userData: Partial<User>): Promise<User> {
-        this.logger.log(`[M3] 📝 إنشاء مستخدم جديد: ${userData.email}`);
+        const logger = this.logger || new Logger('UserService');
+        logger.log(`[M3] 📝 إنشاء مستخدم جديد: ${userData.email}`);
         try {
             const existingUser = await this.findByEmail(userData.email);
             if (existingUser) {
@@ -36,7 +37,7 @@ export class UserService {
             });
             return savedUser;
         } catch (error) {
-            this.logger.error(`[M3] ❌ فشل إنشاء المستخدم: ${error.message}`);
+            (this.logger || new Logger('UserService')).error(`[M3] ❌ فشل إنشاء المستخدم: ${error.message}`);
             throw error;
         }
     }
@@ -68,7 +69,7 @@ export class UserService {
                 }
             });
         } catch (error) {
-            this.logger.error(`[M3] ❌ فشل البحث عن المستخدم: ${error.message}`);
+            (this.logger || new Logger('UserService')).error(`[M3] ❌ فشل البحث عن المستخدم: ${error.message}`);
             throw error;
         }
     }
@@ -100,7 +101,7 @@ export class UserService {
                 }
             });
         } catch (error) {
-            this.logger.error(`[M3] ❌ فشل البحث عن المستخدم: ${error.message}`);
+            (this.logger || new Logger('UserService')).error(`[M3] ❌ فشل البحث عن المستخدم: ${error.message}`);
             throw error;
         }
     }
@@ -109,7 +110,7 @@ export class UserService {
         try {
             return await this.userRepository.save(user);
         } catch (error) {
-            this.logger.error(`[M3] ❌ فشل حفظ المستخدم: ${error.message}`);
+            (this.logger || new Logger('UserService')).error(`[M3] ❌ فشل حفظ المستخدم: ${error.message}`);
             throw error;
         }
     }
