@@ -106,9 +106,9 @@ export class RateLimiterService {
   /**
    * Alias for checkRateLimit for backward compatibility.
    */
-  async consume(key: string, limit: number = 10, window: number = 60): Promise<{ allowed: boolean }> {
+  async consume(key: string, limit: number = 10, window: number = 60): Promise<{ allowed: boolean; remaining: number }> {
     const result = await this.checkRateLimit(key, limit, window);
-    return { allowed: result.allowed };
+    return { allowed: result.allowed, remaining: result.remaining };
   }
 
   private async logRateLimitAttempt(
@@ -302,5 +302,4 @@ export class RateLimiterService {
       return { maxRequests: 100, windowSeconds: 60 }; // خطة افتراضية آمنة
     }
   }
-}
 }

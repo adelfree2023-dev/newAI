@@ -212,6 +212,7 @@ export class AnomalyDetectionService {
 
   async isSuspended(tenantId: string) { return false; }
   async inspect(tenantId: string, critical: boolean, details: any = {}) { return this.detectAnomaly({ tenantId, critical, ...details }); }
+  async isThrottled(tenantId: string) { return false; }
   async inspectFailedEvent(tenantId: string, event: string, error: any) { return this.inspect(tenantId, true, { event, error: error?.message }); }
   async inspectFailedLogin(tenantId: string, userId: string, ip: string) { return this.inspect(tenantId, true, { userId, ip, type: 'failed_login' }); }
   getStatus(tenantId: string) { return { suspicious: false, suspended: false }; }
