@@ -1,21 +1,17 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from '../src/app.module';
-import { TenantService } from '../src/tenants/tenant.service';
-import { UserService } from '../src/auth/services/user.service';
 import { DataSource } from 'typeorm';
 import { Logger } from '@nestjs/common';
-import { UserRole } from '../src/auth/entities/user.entity';
+import * as bcrypt from 'bcrypt';
+import { v4 as uuidv4 } from 'uuid';
 
 async function superSeed() {
     const logger = new Logger('SuperSeed');
-    logger.log('🚀 Starting Full Database Reset & Seed...');
+    logger.log('🚀 Starting Robust Raw SQL Seed...');
 
-    const app = await NestFactory.createApplicationContext(AppModule, { logger: ['error', 'warn', 'log'] });
+    const app = await NestFactory.createApplicationContext(AppModule, { logger: ['error', 'warn'] });
     const dataSource = app.get(DataSource);
-    const tenantService = app.get(TenantService);
-    const userService = app.get(UserService);
-
     const queryRunner = dataSource.createQueryRunner();
     await queryRunner.connect();
 
@@ -39,60 +35,48 @@ async function superSeed() {
         await queryRunner.query('TRUNCATE TABLE "users" CASCADE');
         await queryRunner.query('TRUNCATE TABLE "sessions" CASCADE');
 
+        const passwordHash = await bcrypt.hash('Apex@2026', 12);
+        const storePasswordHash = await bcrypt.hash('Store@2026', 12);
+
         // 3. SEED: 2 Super Admins
         logger.log('👑 Creating 2 Super Admins...');
         for (let i = 1; i <= 2; i++) {
-            await userService.create({
-                email: `superadmin${i}@apex.com`,
-                passwordHash: 'Apex@2026',
-                firstName: 'Super',
-                lastName: `Admin ${i}`,
-                role: UserRole.SUPER_ADMIN,
-                tenantId: null,
-                emailVerified: true
-            });
+            const id = uuidv4();
+            await queryRunner.query(`
+            INSERT INTO users (id, email, "passwordHash", "firstName", "lastName", role, status, "emailVerified")
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        `, [id, `superadmin${i}@apex.com`, passwordHash, 'Super', `Admin ${i}`, 'SUPER_ADMIN', 'ACTIVE', true]);
             logger.log(`   ✅ Created Super Admin: superadmin${i}@apex.com`);
         }
 
         // 4. SEED: 10 Tenants & Tenant Admins
-        logger.log('🏪 Creating 10 Tenants with Admins...');
+        logger.log('🏪 Creating 10 Tenants with Schemas and Admins...');
         for (let i = 1; i <= 10; i++) {
             const tenantId = `store-${i}`;
+            const schemaName = `tenant_store_${i}`;
             const tenantName = `Apex Luxury Store ${i}`;
             const email = `owner${i}@gmail.com`;
 
-            try {
-                // Create Tenant (this handles schema creation via TenantService)
-                await tenantService.createTenant({
-                    id: tenantId,
-                    name: tenantName,
-                    domain: `store${i}.apex-platform.com`,
-                    businessType: 'RETAIL',
-                    contactEmail: email
-                });
+            // Create Physical Schema
+            await queryRunner.query(`CREATE SCHEMA IF NOT EXISTS "${schemaName}"`);
 
-                // Create Tenant Admin in central users table
-                await userService.create({
-                    email: email,
-                    passwordHash: 'Store@2026',
-                    firstName: 'Store',
-                    lastName: `Owner ${i}`,
-                    role: UserRole.TENANT_ADMIN,
-                    tenantId: tenantId,
-                    emailVerified: true
-                });
+            // Create Tenant Record
+            await queryRunner.query(`
+            INSERT INTO tenants (id, name, domain, "businessType", "contactEmail", status, "schemaName")
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+        `, [tenantId, tenantName, `store${i}.apex-platform.com`, 'RETAIL', email, 'ACTIVE', schemaName]);
 
-                logger.log(`   ✅ Created ${tenantName} + Owner: ${email}`);
-            } catch (err) {
-                logger.error(`   ❌ Failed to create tenant ${tenantId}: ${err.message}`);
-            }
+            // Create Tenant Admin in central users table
+            const userId = uuidv4();
+            await queryRunner.query(`
+            INSERT INTO users (id, email, "passwordHash", "firstName", "lastName", role, status, "tenantId", "emailVerified")
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        `, [userId, email, storePasswordHash, 'Store', `Owner ${i}`, 'TENANT_ADMIN', 'ACTIVE', tenantId, true]);
+
+            logger.log(`   ✅ Created ${tenantName} (Schema: ${schemaName}) + Owner: ${email}`);
         }
 
-        logger.log('🎉 Super Seed completed successfully!');
-        logger.log('--------------------------------------------------');
-        logger.log('Admins: superadmin1@apex.com / Apex@2026');
-        logger.log('Tenants: store-1 to store-10');
-        logger.log('Tenant Passwords: Store@2026');
+        logger.log('🎉 Super Seed completed successfully with RAW SQL!');
 
     } catch (error) {
         logger.error(`❌ Seed failed: ${error.message}`);
