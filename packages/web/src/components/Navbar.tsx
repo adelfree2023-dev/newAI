@@ -27,10 +27,10 @@ export function Navbar() {
                 </div>
 
                 <div className="hidden md:flex items-center gap-6">
-                    <a href="#templates" className="text-sm font-medium hover:text-primary transition-colors">
+                    <a href="/templates" className="text-sm font-medium hover:text-primary transition-colors">
                         {t("nav.templates")}
                     </a>
-                    <a href="#pricing" className="text-sm font-medium hover:text-primary transition-colors">
+                    <a href="/pricing" className="text-sm font-medium hover:text-primary transition-colors">
                         {t("nav.pricing")}
                     </a>
                 </div>
@@ -58,13 +58,17 @@ export function Navbar() {
                     <span className="sr-only">Toggle Theme</span>
                 </Button>
 
-                <Button variant="ghost" className="hidden sm:flex items-center gap-2">
-                    <LogIn className="h-4 w-4" />
-                    {t("nav.login")}
+                <Button variant="ghost" className="hidden sm:flex items-center gap-2" asChild>
+                    <a href="/auth/login">
+                        <LogIn className="h-4 w-4" />
+                        {t("nav.login")}
+                    </a>
                 </Button>
 
-                <Button variant="premium">
-                    {t("nav.getStarted")}
+                <Button variant="premium" asChild>
+                    <a href="/auth/signup">
+                        {t("nav.getStarted")}
+                    </a>
                 </Button>
             </div>
         </motion.nav>

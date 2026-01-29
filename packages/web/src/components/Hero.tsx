@@ -12,7 +12,8 @@ export function Hero() {
     return (
         <section className="relative pt-32 pb-20 overflow-hidden">
             {/* Background Decorative Elements */}
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[600px] bg-gradient-to-b from-primary/10 to-transparent blur-3xl -z-10" />
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[800px] bg-[radial-gradient(circle_at_50%_0%,rgba(37,99,235,0.15),transparent_70%)] -z-10" />
+            <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_100%_0%,rgba(6,182,212,0.05),transparent_50%)] -z-10" />
 
             <div className="container mx-auto px-6 text-center">
                 <motion.div
