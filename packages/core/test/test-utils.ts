@@ -5,6 +5,7 @@ import { AuditService } from '../src/security/layers/s4-audit-logging/audit.serv
 import { TenantConnectionService } from '../src/tenants/database/tenant-connection.service';
 import { SchemaInitializerService } from '../src/tenants/database/schema-initializer.service';
 import { TenantContextService } from '../src/security/layers/s2-tenant-isolation/tenant-context.service';
+import { PrismaService } from '../src/prisma/prisma.service';
 import { REQUEST } from '@nestjs/core';
 
 export const createMockPrisma = () => ({
@@ -58,7 +59,7 @@ export const createMockAudit = () => ({
 
 export const createMockRateLimiter = () => ({
     checkLimit: jest.fn().mockResolvedValue({ allowed: true, remaining: 10, reset: 1000 }),
-    consume: jest.fn().mockResolvedValue({ allowed: true }),
+    consume: jest.fn().mockResolvedValue({ allowed: true, remaining: 9 }),
 });
 
 export const createMockAnomalyDetection = () => ({
@@ -67,7 +68,7 @@ export const createMockAnomalyDetection = () => ({
     inspectFailedLogin: jest.fn(),
     isThrottled: jest.fn(() => false),
     isSuspended: jest.fn(() => false),
-    getStatus: jest.fn(() => ({ suspicious: false })),
+    getStatus: jest.fn(() => ({ suspicious: false, suspended: false, failureCount: 0 })),
 });
 
 export const createMockInputValidator = () => ({
@@ -132,6 +133,10 @@ export const getCommonProviders = (additionalProviders: any[] = []): Provider[] 
         {
             provide: AuditService,
             useValue: createMockAudit(),
+        },
+        {
+            provide: PrismaService,
+            useValue: createMockPrisma(),
         },
         {
             provide: TenantConnectionService,
