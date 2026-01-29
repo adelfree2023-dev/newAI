@@ -24,17 +24,17 @@ export const BentoCard = ({ children, className, delay = 0 }: BentoCardProps) =>
 
     return (
         <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
+            initial={{ opacity: 0, scale: 0.95 }}
             whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            transition={{ ...springTransition, delay: delay * 0.5 }}
+            viewport={{ once: true, margin: "-50px" }}
+            transition={{ ...springTransition, delay: delay * 0.2 }}
             whileHover={{ y: -5 }}
             className={`
-        relative overflow-hidden
-        bg-white/5 dark:bg-slate-900/40 backdrop-blur-2xl 
+        relative overflow-hidden transform-gpu
+        bg-white/5 dark:bg-slate-900/60 backdrop-blur-lg
         border border-white/10 rounded-3xl 
-        p-8 shadow-2xl transition-shadow
-        group cursor-default
+        p-8 shadow-2xl transition-all duration-300
+        group cursor-default will-change-transform
         ${className}
       `}
         >
@@ -45,7 +45,7 @@ export const BentoCard = ({ children, className, delay = 0 }: BentoCardProps) =>
                 className="opacity-0 group-hover:opacity-100 transition-opacity" 
             />
             
-            <div className="absolute inset-0 bg-gradient-to-br from-primary-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="absolute inset-0 bg-gradient-to-br from-primary-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
             
             <div className="relative z-10 h-full flex flex-col justify-between">
                 {children}
@@ -53,4 +53,5 @@ export const BentoCard = ({ children, className, delay = 0 }: BentoCardProps) =>
         </motion.div>
     )
 }
+
 
