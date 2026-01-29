@@ -3,7 +3,7 @@
 # Verifies M1-M4 Complete Implementation (25 Comprehensive Tests)
 # Based on Security Protocol ASMP/v2.3
 
-BASE_URL="http://localhost:3000/api"
+BASE_URL="http://localhost:3001/api"
 TEST_EMAIL="m4-official-test@apex.com"
 TEST_PASS="M4SecurePass123!"
 TENANT_ID="m4-official-tenant"
@@ -33,7 +33,7 @@ print_warning() { echo -e "${YELLOW}⚠️  WARNING${NC}: $1"; }
 # Phase 0: Environment Cleanup
 echo "🧹 PHASE 0: Environment Cleanup & Preparation"
 export PGPASSWORD=ApexSecure2026
-psql -U apex_user -d apex_platform -p 5432 -h localhost -c "DELETE FROM sessions WHERE \"userId\" IN (SELECT id FROM users WHERE email='$TEST_EMAIL' OR email='$ADMIN_EMAIL'); DELETE FROM users WHERE email='$TEST_EMAIL' OR email='$ADMIN_EMAIL';" > /dev/null 2>&1
+psql -U apex_user -d apex_prod -p 5433 -h localhost -c "DELETE FROM sessions WHERE \"userId\" IN (SELECT id FROM users WHERE email='$TEST_EMAIL' OR email='$ADMIN_EMAIL'); DELETE FROM users WHERE email='$TEST_EMAIL' OR email='$ADMIN_EMAIL';" > /dev/null 2>&1
 redis-cli FLUSHALL > /dev/null 2>&1
 echo "✅ Environment cleaned (Database & Redis)"
 
