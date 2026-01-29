@@ -72,6 +72,10 @@ else
     print_warning "Rate limiting might not be enforced (Code: $RATE_LIMIT_CHECK)"
 fi
 
+# Reset Redis to unblock IP for subsequent tests
+redis-cli FLUSHALL > /dev/null 2>&1
+echo "🔄 Redis cache cleared to proceed with other tests"
+
 # ============================================================================
 # M2 TESTS: Tenant Isolation
 # ============================================================================
