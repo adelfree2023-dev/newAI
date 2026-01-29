@@ -1,9 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ProductService } from './product.service';
-import { PrismaService } from '../../../prisma/prisma.service';
-import { AuditService } from '../../../common/monitoring/audit/audit.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { AuditService } from '../security/layers/s4-audit-logging/audit.service';
 import { HttpException, HttpStatus } from '@nestjs/common';
-import { createMockPrisma, createMockAudit } from '../../../../test/test-utils';
+import { createMockPrisma, createMockAudit } from '../../test/test-utils';
 
 describe('ProductService', () => {
     let service: ProductService;

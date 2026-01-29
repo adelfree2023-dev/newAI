@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
-import { SecurityContext } from '../security.context';
+import { SecurityContext } from '../security/security.context';
 import { InputValidatorService } from '../security/layers/s3-input-validation/input-validator.service';
 import { RateLimiterService } from '../security/layers/s6-rate-limiting/rate-limiter.service';
 import { TenantContextService } from '../security/layers/s2-tenant-isolation/tenant-context.service';

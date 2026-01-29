@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { SecurityContext } from './security.context';
-import { AuditService } from '../monitoring/audit/audit.service';
-import { ApexConfigService } from '../core/apex-config.service';
+import { AuditService } from './layers/s4-audit-logging/audit.service';
+import { ApexConfigService } from './layers/s1-environment-verification/apex-config.service';
 import { Request } from 'express';
 import { INestApplication } from '@nestjs/common';
 

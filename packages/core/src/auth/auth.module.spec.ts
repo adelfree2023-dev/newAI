@@ -9,7 +9,7 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { PrismaService } from '../prisma/prisma.service';
 
 import { ConfigService } from '@nestjs/config';
-import { SecurityContext } from '../security.context';
+import { SecurityContext } from '../security/security.context';
 import { AnomalyDetectionService } from '../security/layers/s6-rate-limiting/anomaly-detection.service';
 import { RateLimiterService } from '../security/layers/s6-rate-limiting/rate-limiter.service';
 import { AuditService } from '../security/layers/s4-audit-logging/audit.service';
