@@ -62,7 +62,7 @@ async function bootstrap() {
     // S3: التحقق من المدخلات
     app.useGlobalPipes(new ValidationPipe({
       whitelist: true,
-      forbidNonWitelisted: true,
+      forbidNonWhitelisted: true,
       transform: true
     }));
     logger.log('✅ [S3] تم تفعيل التحقق من المدخلات');
