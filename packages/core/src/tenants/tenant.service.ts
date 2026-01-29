@@ -99,17 +99,13 @@ export class TenantService {
     this.logger.log('[M2] 📥 تحميل المستأجرين النشطين من قاعدة البيانات...');
 
     try {
-      // في الإصدار الحقيقي، سيتم جلب هذه البيانات من قاعدة البيانات
-      // هنا نستخدم بيانات محاكاة
-      const mockTenants = [
-        { id: 'tenant1', name: 'متجر الإلكتروني الأول', domain: 'store1', businessType: 'RETAIL', contactEmail: 'admin@store1.com', status: 'ACTIVE' },
-        { id: 'tenant2', name: 'العيادة الطبية', domain: 'clinic', businessType: 'HEALTHCARE', contactEmail: 'admin@clinic.com', status: 'ACTIVE' },
-        { id: 'tenant3', name: 'مطعم سريع', domain: 'restaurant', businessType: 'RESTAURANT', contactEmail: 'admin@restaurant.com', status: 'ACTIVE' }
-      ];
+      // في الإصدار الحقيقي، يتم جلب هذه البيانات من قاعدة البيانات باستخدام التحميل الكسول
+      // أو جلب المستأجرين النشطين فقط
+      const tenants = await this.tenantRepository.find({ where: { status: 'ACTIVE' } });
 
-      for (const tenant of mockTenants) {
+      for (const tenant of tenants) {
         try {
-          // محاولة تهيئة المخطط إذا لم يكن موجوداً
+          // التأكد من تهيئة المخطط
           await this.schemaInitializer.initializeNewTenant(tenant.id, tenant.name);
           const schemaName = this.tenantConnection.getSchemaName(tenant.id);
 
@@ -119,13 +115,13 @@ export class TenantService {
             loadedAt: new Date().toISOString()
           });
 
-          this.logger.log(`✅ [M2] تم تحميل المستأجر: ${tenant.name}`);
+          this.logger.log(`✅ [M2] تم تحميل المستأجر من قاعدة البيانات: ${tenant.name}`);
         } catch (error) {
           this.logger.error(`❌ [M2] فشل تحميل المستأجر ${tenant.name}: ${error.message}`);
         }
       }
 
-      this.logger.log(`✅ [M2] تم تحميل ${this.activeTenants.size} مستأجرين نشطين`);
+      this.logger.log(`✅ [M2] تم تحميل ${this.activeTenants.size} مستأجرين نشطين من قاعدة البيانات`);
 
       // تسجيل الحدث
       await this.auditService.logSystemEvent('TENANTS_LOADED', {
