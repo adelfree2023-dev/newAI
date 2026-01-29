@@ -10,7 +10,7 @@ async function superSeed() {
     const logger = new Logger('SuperSeed');
     logger.log('🚀 Starting Full Database Reset & Seed...');
 
-    const app = await NestFactory.createApplicationContext(AppModule);
+    const app = await NestFactory.createApplicationContext(AppModule, { logger: ['error', 'warn', 'log'] });
     const dataSource = app.get(DataSource);
     const tenantService = app.get(TenantService);
     const userService = app.get(UserService);
@@ -58,28 +58,33 @@ async function superSeed() {
         for (let i = 1; i <= 10; i++) {
             const tenantId = `store-${i}`;
             const tenantName = `Apex Luxury Store ${i}`;
+            const email = `owner${i}@gmail.com`;
 
-            // Create Tenant (this handles schema creation via TenantService)
-            await tenantService.createTenant({
-                id: tenantId,
-                name: tenantName,
-                domain: `store${i}.apex-platform.com`,
-                businessType: 'RETAIL',
-                contactEmail: `owner${i}@gmail.com`
-            });
+            try {
+                // Create Tenant (this handles schema creation via TenantService)
+                await tenantService.createTenant({
+                    id: tenantId,
+                    name: tenantName,
+                    domain: `store${i}.apex-platform.com`,
+                    businessType: 'RETAIL',
+                    contactEmail: email
+                });
 
-            // Create Tenant Admin in central users table
-            await userService.create({
-                email: `owner${i}@gmail.com`,
-                passwordHash: 'Store@2026',
-                firstName: 'Store',
-                lastName: `Owner ${i}`,
-                role: UserRole.TENANT_ADMIN,
-                tenantId: tenantId,
-                emailVerified: true
-            });
+                // Create Tenant Admin in central users table
+                await userService.create({
+                    email: email,
+                    passwordHash: 'Store@2026',
+                    firstName: 'Store',
+                    lastName: `Owner ${i}`,
+                    role: UserRole.TENANT_ADMIN,
+                    tenantId: tenantId,
+                    emailVerified: true
+                });
 
-            logger.log(`   ✅ Created ${tenantName} + Owner: owner${i}@gmail.com`);
+                logger.log(`   ✅ Created ${tenantName} + Owner: ${email}`);
+            } catch (err) {
+                logger.error(`   ❌ Failed to create tenant ${tenantId}: ${err.message}`);
+            }
         }
 
         logger.log('🎉 Super Seed completed successfully!');

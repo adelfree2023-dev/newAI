@@ -8,7 +8,7 @@ import { TenantContextService } from '../../security/layers/s2-tenant-isolation/
 
 @Injectable()
 export class UserService {
-    private readonly logger = new Logger(UserService.name);
+    private readonly logger = new Logger('UserService');
 
     constructor(
         @InjectRepository(User)
