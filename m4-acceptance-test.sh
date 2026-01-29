@@ -74,7 +74,9 @@ fi
 
 # Reset Redis to unblock IP for subsequent tests
 redis-cli FLUSHALL > /dev/null 2>&1
-echo "🔄 Redis cache cleared to proceed with other tests"
+# Explicitly delete potential block keys for localhost (IPv4 and IPv6)
+redis-cli DEL "security:blocked_ip:127.0.0.1" "security:blocked_ip::1" "security:blocked_ip:::1" > /dev/null 2>&1
+echo "🔄 Redis cache cleared (including IP blocks) to proceed with other tests"
 
 # ============================================================================
 # M2 TESTS: Tenant Isolation
