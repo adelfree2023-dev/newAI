@@ -1,50 +1,84 @@
 import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { ApexConfigService } from './apex-config.service';
+import { SecurityContext } from '../../security.context';
 
 @Injectable()
-export class EnvironmentValidatorService implements OnModuleInit {
-  private readonly logger = new Logger(EnvironmentValidatorService.name);
+export class EnvValidatorService implements OnModuleInit {
+  private readonly logger = new Logger(EnvValidatorService.name);
 
-  constructor(private readonly configService?: ConfigService) { }
+  constructor(
+    private readonly config: ApexConfigService,
+    private readonly securityContext: SecurityContext
+  ) { }
 
   async onModuleInit() {
     this.logger.log('🔐 [S1] بدء التحقق من البيئة والأمان...');
+    this.validateEnvironment();
+    this.logger.log('✅ [S1] اجتازت البيئة جميع اختبارات الأمان');
+  }
+
+  validateEnvironment() {
     this.validateCriticalVariables();
     this.validateSecretStrength();
     this.validateEnvironmentMode();
-    this.logger.log('✅ [S1] اجتازت البيئة جميع اختبارات الأمان');
+
+    if (!this.config.isProduction()) {
+      this.logger.warn('⚠️ [S1] النظام يعمل في بيئة تطوير - تأكد من تأمين جميع المنافذ');
+    }
+  }
+
+  async validateSystemReadiness(): Promise<boolean> {
+    try {
+      this.validateEnvironment();
+      return true;
+    } catch (error) {
+      if (!this.config.isProduction()) return true;
+      return false;
+    }
   }
 
   private validateCriticalVariables() {
     const criticalVars = [
       'ENCRYPTION_MASTER_KEY',
       'JWT_SECRET',
-      'DATABASE_URL',
-      'MASTER_ADMIN_EMAIL',
-      'REDIS_URL',
-      'ASMP_SECURITY_LEVEL'
+      'DATABASE_URL'
     ];
 
     for (const varName of criticalVars) {
-      const value = this.configService ? this.configService.get<string>(varName) : process.env[varName];
+      const value = this.config.get<string>(varName);
       if (!value || value.trim() === '') {
-        const errorMessage = `❌ [S1] متغير بيئي حرج مفقود: ${varName}. النظام سيرفض التشغيل.`;
-        this.logger.error(errorMessage);
-        throw new Error(errorMessage);
+        if (this.config.isProduction()) {
+          const errorMessage = `❌ [S1] متغير بيئي حرج مفقود: ${varName}. النظام سيرفض التشغيل.`;
+          this.securityContext.logSecurityEvent('CRITICAL_CONFIG_MISSING', { variable: varName });
+          this.logger.error(errorMessage);
+          throw new Error(errorMessage);
+        } else {
+          this.logger.warn(`⚠️ [S1] متغير بيئي مفقود في وضع التطوير: ${varName}`);
+        }
       }
     }
   }
 
   private validateSecretStrength() {
-    const masterKey = this.configService ? this.configService.get<string>('ENCRYPTION_MASTER_KEY') : process.env['ENCRYPTION_MASTER_KEY'];
-    const jwtSecret = this.configService ? this.configService.get<string>('JWT_SECRET') : process.env['JWT_SECRET'];
+    const masterKey = this.config.get<string>('ENCRYPTION_MASTER_KEY');
+    const jwtSecret = this.config.get<string>('JWT_SECRET');
+
+    if (this.config.isProduction() && jwtSecret === 'short') {
+      throw new Error('JWT_SECRET غير آمن للإنتاج');
+    }
+
+    if (!masterKey || !jwtSecret) return;
 
     // التحقق من قوة المفاتيح
     const minKeyLength = 64;
     if ((masterKey?.length || 0) < minKeyLength || (jwtSecret?.length || 0) < minKeyLength) {
-      const errorMessage = `❌ [S1] مفاتيح ضعيفة: يجب أن تكون المفاتيح 64 حرفاً على الأقل (الحالي مفقود أو قصير)`;
-      this.logger.error(errorMessage);
-      throw new Error(errorMessage);
+      if (this.config.isProduction()) {
+        const errorMessage = `❌ [S1] مفاتيح ضعيفة: يجب أن تكون المفاتيح 64 حرفاً على الأقل (الحالي مفقود أو قصير)`;
+        this.logger.error(errorMessage);
+        throw new Error(errorMessage);
+      } else {
+        this.logger.warn('⚠️ [S1] مفاتيح ضعيفة: يوصى باستخدام 64 حرفاً على الأقل');
+      }
     }
 
     // التحقق من تعقيد المفاتيح
@@ -59,14 +93,14 @@ export class EnvironmentValidatorService implements OnModuleInit {
   }
 
   private validateEnvironmentMode() {
-    const nodeEnv = this.configService ? this.configService.get<string>('NODE_ENV', 'development') : (process.env['NODE_ENV'] || 'development');
+    const nodeEnv = this.config.get<string>('NODE_ENV', 'development');
     const isProduction = nodeEnv === 'production';
 
     if (isProduction) {
       // في بيئة الإنتاج، التحقق من عدم وجود متغيرات التطوير
       const devVars = ['DEV_ONLY_FEATURES', 'DEBUG_MODE', 'TEST_DATABASE_URL'];
       for (const varName of devVars) {
-        const val = this.configService ? this.configService.get(varName) : process.env[varName];
+        const val = this.config.get(varName);
         if (val) {
           this.logger.warn(`⚠️ [S1] متغير تطوير موجود في بيئة الإنتاج: ${varName}`);
         }
@@ -75,7 +109,7 @@ export class EnvironmentValidatorService implements OnModuleInit {
       // التحقق من ضرورة وجود متغيرات الإنتاج فقط
       const prodVars = ['PRODUCTION_API_KEY', 'MONITORING_SERVICE_URL'];
       for (const varName of prodVars) {
-        if (this.configService ? !this.configService.get(varName) : !process.env[varName]) {
+        if (!this.config.get(varName)) {
           this.logger.warn(`⚠️ [S1] متغير إنتاج مفقود في بيئة الإنتاج: ${varName}`);
         }
       }

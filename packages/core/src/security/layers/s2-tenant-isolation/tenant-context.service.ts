@@ -45,7 +45,8 @@ export class TenantContextService {
   }
 
   private extractFromPath(): string | null {
-    const path = this.request.path;
+    const path = this.request?.path;
+    if (!path) return null;
     const match = path.match(/^\/([^\/]+)\/api\//);
     return match ? match[1] : null;
   }

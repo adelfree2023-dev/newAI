@@ -2,7 +2,7 @@ import { Module, Global } from '@nestjs/common';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { TenantContextService } from './tenant-context.service';
 import { TenantScopedGuard } from './tenant-scoped.guard';
-import { TenantIsolationInterceptor } from './tenant-isolation.interceptor';
+import { TenantContextInterceptor } from './tenant-context.interceptor';
 import { Reflector } from '@nestjs/core';
 
 @Global()
@@ -11,16 +11,16 @@ import { Reflector } from '@nestjs/core';
     TenantContextService,
     Reflector,
     TenantScopedGuard,
-    TenantIsolationInterceptor,
+    TenantContextInterceptor,
     {
       provide: APP_GUARD,
       useClass: TenantScopedGuard,
     },
     {
       provide: APP_INTERCEPTOR,
-      useClass: TenantIsolationInterceptor,
+      useClass: TenantContextInterceptor,
     },
   ],
   exports: [TenantContextService],
 })
-export class TenantIsolationModule { }
+export class TenantContextModule { }

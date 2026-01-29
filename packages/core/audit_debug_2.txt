@@ -1,0 +1,124 @@
+[31m[Nest] 7244  - [39m٢٩‏/٠١‏/٢٠٢٦، ٢:٤٥:٢٦ م [31m  ERROR[39m [38;5;3m[AuditService] [39m[31m[S4] ❌ فشل تسجيل التدقيق في القاعدة: DB connection lost[39m
+[31m[Nest] 7244  - [39m٢٩‏/٠١‏/٢٠٢٦، ٢:٤٥:٢٦ م [31m  ERROR[39m [38;5;3m[AuditService] [39m[31m[S4] ❌ فشل تسجيل التدقيق في القاعدة: DB Fail[39m
+FAIL src/security/layers/s4-audit-logging/audit.service.spec.ts (12.934 s)
+  AuditService
+    × logs activities (35 ms)
+    × logs security events (6 ms)
+    √ falls back to console when system is not ready (6 ms)
+    × falls back to local file on database error (S4) (11 ms)
+    × handles missing audit table schema gracefully (6 ms)
+    √ logs operations using logOperation (5 ms)
+    √ throws InternalServerErrorException on getAuditLogs failure (28 ms)
+    × logs activity using object argument (5 ms)
+    × handles mkdirSync error in logToFallback (10 ms)
+
+  ● AuditService › logs activities
+
+    expect(jest.fn()).toHaveBeenCalled()
+
+    Expected number of calls: >= 1
+    Received number of calls:    0
+
+    [0m [90m 33 |[39m       details[33m:[39m { foo[33m:[39m [32m'bar'[39m }[33m,[39m
+     [90m 34 |[39m     })[33m;[39m
+    [31m[1m>[22m[39m[90m 35 |[39m     expect(mockPrisma[33m.[39m$executeRawUnsafe)[33m.[39mtoHaveBeenCalled()[33m;[39m
+     [90m    |[39m                                          [31m[1m^[22m[39m
+     [90m 36 |[39m   })[33m;[39m
+     [90m 37 |[39m
+     [90m 38 |[39m   it([32m'logs security events'[39m[33m,[39m [36masync[39m () [33m=>[39m {[0m
+
+      at Object.<anonymous> (security/layers/s4-audit-logging/audit.service.spec.ts:35:42)
+
+  ● AuditService › logs security events
+
+    expect(jest.fn()).toHaveBeenCalled()
+
+    Expected number of calls: >= 1
+    Received number of calls:    0
+
+    [0m [90m 38 |[39m   it([32m'logs security events'[39m[33m,[39m [36masync[39m () [33m=>[39m {
+     [90m 39 |[39m     [36mawait[39m service[33m.[39mlogSecurityEvent([32m'SECURITY_EVENT'[39m[33m,[39m { ip[33m:[39m [32m'1.2.3.4'[39m })[33m;[39m
+    [31m[1m>[22m[39m[90m 40 |[39m     expect(mockPrisma[33m.[39m$executeRawUnsafe)[33m.[39mtoHaveBeenCalled()[33m;[39m
+     [90m    |[39m                                          [31m[1m^[22m[39m
+     [90m 41 |[39m   })[33m;[39m
+     [90m 42 |[39m
+     [90m 43 |[39m   it([32m'falls back to console when system is not ready'[39m[33m,[39m [36masync[39m () [33m=>[39m {[0m
+
+      at Object.<anonymous> (security/layers/s4-audit-logging/audit.service.spec.ts:40:42)
+
+  ● AuditService › falls back to local file on database error (S4)
+
+    expect(jest.fn()).toHaveBeenCalled()
+
+    Expected number of calls: >= 1
+    Received number of calls:    0
+
+    [0m [90m 63 |[39m     [36mawait[39m service[33m.[39mlog([32m't1'[39m[33m,[39m { action[33m:[39m [32m'DB_FAIL_ACTION'[39m[33m,[39m severity[33m:[39m [32m'error'[39m })[33m;[39m
+     [90m 64 |[39m
+    [31m[1m>[22m[39m[90m 65 |[39m     expect(appendSpy)[33m.[39mtoHaveBeenCalled()[33m;[39m
+     [90m    |[39m                       [31m[1m^[22m[39m
+     [90m 66 |[39m
+     [90m 67 |[39m     appendSpy[33m.[39mmockRestore()[33m;[39m
+     [90m 68 |[39m     mkdirSpy[33m.[39mmockRestore()[33m;[39m[0m
+
+      at Object.<anonymous> (security/layers/s4-audit-logging/audit.service.spec.ts:65:23)
+
+  ● AuditService › handles missing audit table schema gracefully
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: StringContaining "[AUDIT_FALLBACK_MISSING_TABLE]"
+
+    Number of calls: 0
+
+    [0m [90m 78 |[39m     [36mawait[39m service[33m.[39mlog([32m't1'[39m[33m,[39m { action[33m:[39m [32m'MISSING_TABLE_ACTION'[39m })[33m;[39m
+     [90m 79 |[39m
+    [31m[1m>[22m[39m[90m 80 |[39m     expect(consoleSpy)[33m.[39mtoHaveBeenCalledWith(expect[33m.[39mstringContaining([32m'[AUDIT_FALLBACK_MISSING_TABLE]'[39m))[33m;[39m
+     [90m    |[39m                        [31m[1m^[22m[39m
+     [90m 81 |[39m     consoleSpy[33m.[39mmockRestore()[33m;[39m
+     [90m 82 |[39m   })[33m;[39m
+     [90m 83 |[39m[0m
+
+      at Object.<anonymous> (security/layers/s4-audit-logging/audit.service.spec.ts:80:24)
+
+  ● AuditService › logs activity using object argument
+
+    expect(jest.fn()).toHaveBeenCalled()
+
+    Expected number of calls: >= 1
+    Received number of calls:    0
+
+    [0m [90m  99 |[39m   it([32m'logs activity using object argument'[39m[33m,[39m [36masync[39m () [33m=>[39m {
+     [90m 100 |[39m     [36mawait[39m service[33m.[39mlogActivity({ action[33m:[39m [32m'OBJ_ACTION'[39m[33m,[39m details[33m:[39m { x[33m:[39m [35m1[39m } })[33m;[39m
+    [31m[1m>[22m[39m[90m 101 |[39m     expect(mockPrisma[33m.[39m$executeRawUnsafe)[33m.[39mtoHaveBeenCalled()[33m;[39m
+     [90m     |[39m                                          [31m[1m^[22m[39m
+     [90m 102 |[39m   })[33m;[39m
+     [90m 103 |[39m
+     [90m 104 |[39m   it([32m'handles mkdirSync error in logToFallback'[39m[33m,[39m [36masync[39m () [33m=>[39m {[0m
+
+      at Object.<anonymous> (security/layers/s4-audit-logging/audit.service.spec.ts:101:42)
+
+  ● AuditService › handles mkdirSync error in logToFallback
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: StringContaining "Audit fallback logger failed"
+    Received: "[S4] ❌ فشل تسجيل التدقيق في القاعدة: DB Fail"
+
+    Number of calls: 1
+
+    [0m [90m 113 |[39m     [36mawait[39m service[33m.[39mlog([32m't1'[39m[33m,[39m { action[33m:[39m [32m'FAIL_MKDIR'[39m })[33m;[39m
+     [90m 114 |[39m
+    [31m[1m>[22m[39m[90m 115 |[39m     expect(loggerSpy)[33m.[39mtoHaveBeenCalledWith(expect[33m.[39mstringContaining([32m'Audit fallback logger failed'[39m))[33m;[39m
+     [90m     |[39m                       [31m[1m^[22m[39m
+     [90m 116 |[39m
+     [90m 117 |[39m     mkdirSpy[33m.[39mmockRestore()[33m;[39m
+     [90m 118 |[39m     jest[33m.[39mrestoreAllMocks()[33m;[39m[0m
+
+      at Object.<anonymous> (security/layers/s4-audit-logging/audit.service.spec.ts:115:23)
+
+Test Suites: 1 failed, 1 total
+Tests:       6 failed, 3 passed, 9 total
+Snapshots:   0 total
+Time:        13.487 s, estimated 22 s
+Ran all test suites matching /packages\\core\\src\\security\\layers\\s4-audit-logging\\audit.service.spec.ts/i.

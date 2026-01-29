@@ -2,7 +2,7 @@ import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as speakeasy from 'speakeasy';
 import * as QRCode from 'qrcode';
-import { User } from '../entities/user.entity';
+import { User } from '@prisma/client';
 import { EncryptionService } from '../../security/layers/s7-encryption/encryption.service';
 import { AuditService } from '../../security/layers/s4-audit-logging/audit.service';
 import { TenantContextService } from '../../security/layers/s2-tenant-isolation/tenant-context.service';

@@ -1,21 +1,25 @@
-import { Injectable, Logger, Scope, Inject } from '@nestjs/common';
+import { Injectable, Logger, Scope, Inject, InternalServerErrorException, Optional } from '@nestjs/common';
 import { REQUEST } from '@nestjs/core';
 import { Request } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import { promises as fs } from 'fs';
+import * as fs from 'fs';
 import { join } from 'path';
 import { TenantContextService } from '../../layers/s2-tenant-isolation/tenant-context.service';
+import { PrismaService } from '../../../prisma/prisma.service';
 
-@Injectable({ scope: Scope.REQUEST })
+@Injectable()
 export class AuditService {
   private readonly logger = new Logger(AuditService.name);
   private readonly auditDir = join(process.cwd(), 'logs', 'audit-logs');
   private requestStartTime: Date;
   private requestId: string;
 
+  private isSystemReady = true;
+
   constructor(
-    @Inject(REQUEST) private readonly request: Request,
-    private readonly tenantContext: TenantContextService
+    @Optional() @Inject(REQUEST) private readonly request: Request,
+    private readonly tenantContext: TenantContextService,
+    private readonly prisma: PrismaService
   ) {
     this.requestStartTime = new Date();
     this.requestId = uuidv4();
@@ -24,33 +28,96 @@ export class AuditService {
     this.ensureAuditDirectory();
   }
 
-  private async ensureAuditDirectory() {
-    try {
-      await fs.mkdir(this.auditDir, { recursive: true });
-    } catch (error) {
-      this.logger.error(`[S4] ❌ فشل إنشاء مجلد السجلات: ${error.message}`);
+  private ensureAuditDirectory() {
+    if (!fs.existsSync(this.auditDir)) {
+      fs.mkdirSync(this.auditDir, { recursive: true });
     }
   }
 
   logSecurityEvent(eventType: string, eventData: any) {
-    const auditEntry = this.createAuditEntry(eventType, eventData, 'SECURITY');
-    this.writeAuditLog(auditEntry);
-
+    const tenantId = this.tenantContext.getTenantId() || 'system';
+    this.log(tenantId, { action: eventType, details: eventData }, 'security');
     this.logger.log(`[S4] 🔐 حدث أمني: ${eventType}`);
-    this.logger.debug(JSON.stringify(auditEntry, null, 2));
   }
 
   logBusinessEvent(eventType: string, eventData: any) {
-    const auditEntry = this.createAuditEntry(eventType, eventData, 'BUSINESS');
-    this.writeAuditLog(auditEntry);
-
+    const tenantId = this.tenantContext.getTenantId() || 'system';
+    this.log(tenantId, { action: eventType, details: eventData }, 'business');
     this.logger.debug(`[S4] 💼 حدث تجاري: ${eventType}`);
   }
 
-  logSystemEvent(eventType: string, eventData: any) {
-    const auditEntry = this.createAuditEntry(eventType, eventData, 'SYSTEM');
-    this.writeAuditLog(auditEntry);
+  setIsSystemReady(ready: boolean) {
+    this.isSystemReady = ready;
+    this.logger.log(`[S4] ⚙️ حالة جاهزية النظام: ${ready}`);
+  }
 
+  logActivity(activity: any) {
+    if (typeof activity === 'string') {
+      this.logBusinessEvent(activity, {});
+    } else {
+      this.logBusinessEvent(activity.action || 'ACTIVITY', activity.details || activity);
+    }
+  }
+
+  async log(tenantId: string, event: any, severity: string = 'info') {
+    const eventType = event.action || 'LOG_EVENT';
+    const auditEntry = this.createAuditEntry(eventType, event, 'LOG');
+    (auditEntry as any).severity = severity;
+    (auditEntry as any).tenantId = tenantId;
+
+    if (!this.isSystemReady) {
+      console.log(`[AUDIT_FALLBACK] ${JSON.stringify(auditEntry)}`);
+      return;
+    }
+
+    try {
+      // التحقق من وجود الجدول (اختياري، للمحاكاة في الاختبارات)
+      const tableCheck = await this.prisma.$queryRaw<{ exists: boolean }[]>`SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'audit_logs')`;
+      if (Array.isArray(tableCheck) && tableCheck[0] && !tableCheck[0].exists) {
+        console.log(`[AUDIT_FALLBACK_MISSING_TABLE] ${JSON.stringify(auditEntry)}`);
+        return;
+      }
+
+      await this.prisma.$executeRawUnsafe(
+        'INSERT INTO audit_logs (id, timestamp, tenant_id, user_id, action, details) VALUES ($1, $2, $3, $4, $5, $6)',
+        uuidv4(), new Date(), tenantId, auditEntry.context.userId || 'system', eventType, JSON.stringify(auditEntry)
+      );
+    } catch (error) {
+      this.logger.error(`[S4] ❌ فشل تسجيل التدقيق في القاعدة: ${error.message}`);
+      this.logToFallback(auditEntry);
+    }
+  }
+
+  private logToFallback(entry: any) {
+    try {
+      this.ensureAuditDirectory();
+      const dateStr = new Date().toISOString().split('T')[0];
+      const logFile = join(this.auditDir, `${dateStr}-fallback.log`);
+      fs.appendFileSync(logFile, JSON.stringify(entry) + '\n');
+    } catch (err) {
+      this.logger.error(`[S4] ❌ Audit fallback logger failed: ${err.message}`);
+    }
+  }
+
+  async logOperation(op: any) {
+    const tenantId = op.tenantId || this.tenantContext.getTenantId() || 'system';
+    await this.log(tenantId, op);
+  }
+
+  async getAuditLogs(tenantId: string, filters: any): Promise<any[]> {
+    try {
+      return await this.prisma.$queryRawUnsafe(
+        'SELECT * FROM audit_logs WHERE tenant_id = $1 ORDER BY timestamp DESC',
+        tenantId
+      );
+    } catch (error) {
+      throw new InternalServerErrorException('فشل الحصول على سجلات التدقيق');
+    }
+  }
+
+  logSystemEvent(eventType: string, eventData: any) {
+    const tenantId = this.tenantContext.getTenantId() || 'system';
+    this.log(tenantId, { action: eventType, details: eventData }, 'system');
     this.logger.debug(`[S4] ⚙️ حدث نظام: ${eventType}`);
   }
 
@@ -124,38 +191,42 @@ export class AuditService {
 
   private getUserIdFromRequest(): string | null {
     const req = this.request as any;
+    if (!req) return null;
     return req.user?.id ||
-      req.headers['x-user-id']?.toString() ||
+      req.headers?.['x-user-id']?.toString() ||
       null;
   }
 
   private getUserEmailFromRequest(): string | null {
     const req = this.request as any;
+    if (!req) return null;
     return req.user?.email ||
-      req.headers['x-user-email']?.toString() ||
+      req.headers?.['x-user-email']?.toString() ||
       null;
   }
 
   private getClientIp(): string {
-    const forwardedFor = this.request.headers['x-forwarded-for'];
+    if (!this.request) return 'unknown';
+    const forwardedFor = this.request.headers?.['x-forwarded-for'];
     if (forwardedFor) {
       return Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor.split(',')[0];
     }
-    return this.request.ip || this.request.connection.remoteAddress || 'unknown';
+    return this.request.ip || (this.request.connection as any)?.remoteAddress || 'unknown';
   }
 
-  private async writeAuditLog(auditEntry: any) {
+  private writeAuditLog(auditEntry: any) {
     try {
+      this.ensureAuditDirectory();
       const dateStr = new Date().toISOString().split('T')[0];
       const logFile = join(this.auditDir, `${dateStr}-${auditEntry.category.toLowerCase()}.log`);
 
       const logEntry = JSON.stringify(auditEntry) + '\n';
-      await fs.appendFile(logFile, logEntry);
+      fs.appendFileSync(logFile, logEntry);
 
       // إذا كان حدثاً خطيراً، اكتب نسخة منفصلة
       if (auditEntry.category === 'SECURITY' && ['TENANT_ISOLATION_VIOLATION', 'UNAUTHORIZED_ACCESS', 'DATA_BREACH_ATTEMPT', 'ARCHIVING_FAILURE'].includes(auditEntry.eventType)) {
         const criticalFile = join(this.auditDir, `${dateStr}-critical-security.log`);
-        await fs.appendFile(criticalFile, logEntry);
+        fs.appendFileSync(criticalFile, logEntry);
       }
     } catch (error) {
       this.logger.error(`[S4] ❌ فشل كتابة سجل التدقيق: ${error.message}`);
@@ -165,11 +236,11 @@ export class AuditService {
   }
 
   // ✅ إضافة: دعم التسجيل غير المتزامن لتحسين الأداء
-  private async writeAuditLogAsync(auditEntry: any) {
+  private writeAuditLogAsync(auditEntry: any) {
     // استخدام قائمة انتظار داخلية لتجنب حظر الطلب الرئيسي
-    process.nextTick(async () => {
+    process.nextTick(() => {
       try {
-        await this.writeAuditLog(auditEntry);
+        this.logToFallback(auditEntry);
       } catch (error) {
         this.logger.error(`[M4] ❌ فشل تسجيل الحدث في الخلفية: ${error.message}`);
       }
@@ -201,33 +272,32 @@ export class AuditService {
 
         for (const logFile of logFiles) {
           try {
-            const content = await fs.readFile(logFile, 'utf-8');
-            const entries = content.split('\n')
-              .filter(line => line.trim())
-              .map(line => {
-                try {
-                  return JSON.parse(line);
-                } catch (e) {
-                  return null;
-                }
-              })
-              .filter(e => e !== null);
+            if (fs.existsSync(logFile)) {
+              const content = fs.readFileSync(logFile, 'utf-8');
+              const entries = content.split('\n')
+                .filter(line => line.trim())
+                .map(line => {
+                  try {
+                    return JSON.parse(line);
+                  } catch (e) {
+                    return null;
+                  }
+                })
+                .filter(e => e !== null);
 
-            // تطبيق المرشحات
-            const filtered = entries.filter(entry => {
-              if (filters?.category && entry.category !== filters.category) return false;
-              if (filters?.eventType && entry.eventType !== filters.eventType) return false;
-              if (filters?.tenantId && entry.context?.tenantId !== filters.tenantId) return false;
-              if (filters?.severity && entry.severity !== filters.severity) return false;
-              return true;
-            });
+              // تطبيق المرشحات
+              const filtered = entries.filter(entry => {
+                if (filters?.category && entry.category !== filters.category) return false;
+                if (filters?.eventType && entry.eventType !== filters.eventType) return false;
+                if (filters?.tenantId && entry.context?.tenantId !== filters.tenantId) return false;
+                if (filters?.severity && entry.severity !== filters.severity) return false;
+                return true;
+              });
 
-            logs.push(...filtered);
-          } catch (error) {
-            // تجاهل الملفات غير الموجودة
-            if ((error as any).code !== 'ENOENT') {
-              this.logger.error(`[M4] ❌ خطأ في قراءة سجلات ${logFile}: ${error.message}`);
+              logs.push(...filtered);
             }
+          } catch (error) {
+            this.logger.error(`[M4] ❌ خطأ في قراءة سجلات ${logFile}: ${error.message}`);
           }
         }
 

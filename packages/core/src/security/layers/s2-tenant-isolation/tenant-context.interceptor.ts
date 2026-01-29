@@ -4,8 +4,8 @@ import { catchError, tap } from 'rxjs/operators';
 import { TenantContextService } from './tenant-context.service';
 
 @Injectable({ scope: Scope.REQUEST })
-export class TenantIsolationInterceptor implements NestInterceptor {
-    private static readonly logger = new Logger(TenantIsolationInterceptor.name);
+export class TenantContextInterceptor implements NestInterceptor {
+    private static readonly logger = new Logger(TenantContextInterceptor.name);
 
     constructor(
         private readonly tenantContext: TenantContextService
@@ -19,20 +19,20 @@ export class TenantIsolationInterceptor implements NestInterceptor {
         try {
             const rawUrl = request.url;
             const url = rawUrl.replace(/^\/api/, '');
-            TenantIsolationInterceptor.logger.debug(`[S2] 🔄 بدء اعتراض الطلب: ${className}.${methodName} (${url})`);
+            TenantContextInterceptor.logger.debug(`[S2] 🔄 بدء اعتراض الطلب: ${className}.${methodName} (${url})`);
 
             // 1. التحقق من سياق المستأجر
             const tenantId = this.tenantContext.getTenantId();
 
             if (!tenantId && !this.tenantContext.isSystemContext()) {
-                TenantIsolationInterceptor.logger.warn(`[S2] ⚠️ سياق المستأجر غير مهيأ للطلب: ${className}.${methodName}`);
+                TenantContextInterceptor.logger.warn(`[S2] ⚠️ سياق المستأجر غير مهيأ للطلب: ${className}.${methodName}`);
 
                 // محاولة استخراج tenantId من الطلب
                 const extractedTenantId = this.extractTenantIdFromRequest(request, context);
 
                 if (extractedTenantId) {
                     this.tenantContext.forceTenantContext(extractedTenantId);
-                    TenantIsolationInterceptor.logger.log(`[S2] ✅ تم إدخال سياق المستأجر تلقائياً: ${extractedTenantId}`);
+                    TenantContextInterceptor.logger.log(`[S2] ✅ تم إدخال سياق المستأجر تلقائياً: ${extractedTenantId}`);
                 } else if (!this.isExemptRoute(className, methodName)) {
                     return throwError(() => new ForbiddenException('سياق المستأجر مطلوب لهذا الطلب (Tenant Context Required)'));
                 }
@@ -43,18 +43,18 @@ export class TenantIsolationInterceptor implements NestInterceptor {
                 const requestedTenantId = this.extractTenantIdFromRequest(request, context);
                 const authenticatedUser = request.user;
 
-                TenantIsolationInterceptor.logger.debug(`[S2] Debug Isolation: requested=${requestedTenantId}, user=${authenticatedUser ? authenticatedUser.email : 'anonymous'}, userTenant=${authenticatedUser ? authenticatedUser.tenantId : 'none'}`);
+                TenantContextInterceptor.logger.debug(`[S2] Debug Isolation: requested=${requestedTenantId}, user=${authenticatedUser ? authenticatedUser.email : 'anonymous'}, userTenant=${authenticatedUser ? authenticatedUser.tenantId : 'none'}`);
 
                 // منع استكشاف المستأجرين: إذا تم تحديد مستأجر ولكن لا يوجد مستخدم مصادق، ارمِ 403 فوراً
                 if (requestedTenantId && !authenticatedUser && !this.isExemptRoute(className, methodName)) {
-                    TenantIsolationInterceptor.logger.warn(`[S2] ⛔ محاولة وصول لبيانات مستأجر من مستخدم غير مصرح: ${requestedTenantId}`);
+                    TenantContextInterceptor.logger.warn(`[S2] ⛔ محاولة وصول لبيانات مستأجر من مستخدم غير مصرح: ${requestedTenantId}`);
                     return throwError(() => new ForbiddenException('يجب تسجيل الدخول للوصول إلى بيانات المستأجر'));
                 }
 
                 // التحقق من صحة المستأجر في سياق المستخدم المصادق عليه
                 if (authenticatedUser && authenticatedUser.tenantId && requestedTenantId) {
                     if (authenticatedUser.tenantId !== requestedTenantId && !authenticatedUser.isSuperAdmin) {
-                        TenantIsolationInterceptor.logger.error(`[S2] 🚨 محاولة اختراق: مستأجر ${authenticatedUser.tenantId} يحاول الوصول إلى ${requestedTenantId}`);
+                        TenantContextInterceptor.logger.error(`[S2] 🚨 محاولة اختراق: مستأجر ${authenticatedUser.tenantId} يحاول الوصول إلى ${requestedTenantId}`);
                         return throwError(() => new ForbiddenException(`وصول غير مصرح به للمستأجر [Mismatch: ${authenticatedUser.tenantId} vs ${requestedTenantId}]`));
                     }
                 }
@@ -71,12 +71,12 @@ export class TenantIsolationInterceptor implements NestInterceptor {
                 tap(() => {
                     const executionTime = Date.now() - startTime;
                     if (executionTime > 1000) { // أكثر من ثانية
-                        TenantIsolationInterceptor.logger.warn(`[S2] ⚠️ تنفيذ بطيء: ${className}.${methodName} - الوقت: ${executionTime}ms`);
+                        TenantContextInterceptor.logger.warn(`[S2] ⚠️ تنفيذ بطيء: ${className}.${methodName} - الوقت: ${executionTime}ms`);
                     }
                 }),
                 catchError(error => {
                     // 4. التعامل مع الأخطاء
-                    TenantIsolationInterceptor.logger.error(`[S2] ❌ خطأ في ${className}.${methodName}: ${error.message}`);
+                    TenantContextInterceptor.logger.error(`[S2] ❌ خطأ في ${className}.${methodName}: ${error.message}`);
 
                     // تسجيل حدث أمني
                     this.tenantContext.logSecurityIncident('TENANT_OPERATION_FAILURE', {
@@ -92,7 +92,7 @@ export class TenantIsolationInterceptor implements NestInterceptor {
             );
 
         } catch (error) {
-            TenantIsolationInterceptor.logger.error(`[S2] ❌ خطأ في اعتراض سياق المستأجر: ${(error as any).message}`);
+            TenantContextInterceptor.logger.error(`[S2] ❌ خطأ في اعتراض سياق المستأجر: ${(error as any).message}`);
             throw error;
         }
     }

@@ -2,7 +2,7 @@ import { Injectable, ConflictException, Logger } from '@nestjs/common';
 import { TenantService } from '../tenants/tenant.service';
 import { UserService } from '../auth/services/user.service';
 import { QuickStartDto } from './dtos/quick-start.dto';
-import { UserRole } from '../auth/entities/user.entity';
+import { UserRole } from '@prisma/client';
 
 @Injectable()
 export class OnboardingService {
@@ -22,17 +22,14 @@ export class OnboardingService {
     async createStoreWithTemplate(dto: QuickStartDto) {
         this.logger.log(`🚀 بدء عملية الإنشاء السريع للمتجر: ${dto.storeName}`);
 
-        // 1. التحقق من توفر النطاق (Tenant ID)
         const isAvailable = await this.checkDomainAvailability(dto.domain);
         if (!isAvailable) {
             throw new ConflictException('النطاق المطلوب محجوز بالفعل');
         }
 
         try {
-            // 2. البحث عن المستخدم مسبقاً
             const existingUser = await this.userService.findByEmail(dto.email);
 
-            // 3. إنشاء المستأجر (هذا ينشئ الـ Schema تلقائياً)
             const tenant = await this.tenantService.createTenant({
                 id: dto.domain,
                 name: dto.storeName,
@@ -42,13 +39,11 @@ export class OnboardingService {
             });
 
             if (existingUser) {
-                // تحديث المستخدم الحالي لربطه بالمتجر الجديد
                 this.logger.log(`🔗 ربط المستخدم الموجود ${dto.email} بالمتجر الجديد: ${tenant.id}`);
                 existingUser.tenantId = tenant.id;
                 existingUser.role = UserRole.TENANT_ADMIN;
                 await this.userService.save(existingUser);
             } else {
-                // إنشاء مستخدم جديد
                 await this.userService.create({
                     email: dto.email,
                     passwordHash: dto.password,
@@ -61,7 +56,6 @@ export class OnboardingService {
             }
 
             this.logger.log(`✅ تم إنشاء المتجر والمدير بنجاح لـ: ${dto.domain}`);
-
             return tenant;
         } catch (error) {
             this.logger.error(`❌ فشل الإنشاء السريع: ${error.message}`);

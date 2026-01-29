@@ -3,7 +3,7 @@ import { ProductService } from './product.service';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { UserRole } from '../auth/entities/user.entity';
+import { UserRole } from '@prisma/client';
 
 @Controller('business')
 @UseGuards(JwtAuthGuard)

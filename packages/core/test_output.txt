@@ -1,0 +1,47 @@
+[31m[Nest] 5276  - [39m٢٩‏/٠١‏/٢٠٢٦، ٢:٢٥:٥٥ م [31m  ERROR[39m [38;5;3m[AuthService] [39m[31m[M3] ❌ فشل إبطال التوكن: Revoke Error[39m
+[31m[Nest] 5276  - [39m٢٩‏/٠١‏/٢٠٢٦، ٢:٢٥:٥٥ م [31m  ERROR[39m [38;5;3m[AuthService] [39m[31m[M3] ❌ فشل تسجيل المستخدم: البريد الإلكتروني مستخدم مسبقاً[39m
+FAIL src/auth/auth.service.spec.ts (13.661 s)
+  AuthService
+    login
+      × should authenticate user successfully (26 ms)
+      √ should reject invalid credentials (12 ms)
+      √ should reject rate-limited requests (2 ms)
+      √ should throw UnauthorizedException on inactive user (4 ms)
+    revokeToken
+      √ should revoke token successfully (3 ms)
+      √ should throw and log error on failure (6 ms)
+    register
+      √ should register new user successfully (3 ms)
+      √ should throw ConflictException if user exists (3 ms)
+
+  ● AuthService › login › should authenticate user successfully
+
+    expect(received).toMatchObject(expected)
+
+    - Expected  - 1
+    + Received  + 1
+
+      Object {
+        "accessToken": "jwt-token",
+    -   "refreshToken": "jwt-token",
+    +   "refreshToken": "89040142-d1e2-4407-9730-aaaf567fb17b",
+        "user": ObjectContaining {
+          "email": "user@example.com",
+        },
+      }
+
+    [0m [90m 146 |[39m       [36mconst[39m result [33m=[39m [36mawait[39m service[33m.[39mlogin(validLoginDto[33m,[39m tenantId[33m,[39m ip)[33m;[39m
+     [90m 147 |[39m
+    [31m[1m>[22m[39m[90m 148 |[39m       expect(result)[33m.[39mtoMatchObject({
+     [90m     |[39m                      [31m[1m^[22m[39m
+     [90m 149 |[39m         accessToken[33m:[39m [32m'jwt-token'[39m[33m,[39m
+     [90m 150 |[39m         refreshToken[33m:[39m [32m'jwt-token'[39m[33m,[39m
+     [90m 151 |[39m         user[33m:[39m expect[33m.[39mobjectContaining({ email[33m:[39m [32m'user@example.com'[39m })[0m
+
+      at Object.<anonymous> (auth/auth.service.spec.ts:148:22)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 7 passed, 8 total
+Snapshots:   0 total
+Time:        14.265 s, estimated 16 s
+Ran all test suites matching /packages\\core\\src\\auth\\auth.service.spec.ts/i.

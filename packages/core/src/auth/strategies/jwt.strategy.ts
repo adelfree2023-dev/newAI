@@ -2,9 +2,7 @@ import { Injectable, UnauthorizedException, Logger } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
-import { Repository } from 'typeorm';
-import { InjectRepository } from '@nestjs/typeorm';
-import { User } from '../entities/user.entity';
+import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
@@ -12,8 +10,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
 
     constructor(
         private readonly configService: ConfigService,
-        @InjectRepository(User)
-        private readonly userRepository: Repository<User>
+        private readonly prisma: PrismaService
     ) {
         super({
             jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
@@ -25,10 +22,15 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     async validate(payload: any) {
         this.logger.debug(`[M3] 🔐 Validating token for: ${payload.email}`);
 
-        // Direct repository access to maintain SINGLETON scope
-        const user = await this.userRepository.findOne({
+        const user = await this.prisma.user.findUnique({
             where: { id: payload.sub },
-            select: ['id', 'email', 'role', 'tenantId', 'status']
+            select: {
+                id: true,
+                email: true,
+                role: true,
+                tenantId: true,
+                status: true
+            }
         });
 
         if (!user) {

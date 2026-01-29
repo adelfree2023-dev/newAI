@@ -1,12 +1,7 @@
 import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
-// Force Revert: Removing PassportModule to fix undefined guard regression
 import { ConfigModule } from '@nestjs/config';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { TenantModule } from './tenants/tenant.module';
 import { AuthModule } from './auth/auth.module';
-import { User } from './auth/entities/user.entity';
-import { Session } from './auth/entities/session.entity';
-import { Tenant } from './tenants/entities/tenant.entity';
 import { TenantIsolationModule } from './security/layers/s2-tenant-isolation/tenant-isolation.module';
 import { EnvironmentVerificationModule } from './security/layers/s1-environment-verification/environment-validator.module';
 import { InputValidationModule } from './security/layers/s3-input-validation/input-validation.module';
@@ -21,6 +16,7 @@ import { AuditLoggerMiddleware } from './security/layers/s4-audit-logging/audit-
 import { ProductModule } from './products/product.module';
 import { SecurityMonitoringModule } from './security/monitoring/security-monitoring.module';
 import { OnboardingModule } from './onboarding/onboarding.module';
+import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
     imports: [
@@ -28,14 +24,7 @@ import { OnboardingModule } from './onboarding/onboarding.module';
             isGlobal: true,
             envFilePath: ['.env.local', '.env']
         }),
-        TypeOrmModule.forRoot({
-            type: 'postgres',
-            url: process.env.DATABASE_URL,
-            entities: [User, Session, Tenant],
-            synchronize: true,
-            logging: process.env.NODE_ENV === 'development',
-            schema: 'public' // المخطط الافتراضي
-        }),
+        PrismaModule,
         TenantModule,
         AuthModule,
         ProductModule,
