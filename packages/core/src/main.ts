@@ -3,7 +3,9 @@ import { AppModule } from './app.module';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
-import { EnvironmentValidatorService } from './security/layers/s1-environment-verification/environment-validator.service';
+import { EnvValidatorService } from './security/layers/s1-environment-verification/env-validator.service';
+import { ApexConfigService } from './security/layers/s1-environment-verification/apex-config.service';
+import { SecurityContext } from './security/security.context';
 import { SchemaInitializerService } from './tenants/database/schema-initializer.service';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 
@@ -13,7 +15,12 @@ async function bootstrap() {
   try {
     // S1: التحقق من البيئة قبل أي شيء
     logger.log('🚀 [S1] بدء التحقق من البيئة والأمان...');
-    const environmentValidator = new EnvironmentValidatorService();
+
+    // استخدام المكونات بشكل مستقل قبل بناء التطبيق
+    const apexConfig = new ApexConfigService();
+    const securityContext = new SecurityContext(null as any, apexConfig);
+    const environmentValidator = new EnvValidatorService(apexConfig, securityContext);
+
     await environmentValidator.onModuleInit();
     logger.log('✅ [S1] اجتازت البيئة جميع اختبارات الأمان');
 
