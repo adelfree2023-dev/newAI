@@ -129,4 +129,12 @@ export class TenantContextService {
     this.tenantSchema = 'system_schema';
     this.logger.warn('[S2] ⚠️ تم تفعيل سياق النظام يدوياً');
   }
+
+  setTenantId(tenantId: string) {
+    this.forceTenantContext(tenantId);
+  }
+
+  clearTenantId() {
+    this.forceSystemContext();
+  }
 }

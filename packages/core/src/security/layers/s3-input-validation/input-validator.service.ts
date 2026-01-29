@@ -116,4 +116,7 @@ export class InputValidatorService {
 
     return sanitized;
   }
+
+  async secureValidate(schema: any, data: any, context: string) { return this.validate(schema, data, context); }
+  sanitize(data: any) { return this.sanitizeInput(data); }
 }
