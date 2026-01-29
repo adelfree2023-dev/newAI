@@ -13,7 +13,7 @@ echo "------------------------------------------------------------"
 
 echo "Phase 0: Clean Start (Removing previous test user & Redis locks)"
 export PGPASSWORD=ApexSecure2026
-psql -U apex_user -d apex_prod -p 5433 -h localhost -c "DELETE FROM sessions WHERE \"userId\" IN (SELECT id FROM users WHERE email='$TEST_EMAIL'); DELETE FROM users WHERE email='$TEST_EMAIL';" > /dev/null
+psql -U apex_user -d apex_test -p 5433 -h localhost -c "DELETE FROM sessions WHERE \"userId\" IN (SELECT id FROM users WHERE email='$TEST_EMAIL'); DELETE FROM users WHERE email='$TEST_EMAIL';" > /dev/null
 # Absolute Redis cleanup for namespaced keys
 redis-cli FLUSHALL > /dev/null
 echo "✅ Cleaned (SQL & Redis Absolute)"
@@ -114,7 +114,7 @@ LEAK_RES=$(curl -s -X POST $BASE_URL/auth/login \
 echo $LEAK_RES | grep -q "Unauthorized" && echo "✅ SUCCESS (Generic Error)" || echo "❌ FAILED (Too specific)"
 
 echo -e "\nTest 14: Password Encryption (Raw DB Verification)"
-DB_HASH=$(export PGPASSWORD=ApexSecure2026 && psql -U apex_user -d apex_prod -p 5433 -h localhost -t -c "SELECT \"passwordHash\" FROM users WHERE email='$TEST_EMAIL' LIMIT 1;")
+DB_HASH=$(export PGPASSWORD=ApexSecure2026 && psql -U apex_user -d apex_test -p 5433 -h localhost -t -c "SELECT \"passwordHash\" FROM users WHERE email='$TEST_EMAIL' LIMIT 1;")
 echo "Hash: $DB_HASH"
 echo $DB_HASH | grep -q '^\$2b\$' && echo "✅ SUCCESS (Valid Bcrypt Hash)" || echo "❌ FAILED (Plaintext or invalid hash)"
 
