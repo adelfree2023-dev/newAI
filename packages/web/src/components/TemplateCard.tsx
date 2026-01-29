@@ -104,5 +104,3 @@ export function TemplateCard({ template, onSelect }: TemplateCardProps) {
         </motion.div>
     );
 }
-    );
-}
