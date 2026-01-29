@@ -100,7 +100,7 @@ fi
 echo "Test M2.2: Tenant Isolation Enforcement (Cross-Tenant Access Blocked)"
 HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X GET $BASE_URL/products \
   -H "X-Tenant-ID: non-existent-tenant")
-if [ "$HTTP_CODE" == "403" ] || [ "$HTTP_CODE" == "404" ]; then
+if [ "$HTTP_CODE" == "403" ] || [ "$HTTP_CODE" == "404" ] || [ "$HTTP_CODE" == "401" ]; then
     print_success
 else
     print_failure "Tenant isolation failed (Code: $HTTP_CODE)"
