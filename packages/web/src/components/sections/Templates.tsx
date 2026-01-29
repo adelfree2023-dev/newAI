@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { motion } from "framer-motion"
-import { TrendingUp, Shield } from "lucide-react"
+
+
 import { TemplateCard } from "@/components/common/TemplateCard"
 
 
