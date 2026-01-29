@@ -16,7 +16,7 @@ export class TenantScopedGuard implements CanActivate {
 
     // ✅ العمليات المسموح لها بدون tenantId
     const systemRoutes = [
-      { class: 'TenantController', methods: ['create', 'getAll'] },
+      { class: 'TenantController', methods: ['createTenant', 'getAllTenants'] },
       {
         class: 'AuthController',
         methods: ['register', 'login', 'forgotPassword', 'refresh', 'logout', 'logoutAll', 'enable2FA', 'verify2FA']
