@@ -1,4 +1,8 @@
+import { useState } from "react"
+import { motion } from "framer-motion"
+import { TrendingUp, Shield } from "lucide-react"
 import { TemplateCard } from "@/components/common/TemplateCard"
+
 
 
 
@@ -13,12 +17,8 @@ const allTemplates = [
 
 
 export const Templates = ({ isAr }: { isAr: boolean }) => {
-    // The useState import and setSelected variable are used by TemplateCard's onSelect prop.
-    // If the intention was to remove them, the TemplateCard prop usage would also need to change.
-    // As the instruction is to remove *unused* items, and setSelected is used, it remains.
-    // The first element of the useState array destructuring is unused, but removing it would break the hook.
-    // import { useState } from "react" is therefore still needed.
-    // const [, setSelected] = useState<string | null>(null) is also still needed.
+    const [, setSelected] = useState<string | null>(null)
+
 
     return (
         <section className="py-32 bg-background-light dark:bg-background-dark overflow-hidden relative">

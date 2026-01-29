@@ -1,6 +1,7 @@
 import { BentoGrid, BentoCard } from "@/components/common/BentoGrid"
 import { motion } from "framer-motion"
-import { LineChart, Zap, Shield, AppWindow } from "lucide-react"
+import { TrendingUp, Shield } from "lucide-react"
+
 
 
 export const Features = ({ isAr }: { isAr: boolean }) => {
