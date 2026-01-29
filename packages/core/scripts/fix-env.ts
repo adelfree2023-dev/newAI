@@ -5,7 +5,24 @@ import * as crypto from 'crypto';
 const envPath = path.join(__dirname, '../.env');
 
 function generateSecureSecret(length = 64) {
-    return crypto.randomBytes(length).toString('base64').slice(0, length);
+    const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const lower = 'abcdefghijklmnopqrstuvwxyz';
+    const numbers = '0123456789';
+    const special = '!@#$%^&*()_+-=[]{}|;:,.<>?';
+    const all = upper + lower + numbers + special;
+
+    let secret = '';
+    secret += upper[crypto.randomInt(0, upper.length)];
+    secret += lower[crypto.randomInt(0, lower.length)];
+    secret += numbers[crypto.randomInt(0, numbers.length)];
+    secret += special[crypto.randomInt(0, special.length)];
+
+    for (let i = 4; i < length; i++) {
+        secret += all[crypto.randomInt(0, all.length)];
+    }
+
+    // Shuffle the secret
+    return secret.split('').sort(() => 0.5 - Math.random()).join('');
 }
 
 function fixEnv() {
