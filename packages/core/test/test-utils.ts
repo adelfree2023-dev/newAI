@@ -37,21 +37,44 @@ export const createMockPrisma = () => ({
     $disconnect: jest.fn(),
 });
 
-export const createMockTenantContext = () => ({
+export const createMockSecurityContext = () => ({
     getTenantId: jest.fn(() => 'test-tenant-id'),
     getTenantSchema: jest.fn(() => 'test_schema'),
     setTenantId: jest.fn(),
     isSystemContext: jest.fn(() => false),
-    forceTenantContext: jest.fn(),
     validateTenantAccess: jest.fn(() => true),
     logSecurityIncident: jest.fn(),
 });
 
-export const createMockAudit = () => ({
-    logActivity: jest.fn(),
-    logSecurityEvent: jest.fn(),
-    logBusinessEvent: jest.fn(),
-    logSystemEvent: jest.fn(),
+export const createMockRateLimiter = () => ({
+    checkLimit: jest.fn().mockResolvedValue({ allowed: true, remaining: 10, reset: 1000 }),
+    consume: jest.fn().mockResolvedValue({ allowed: true }),
+});
+
+export const createMockAnomalyDetection = () => ({
+    inspect: jest.fn(),
+    inspectFailedEvent: jest.fn(),
+    inspectFailedLogin: jest.fn(),
+    isThrottled: jest.fn(() => false),
+    isSuspended: jest.fn(() => false),
+    getStatus: jest.fn(() => ({ suspicious: false })),
+});
+
+export const createMockInputValidator = () => ({
+    secureValidate: jest.fn().mockImplementation((schema, data) => data),
+    sanitize: jest.fn().mockImplementation(data => data),
+});
+
+export const createMockCache = () => ({
+    get: jest.fn(),
+    set: jest.fn(),
+    del: jest.fn(),
+    reset: jest.fn(),
+});
+
+export const createMockMail = () => ({
+    sendEmail: jest.fn().mockResolvedValue(true),
+    sendWelcomeEmail: jest.fn().mockResolvedValue(true),
 });
 
 export const getCommonProviders = (additionalProviders: any[] = []): Provider[] => {
@@ -84,20 +107,11 @@ export const getCommonProviders = (additionalProviders: any[] = []): Provider[] 
         },
         {
             provide: TenantContextService,
-            useValue: {
-                getTenantId: jest.fn(() => 'test-tenant-id'),
-                getTenantSchema: jest.fn(() => 'test_schema'),
-                setTenantId: jest.fn(),
-            },
+            useValue: createMockTenantContext(),
         },
         {
             provide: AuditService,
-            useValue: {
-                logActivity: jest.fn(),
-                logSecurityEvent: jest.fn(),
-                logBusinessEvent: jest.fn(),
-                logSystemEvent: jest.fn(),
-            },
+            useValue: createMockAudit(),
         },
         {
             provide: TenantConnectionService,
@@ -120,3 +134,5 @@ export const getCommonProviders = (additionalProviders: any[] = []): Provider[] 
         return providerToken === additionalToken;
     }));
 };
+
+export const commonProviders = getCommonProviders;
