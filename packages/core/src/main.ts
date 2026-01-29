@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { EnvironmentValidatorService } from './security/layers/s1-environment-verification/environment-validator.service';
 import { SchemaInitializerService } from './tenants/database/schema-initializer.service';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 
 async function bootstrap() {
   const logger = new Logger('MainApplication');
@@ -93,8 +94,19 @@ async function bootstrap() {
       credentials: true
     });
 
+    // Swagger UI Configuration
+    const config = new DocumentBuilder()
+      .setTitle('Apex Multi-tenant Platform API')
+      .setDescription('نظام إدارة التجارة الإلكترونية متعدد المستأجرين - Apex 2026')
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api/docs', app, document);
+    logger.log('✅ [Swagger] Documentation enabled at /api/docs');
+
     // المنفذ
-    const port = process.env.PORT || 3000;
+    const port = process.env.PORT || 8080;
 
     // بدء الخادم
     await app.listen(port);
