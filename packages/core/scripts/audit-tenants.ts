@@ -51,12 +51,13 @@ async function audit() {
         logger.log('👥 Checking User Registry...');
         const users = await dataSource.query(`SELECT email, role, "tenantId", status FROM users ORDER BY role ASC`);
         logger.log(`📊 Total users in central registry: ${users.length}`);
-        console.table(users);
+        users.forEach(u => console.log(`   - [${u.role}] ${u.email} | Tenant: ${u.tenantId || 'GLOBAL'} | Status: ${u.status}`));
 
         // 6. Tenant Registry Check
         logger.log('🏪 Checking Tenant Registry...');
         const tenants = await dataSource.query(`SELECT id, name, domain, status FROM tenants`);
-        console.table(tenants);
+        logger.log(`📋 Total tenants: ${tenants.length}`);
+        tenants.forEach(t => console.log(`   - [${t.id}] ${t.name} | Domain: ${t.domain} | Status: ${t.status}`));
 
         // 7. Schema List Check
         logger.log('📁 Physical Schemas List:');
@@ -66,12 +67,13 @@ async function audit() {
       WHERE schema_name LIKE 'tenant_%'
       ORDER BY schema_name ASC
     `);
-        console.table(schemaList);
+        schemaList.forEach(s => console.log(`   - Schema: ${s.schema_name}`));
 
         logger.log('✅ Audit Complete.');
 
     } catch (error) {
         logger.error(`Audit failed: ${error.message}`);
+        console.error(error);
     } finally {
         await app.close();
     }
