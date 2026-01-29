@@ -2,10 +2,11 @@ import { Module, OnModuleInit } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { EnvValidatorService } from './env-validator.service';
 import { ApexConfigService } from './apex-config.service';
+import { SecurityContext } from '../../security.context';
 
 @Module({
   imports: [ConfigModule],
-  providers: [EnvValidatorService, ApexConfigService],
+  providers: [EnvValidatorService, ApexConfigService, SecurityContext],
   exports: [EnvValidatorService, ApexConfigService],
 })
 export class EnvironmentVerificationModule implements OnModuleInit {
