@@ -91,6 +91,26 @@ export class RateLimiterService {
     }
   }
 
+  /**
+   * Alias for checkRateLimit for backward compatibility.
+   */
+  async checkLimit(key: string, options: any = {}): Promise<{ allowed: boolean; remaining: number; reset: number }> {
+    const result = await this.checkRateLimit(key, options.max || 100, options.window || 60);
+    return {
+      allowed: result.allowed,
+      remaining: result.remaining,
+      reset: result.resetTime
+    };
+  }
+
+  /**
+   * Alias for checkRateLimit for backward compatibility.
+   */
+  async consume(key: string, limit: number = 10, window: number = 60): Promise<{ allowed: boolean }> {
+    const result = await this.checkRateLimit(key, limit, window);
+    return { allowed: result.allowed };
+  }
+
   private async logRateLimitAttempt(
     key: string,
     currentCount: number,
@@ -282,4 +302,5 @@ export class RateLimiterService {
       return { maxRequests: 100, windowSeconds: 60 }; // خطة افتراضية آمنة
     }
   }
+}
 }
