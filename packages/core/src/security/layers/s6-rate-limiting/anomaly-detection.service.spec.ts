@@ -1,7 +1,9 @@
 import { AnomalyDetectionService } from './anomaly-detection.service';
 import { Test, TestingModule } from '@nestjs/testing';
-import { SecurityContext } from '../../security.context';
-import { createMockPrisma } from '../../../../test/test-utils';
+import { createMockPrisma, getCommonProviders } from '../../../../test/test-utils';
+import { AuditService } from '../s4-audit-logging/audit.service';
+import { TenantContextService } from '../s2-tenant-isolation/tenant-context.service';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../../prisma/prisma.service';
 
 describe('AnomalyDetectionService', () => {
@@ -18,8 +20,8 @@ describe('AnomalyDetectionService', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AnomalyDetectionService,
+                ...getCommonProviders([AnomalyDetectionService]),
                 { provide: PrismaService, useValue: mockPrisma },
-                { provide: SecurityContext, useValue: mockSecurityContext },
             ],
         }).compile();
 
