@@ -10,10 +10,8 @@ import { ConfigModule } from '@nestjs/config';
   imports: [ConfigModule],
   providers: [
     RateLimiterService,
-    AnomalyDetectionService,
-    AuditService,
-    TenantContextService
+    AnomalyDetectionService
   ],
   exports: [RateLimiterService, AnomalyDetectionService],
 })
-export class RateLimitingModule {}
+export class RateLimitingModule { }

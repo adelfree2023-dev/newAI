@@ -34,27 +34,8 @@ export class SchemaInitializerService implements OnModuleInit {
             // تهيئة مخطط النظام
             await this.initializeSystemSchema();
 
-            // تحميل وتهيئة المستأجرين النشطين
-            // في الإصدار الحقيقي، سيتم جلبهم من قاعدة البيانات
-            // هنا نستخدم بيانات محاكاة
-
-            const mockTenants = [
-                { id: 'tenant1', name: 'متجر الإلكتروني الأول' },
-                { id: 'tenant2', name: 'العيادة الطبية' },
-                { id: 'tenant3', name: 'مطعم سريع' }
-            ];
-
-            for (const tenant of mockTenants) {
-                try {
-                    await this.tenantConnection.initializeTenantSchema(tenant.id, tenant.name);
-                    this.safeLog('info', `[M2] ✅ تم تهيئة المستأجر: ${tenant.name}`);
-                } catch (error) {
-                    this.safeLog('error', `[M2] ❌ فشل تهيئة المستأجر ${tenant.name}: ${error.message}`);
-                }
-            }
-
             this.isInitialized = true;
-            this.safeLog('info', '✅ [M2] اكتملت تهيئة مخططات المستأجرين');
+            this.safeLog('info', '✅ [M2] اكتملت تهيئة مخططات النظام');
 
         } catch (error) {
             this.safeLog('error', `[M2] ❌ فشل تهيئة مخططات المستأجرين: ${error.message}`);

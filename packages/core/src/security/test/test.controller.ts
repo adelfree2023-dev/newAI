@@ -3,7 +3,7 @@ import { EncryptionService } from '../layers/s7-encryption/encryption.service';
 import { AuditService } from '../layers/s4-audit-logging/audit.service';
 import { AISecuritySupervisorService } from '../ai-supervisor/ai-security-supervisor.service';
 
-@Controller('api/test')
+@Controller('test')
 export class TestController {
     private readonly logger = new Logger(TestController.name);
 

@@ -10,10 +10,8 @@ import { TenantContextService } from '../s2-tenant-isolation/tenant-context.serv
   imports: [ConfigModule],
   providers: [
     EncryptionService,
-    KeyRotationService,
-    AuditService,
-    TenantContextService
+    KeyRotationService
   ],
   exports: [EncryptionService, KeyRotationService],
 })
-export class EncryptionModule {}
+export class EncryptionModule { }

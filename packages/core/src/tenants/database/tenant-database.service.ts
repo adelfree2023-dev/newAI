@@ -161,7 +161,7 @@ export class TenantDatabaseService {
         operationType: 'VALIDATE',
         contextData: {
           requestId: this.request['requestId'] || 'unknown',
-          userId: this.request.user?.id || 'anonymous',
+          userId: (this.request as any).user?.id || 'anonymous',
           ipAddress: this.getClientIp(),
           userAgent: this.request.get('User-Agent')
         }

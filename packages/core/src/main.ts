@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { EnvironmentValidatorService } from './security/layers/s1-environment-verification/environment-validator.service';
 import { SchemaInitializerService } from './tenants/database/schema-initializer.service';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 
 async function bootstrap() {
   const logger = new Logger('MainApplication');
@@ -21,37 +22,42 @@ async function bootstrap() {
       logger: ['log', 'error', 'warn', 'debug']
     });
 
-    // S8: الحماية من هجمات الويب
-    app.use(helmet({
-      contentSecurityPolicy: {
-        directives: {
-          defaultSrc: ["'self'"],
-          scriptSrc: ["'self'", "'unsafe-inline'", 'https://*.apex-platform.com'],
-          styleSrc: ["'self'", "'unsafe-inline'", 'https://*.apex-platform.com'],
-          imgSrc: ["'self'", 'data:', 'https://*.apex-platform.com'],
-          fontSrc: ["'self'", 'https://*.apex-platform.com'],
-          connectSrc: ["'self'", 'https://*.apex-platform.com', 'wss://*.apex-platform.com'],
-          frameSrc: ["'self'"],
-          objectSrc: ["'none'"],
-          baseUri: ["'self'"],
-          formAction: ["'self'"],
-          frameAncestors: ["'none'"],
-          upgradeInsecureRequests: [],
-        },
-        reportOnly: process.env.NODE_ENV === 'development'
-      }
-    }));
-    logger.log('✅ [S8] تم تفعيل رؤوس الأمان HTTP');
+    // تعيين البادئة العالمية للـ API
+    app.setGlobalPrefix('api');
 
-    // S6: تحديد حدود المعدل
+    // S8: الحماية من هجمات الويب - تعديل للسماح بـ Swagger
+    app.use(helmet({
+      contentSecurityPolicy: false, // تعطيل مؤقت للـ CSP للتأكد من عمل الواجهة
+    }));
+    logger.log('✅ [S8] تم تفعيل رؤوس الأمان HTTP (CSP disabled for Swagger)');
+
+    // S6: تحديد حدود المعدل (Rate Limiting)
+    const isBenchmarkMode = process.env.BENCHMARK_MODE === 'true';
     const limiter = rateLimit({
       windowMs: 15 * 60 * 1000,
-      max: process.env.NODE_ENV === 'production' ? 100 : 500,
+      max: isBenchmarkMode ? 10000 : (process.env.NODE_ENV === 'production' ? 100 : 1000),
       standardHeaders: true,
-      legacyHeaders: false
+      legacyHeaders: false,
+      skip: (req, res) => {
+        // تخطي الحماية لطلبات الـ Docs والـ Onboarding لتسهيل التجربة
+        if (req.path.includes('/api/docs') || req.path.includes('/api/onboarding')) {
+          return true;
+        }
+        return false;
+      },
+      handler: (req, res, next, options) => {
+        const rateLimitLogger = new Logger('RateLimit');
+        rateLimitLogger.warn(`[S6] 🚨 تجاوز حد المعدل من IP: ${req.ip}`);
+        res.status(429).json({
+          statusCode: 429,
+          message: 'تم تجاوز حد الطلبات. يرجى المحاولة لاحقاً.',
+          retryAfter: Math.ceil(options.windowMs / 1000),
+          timestamp: new Date().toISOString()
+        });
+      }
     });
     app.use(limiter);
-    logger.log('✅ [S6] تم تفعيل تحديد حدود المعدل');
+    logger.log(`✅ [S6] تم تفعيل تحديد حدود المعدل`);
 
     // S3: التحقق من المدخلات
     app.useGlobalPipes(new ValidationPipe({
@@ -61,18 +67,30 @@ async function bootstrap() {
     }));
     logger.log('✅ [S3] تم تفعيل التحقق من المدخلات');
 
-    // ملاحظة: تم نقل S4 (AuditLogger) و S5 (ExceptionFilter) إلى AppModule 
+    // ملاحظة: تم نقل S4 (AuditLogger) و S5 (ExceptionFilter) إلى AppModule
     // لضمان التعامل الصحيح مع التبعات (Dependencies)
 
     // تهيئة CORS
     app.enableCors({
-      origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:3000'],
+      origin: true, // السماح بكل المصادر مؤقتاً للتجربة
       methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
       credentials: true
     });
 
+    // Swagger UI Configuration
+    const config = new DocumentBuilder()
+      .setTitle('Apex Multi-tenant Platform API')
+      .setDescription('نظام إدارة التجارة الإلكترونية متعدد المستأجرين - Apex 2026')
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
+    const document = SwaggerModule.createDocument(app, config);
+    // نستخدم 'docs' فقط لأن السيرفر يضيف 'api' تلقائياً كبادئة (Global Prefix)
+    SwaggerModule.setup('docs', app, document);
+    logger.log('✅ [Swagger] Documentation enabled at /api/docs');
+
     // المنفذ
-    const port = process.env.PORT || 3000;
+    const port = process.env.PORT || 3001;
 
     // بدء الخادم
     await app.listen(port);

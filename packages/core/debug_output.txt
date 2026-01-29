@@ -1,0 +1,47 @@
+  console.log
+    DEBUG: Created tenant: {"id":"tenant-uuid","name":"Test Store","subdomain":"teststore","schemaName":"tenant_mocked_uuid","status":"provisioning"}
+
+      at TenantService.createTenantWithStore (tenants/tenant.service.ts:234:15)
+
+  console.log
+    DEBUG: Updated tenant: {"id":"tenant-uuid","status":"active","schemaName":"tenant_tenant_uuid"}
+
+      at TenantService.createTenantWithStore (tenants/tenant.service.ts:242:15)
+
+[31m[Nest] 10964  - [39m٢٩‏/٠١‏/٢٠٢٦، ٢:٣٧:٠٦ م [31m  ERROR[39m [38;5;3m[TenantService] [39m[31m❌ [M2] فشل إنشاء المستأجر المتكامل: Database error[39m
+FAIL src/tenants/tenants.service.spec.ts (26.618 s)
+  TenantsService
+    createTenantWithStore
+      × should create tenant successfully with all steps (80 ms)
+      √ should throw ConflictException if subdomain exists (11 ms)
+      √ should handle transaction failure with proper error (10 ms)
+
+  ● TenantsService › createTenantWithStore › should create tenant successfully with all steps
+
+    expect(received).toMatchObject(expected)
+
+    - Expected  - 1
+    + Received  + 1
+
+      Object {
+        "id": "tenant-uuid",
+        "storeUrl": StringContaining "teststore",
+    -   "subdomain": "teststore",
+    +   "subdomain": undefined,
+      }
+
+    [0m [90m 57 |[39m             [36mconst[39m result [33m=[39m [36mawait[39m service[33m.[39mcreateTenantWithStore(validDto [36mas[39m any)[33m;[39m
+     [90m 58 |[39m
+    [31m[1m>[22m[39m[90m 59 |[39m             expect(result)[33m.[39mtoMatchObject({
+     [90m    |[39m                            [31m[1m^[22m[39m
+     [90m 60 |[39m                 id[33m:[39m [32m'tenant-uuid'[39m[33m,[39m
+     [90m 61 |[39m                 subdomain[33m:[39m [32m'teststore'[39m[33m,[39m
+     [90m 62 |[39m                 storeUrl[33m:[39m expect[33m.[39mstringContaining([32m'teststore'[39m)[33m,[39m[0m
+
+      at Object.<anonymous> (tenants/tenants.service.spec.ts:59:28)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 2 passed, 3 total
+Snapshots:   0 total
+Time:        27.435 s, estimated 32 s
+Ran all test suites matching /packages\\core\\src\\tenants\\tenants.service.spec.ts/i.

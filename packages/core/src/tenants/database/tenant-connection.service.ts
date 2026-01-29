@@ -1,8 +1,7 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { InjectDataSource } from '@nestjs/typeorm';
-import { DataSource } from 'typeorm';
+import { Injectable, Logger, OnModuleInit, NotFoundException } from '@nestjs/common';
 import { TenantContextService } from '../../security/layers/s2-tenant-isolation/tenant-context.service';
 import { AuditService } from '../../security/layers/s4-audit-logging/audit.service';
+import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
 export class TenantConnectionService implements OnModuleInit {
@@ -10,19 +9,13 @@ export class TenantConnectionService implements OnModuleInit {
     private initializedSchemas = new Set<string>();
 
     constructor(
-        @InjectDataSource() private readonly dataSource: DataSource,
+        private readonly prisma: PrismaService,
         private readonly tenantContext: TenantContextService,
         private readonly auditService: AuditService
     ) { }
 
     async onModuleInit() {
         this.logger.log('🏗️ [M2] بدء تهيئة خدمة اتصال المستأجرين...');
-
-        // التحقق من اتصال قاعدة البيانات
-        if (!this.dataSource.isInitialized) {
-            throw new Error('فشل في تهيئة اتصال قاعدة البيانات');
-        }
-
         this.logger.log('✅ [M2] تم تهيئة خدمة اتصال المستأجرين بنجاح');
     }
 
@@ -30,7 +23,6 @@ export class TenantConnectionService implements OnModuleInit {
      * الحصول على اسم مخطط المستأجر
      */
     getSchemaName(tenantId: string): string {
-        // تنظيف tenantId لمنع حقن SQL
         const safeId = tenantId.toLowerCase()
             .replace(/[^a-z0-9-_]/g, '_')
             .replace(/_{2,}/g, '_')
@@ -45,13 +37,15 @@ export class TenantConnectionService implements OnModuleInit {
      */
     async schemaExists(tenantId: string): Promise<boolean> {
         const schemaName = this.getSchemaName(tenantId);
-        const queryRunner = this.dataSource.createQueryRunner();
-
         try {
-            await queryRunner.connect();
-            return await queryRunner.hasSchema(schemaName);
-        } finally {
-            await queryRunner.release();
+            const result: any[] = await this.prisma.$queryRawUnsafe(
+                `SELECT schema_name FROM information_schema.schemata WHERE schema_name = $1`,
+                schemaName
+            );
+            return result.length > 0;
+        } catch (error) {
+            this.logger.error(`❌ [M2] فشل التحقق من وجود المخطط: ${error.message}`);
+            return false;
         }
     }
 
@@ -66,23 +60,17 @@ export class TenantConnectionService implements OnModuleInit {
             return true;
         }
 
-        const queryRunner = this.dataSource.createQueryRunner();
-
         try {
-            await queryRunner.connect();
-            await queryRunner.startTransaction();
-
-            // التحقق من وجود المخطط
-            const exists = await queryRunner.hasSchema(schemaName);
+            const exists = await this.schemaExists(tenantId);
 
             if (!exists) {
                 this.logger.log(`[M2] 🏗️ إنشاء مخطط جديد للمستأجر: ${tenantName} (${tenantId})`);
 
                 // إنشاء المخطط
-                await queryRunner.createSchema(schemaName, true);
+                await this.prisma.$executeRawUnsafe(`CREATE SCHEMA IF NOT EXISTS "${schemaName}"`);
 
                 // إنشاء الجداول الأساسية
-                await this.createBaseTables(queryRunner, schemaName, tenantId);
+                await this.createBaseTables(schemaName, tenantId);
 
                 // تسجيل الحدث
                 await this.auditService.logBusinessEvent('TENANT_SCHEMA_CREATED', {
@@ -93,17 +81,11 @@ export class TenantConnectionService implements OnModuleInit {
                 });
             }
 
-            await queryRunner.commitTransaction();
             this.initializedSchemas.add(schemaName);
-
             this.logger.log(`✅ [M2] تم تهيئة المخطط بنجاح: ${schemaName}`);
             return true;
 
         } catch (error) {
-            if (queryRunner.isTransactionActive) {
-                await queryRunner.rollbackTransaction();
-            }
-
             this.logger.error(`❌ [M2] فشل تهيئة مخطط المستأجر ${tenantId}: ${error.message}`);
 
             await this.auditService.logSecurityEvent('SCHEMA_INITIALIZATION_FAILURE', {
@@ -115,88 +97,81 @@ export class TenantConnectionService implements OnModuleInit {
             });
 
             throw error;
-        } finally {
-            await queryRunner.release();
         }
     }
 
     /**
      * إنشاء الجداول الأساسية في مخطط المستأجر
      */
-    private async createBaseTables(queryRunner: any, schemaName: string, tenantId: string) {
-        // إنشاء جدول المستخدمين
-        await queryRunner.query(`
-      CREATE TABLE IF NOT EXISTS "${schemaName}"."users" (
-        id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid(),
-        email VARCHAR(255) UNIQUE NOT NULL,
-        password_hash VARCHAR(255) NOT NULL,
-        first_name VARCHAR(100),
-        last_name VARCHAR(100),
-        role VARCHAR(20) DEFAULT 'USER' CHECK (role IN ('USER', 'ADMIN', 'STORE_MANAGER')),
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-        tenant_id VARCHAR(36) NOT NULL DEFAULT '${tenantId}'
-      )
-    `);
+    private async createBaseTables(schemaName: string, tenantId: string) {
+        // إنشاء الجداول الأساسية باستخدام Prisma Raw SQL
+        await this.prisma.$executeRawUnsafe(`
+            CREATE TABLE IF NOT EXISTS "${schemaName}"."users" (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                email VARCHAR(255) UNIQUE NOT NULL,
+                "passwordHash" VARCHAR(255) NOT NULL,
+                "firstName" VARCHAR(100),
+                "lastName" VARCHAR(100),
+                role VARCHAR(20) DEFAULT 'CUSTOMER',
+                status VARCHAR(20) DEFAULT 'ACTIVE',
+                "tenantId" VARCHAR(50) DEFAULT '${tenantId}',
+                "isTwoFactorEnabled" BOOLEAN DEFAULT FALSE,
+                "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
 
-        // إنشاء فهرس على البريد الإلكتروني
-        await queryRunner.query(`
-      CREATE INDEX IF NOT EXISTS idx_${schemaName}_users_email ON "${schemaName}"."users" (email)
-    `);
+        await this.prisma.$executeRawUnsafe(`
+            CREATE INDEX IF NOT EXISTS "idx_${schemaName}_users_email" ON "${schemaName}"."users" (email)
+        `);
 
-        // إنشاء جدول المنتجات
-        await queryRunner.query(`
-      CREATE TABLE IF NOT EXISTS "${schemaName}"."products" (
-        id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid(),
-        name VARCHAR(255) NOT NULL,
-        description TEXT,
-        price DECIMAL(10, 2) NOT NULL,
-        stock_quantity INTEGER DEFAULT 0,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-        tenant_id VARCHAR(36) NOT NULL DEFAULT '${tenantId}'
-      )
-    `);
+        await this.prisma.$executeRawUnsafe(`
+            CREATE TABLE IF NOT EXISTS "${schemaName}"."products" (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                name VARCHAR(255) NOT NULL,
+                description TEXT,
+                price DECIMAL(10, 2) NOT NULL,
+                "stockQuantity" INTEGER DEFAULT 0,
+                "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                "tenantId" VARCHAR(50) DEFAULT '${tenantId}'
+            )
+        `);
 
-        // إنشاء جدول الإعدادات
-        await queryRunner.query(`
-      CREATE TABLE IF NOT EXISTS "${schemaName}"."settings" (
-        id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid(),
-        key VARCHAR(100) NOT NULL UNIQUE,
-        value TEXT NOT NULL,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
+        await this.prisma.$executeRawUnsafe(`
+            CREATE INDEX IF NOT EXISTS "idx_${schemaName}_products_name" ON "${schemaName}"."products" (name)
+        `);
+
+        await this.prisma.$executeRawUnsafe(`
+            CREATE TABLE IF NOT EXISTS "${schemaName}"."settings" (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                key VARCHAR(100) NOT NULL UNIQUE,
+                value TEXT NOT NULL,
+                "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
 
         this.logger.log(`[M2] ✅ تم إنشاء الجداول الأساسية في المخطط: ${schemaName}`);
     }
 
-    /**
-     * تنفيذ استعلام في سياق مخطط المستأجر
-     */
     async executeInTenantContext<T>(
         tenantId: string,
-        callback: (queryRunner: any) => Promise<T>
+        callback: (prisma: any) => Promise<T>
     ): Promise<T> {
-        // التأكد من تهيئة المخطط
         if (!(await this.schemaExists(tenantId))) {
-            throw new Error(`مخطط المستأجر غير موجود: ${tenantId}`);
+            throw new NotFoundException(`مخطط المستأجر غير موجود: ${tenantId}`);
         }
 
         const schemaName = this.getSchemaName(tenantId);
-        const queryRunner = this.dataSource.createQueryRunner();
 
         try {
-            await queryRunner.connect();
+            // تعيين مخطط المستأجر في الجلسة الحالية
+            await this.prisma.$executeRawUnsafe(`SET search_path TO "${schemaName}", public`);
 
-            // تعيين مخطط المستأجر للاتصال الحالي
-            await queryRunner.query(`SET search_path TO "${schemaName}", public`);
+            // تنفيذ الاستعلام عبر الكولباك (نمرر كائن البريزما نفسه)
+            const result = await callback(this.prisma);
 
-            // تنفيذ الاستعلام
-            const result = await callback(queryRunner);
-
-            // تسجيل النجاح
             await this.auditService.logBusinessEvent('TENANT_QUERY_EXECUTED', {
                 tenantId,
                 schemaName,
@@ -204,7 +179,6 @@ export class TenantConnectionService implements OnModuleInit {
             });
 
             return result;
-
         } catch (error) {
             this.logger.error(`[M2] ❌ فشل تنفيذ الاستعلام في سياق المستأجر: ${error.message}`);
 
@@ -218,33 +192,30 @@ export class TenantConnectionService implements OnModuleInit {
 
             throw error;
         } finally {
-            await queryRunner.release();
+            // إعادة ضبط الـ search_path للأمان
+            await this.prisma.$executeRawUnsafe(`SET search_path TO public`);
         }
     }
 
-    /**
-     * التحقق من سلامة عزل المخطط
-     */
     async validateIsolationIntegrity(tenantId: string): Promise<boolean> {
         const schemaName = this.getSchemaName(tenantId);
-        const queryRunner = this.dataSource.createQueryRunner();
 
         try {
-            await queryRunner.connect();
+            const schemaExistsResult: any[] = await this.prisma.$queryRawUnsafe(
+                `SELECT schema_name FROM information_schema.schemata WHERE schema_name = $1`,
+                schemaName
+            );
 
-            // 1. التحقق من وجود المخطط
-            const schemaExists = await queryRunner.hasSchema(schemaName);
-            if (!schemaExists) {
+            if (schemaExistsResult.length === 0) {
                 this.logger.error(`[M2] ❌ المخطط غير موجود: ${schemaName}`);
                 return false;
             }
 
-            // 2. التحقق من وجود الجداول الأساسية
             const tables = ['users', 'products', 'settings'];
             for (const table of tables) {
-                const tableExists = await queryRunner.query(
+                const tableExists: any[] = await this.prisma.$queryRawUnsafe(
                     `SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = $1 AND table_name = $2)`,
-                    [schemaName, table]
+                    schemaName, table
                 );
 
                 if (!tableExists[0].exists) {
@@ -253,54 +224,30 @@ export class TenantConnectionService implements OnModuleInit {
                 }
             }
 
-            // 3. التحقق من وجود عمود tenant_id
-            const hasTenantId = await queryRunner.query(
-                `SELECT EXISTS (SELECT FROM information_schema.columns WHERE table_schema = $1 AND table_name = 'users' AND column_name = 'tenant_id')`,
-                [schemaName]
-            );
-
-            if (!hasTenantId[0].exists) {
-                this.logger.error(`[M2] ❌ عمود tenant_id غير موجود في جدول المستخدمين`);
-                return false;
-            }
-
             this.logger.log(`[M2] ✅ نجاح التحقق من سلامة عزل المخطط: ${schemaName}`);
             return true;
 
         } catch (error) {
             this.logger.error(`[M2] ❌ فشل التحقق من سلامة العزل: ${error.message}`);
             return false;
-        } finally {
-            await queryRunner.release();
         }
     }
 
-    /**
-     * حذف مخطط المستأجر (للإلغاء أو إعادة التهيئة)
-     */
     async dropTenantSchema(tenantId: string): Promise<boolean> {
         const schemaName = this.getSchemaName(tenantId);
-        const queryRunner = this.dataSource.createQueryRunner();
 
         try {
-            await queryRunner.connect();
-            await queryRunner.startTransaction();
-
-            // التحقق من وجود المخطط
-            const exists = await queryRunner.hasSchema(schemaName);
+            const exists = await this.schemaExists(tenantId);
             if (!exists) {
                 this.logger.warn(`[M2] ⚠️ المخطط غير موجود للمستأجر: ${tenantId}`);
-                await queryRunner.commitTransaction();
                 return false;
             }
 
             // حذف المخطط بالكامل
-            await queryRunner.dropSchema(schemaName, true);
+            await this.prisma.$executeRawUnsafe(`DROP SCHEMA IF EXISTS "${schemaName}" CASCADE`);
 
             // إزالة من الذاكرة المؤقتة
             this.initializedSchemas.delete(schemaName);
-
-            await queryRunner.commitTransaction();
 
             await this.auditService.logBusinessEvent('TENANT_SCHEMA_DELETED', {
                 tenantId,
@@ -312,8 +259,6 @@ export class TenantConnectionService implements OnModuleInit {
             return true;
 
         } catch (error) {
-            await queryRunner.rollbackTransaction();
-
             this.logger.error(`[M2] ❌ فشل حذف مخطط المستأجر ${tenantId}: ${error.message}`);
 
             await this.auditService.logSecurityEvent('SCHEMA_DELETION_FAILURE', {
@@ -325,8 +270,6 @@ export class TenantConnectionService implements OnModuleInit {
             });
 
             throw new Error(`فشل في حذف مخطط المستأجر: ${error.message}`);
-        } finally {
-            await queryRunner.release();
         }
     }
 }

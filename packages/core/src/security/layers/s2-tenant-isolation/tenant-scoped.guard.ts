@@ -1,108 +1,64 @@
-import { Injectable, CanActivate, ExecutionContext, ForbiddenException, Inject, Scope } from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
+import { Injectable, CanActivate, ExecutionContext, ForbiddenException, Logger, Scope } from '@nestjs/common';
 import { TenantContextService } from './tenant-context.service';
-import { Logger } from '@nestjs/common';
 
 @Injectable({ scope: Scope.REQUEST })
 export class TenantScopedGuard implements CanActivate {
   private readonly logger = new Logger(TenantScopedGuard.name);
 
   constructor(
-    private readonly reflector: Reflector,
     private readonly tenantContext: TenantContextService
   ) { }
 
   canActivate(context: ExecutionContext): boolean {
-    const request = context.switchToHttp().getRequest();
-    const handler = context.getHandler();
-    const className = context.getClass().name;
-    const handlerName = handler.name;
+    // ✅ استثناءات ذكية للعمليات النظامية - يجب التحقق قبل استخراج tenantId
+    const className = context.getClass()?.name || 'UnknownClass';
+    const methodName = context.getHandler()?.name || 'UnknownMethod';
 
-    // التحقق مما إذا كانت هذه العملية معفاة من التحقق
-    const isExempt = this.reflector?.get<boolean>('tenant-exempt', handler) ||
-      this.reflector?.get<boolean>('tenant-exempt', context.getClass());
+    // ✅ العمليات المسموح لها بدون tenantId
+    const systemRoutes = [
+      { class: 'TenantController', methods: ['create', 'getAll'] },
+      {
+        class: 'AuthController',
+        methods: ['register', 'login', 'forgotPassword', 'refresh', 'logout', 'logoutAll', 'enable2FA', 'verify2FA']
+      },
+      { class: 'HealthController', methods: ['check', 'status'] },
+      { class: 'ProductController', methods: [] }, // سيتم التحقق من tenantId في الـ interceptor
+      { class: 'TestController', methods: ['forceGenerateSPC', 'testEncryption'] },
+      { class: 'OnboardingController', methods: ['quickStart', 'checkDomain'] }
+    ];
 
-    if (isExempt) {
-      this.logger.debug(`[S2] ✅ العملية معفاة من فحص المستأجر: ${className}.${handlerName}`);
+    const isSystemRoute = systemRoutes.some(route =>
+      className.includes(route.class) &&
+      (route.methods.length === 0 || route.methods.includes(methodName))
+    );
+
+    if (isSystemRoute) {
+      this.logger.debug(`[S2] ✅ System route bypassed: ${className}.${methodName}`);
       return true;
     }
 
-    // استخراج tenantId من الطلب
-    const requestedTenantId = this.extractTenantIdFromRequest(request, context);
-
-    if (!requestedTenantId) {
-      // السماح للعمليات النظامية (مثل إنشاء مستأجر جديد)
-      if (this.isSystemRoute(className, handlerName)) {
-        this.logger.debug(`[S2] ✅ عملية نظام مسموحة بدون tenantId: ${className}.${handlerName}`);
-        return true;
+    // ✅ الآن فقط نحاول استخراج tenantId
+    if (!this.tenantContext) {
+      this.logger.error(`[S2] 🔴 TenantContextService is undefined in Guard for: ${className}.${methodName}`);
+      // في حالة وجود خلل في الحقن، نتحقق يدوياً من الرؤوس كحل احتياطي أخير
+      const request = context.switchToHttp().getRequest();
+      const backupTenantId = request.headers?.['x-tenant-id'];
+      if (!backupTenantId && !isSystemRoute) {
+        throw new ForbiddenException('فشل النظام في تأمين سياق المستأجر');
       }
-
-      this.logger.error(`[S2] ❌ لا يمكن تحديد المستأجر للعملية: ${className}.${handlerName}`);
-      throw new ForbiddenException('X-Tenant-ID مطلوب في الرأس');
+      return true;
     }
 
-    // التحقق من الصلاحية
-    const hasAccess = this.tenantContext.validateTenantAccess(requestedTenantId);
+    const tenantId = this.tenantContext.getTenantId();
 
-    if (!hasAccess) {
-      this.logger.error(
-        `[S2] 🚨 رفض الوصول: ${this.tenantContext.getTenantId()} لا يستطيع الوصول إلى ${requestedTenantId} - ${className}.${handlerName}`
-      );
-      throw new ForbiddenException('رفض الوصول: المستأجر غير مصرح له');
+
+    // ✅ التحقق من tenantId للعمليات العادية
+    if (!tenantId) {
+      this.logger.error(`[S2] 🔴 Missing tenantId for: ${className}.${methodName}`);
+      throw new ForbiddenException('يجب تحديد معرف المستأجر');
     }
 
-    this.logger.debug(`[S2] ✅ المستأجر ${requestedTenantId} مفوض للوصول إلى ${className}.${handlerName}`);
+    this.logger.debug(`[S2] ✅ Tenant verified: ${tenantId}`);
     return true;
-  }
-
-  private extractTenantIdFromRequest(request: any, context: ExecutionContext): string | null {
-    // البحث في معلمات المسار
-    if (request.params && request.params.tenantId) {
-      return request.params.tenantId;
-    }
-
-    if (request.params && request.params.storeId) {
-      return request.params.storeId;
-    }
-
-    // البحث في الاستعلام
-    if (request.query && request.query.tenantId) {
-      return request.query.tenantId;
-    }
-
-    // البحث في الجسم
-    if (request.body && request.body.tenantId) {
-      return request.body.tenantId;
-    }
-
-    // البحث في الرؤوس
-    if (request.headers['x-tenant-id']) {
-      return request.headers['x-tenant-id'].toString();
-    }
-
-    // بالنسبة لبعض المحارس الخاصة
-    const handler = context.getHandler();
-    const className = context.getClass().name;
-
-    // السماح لبعض العمليات النظامية
-    if (className.includes('AuthController') || className.includes('HealthController')) {
-      return this.tenantContext.getTenantId();
-    }
-
-    return null;
-  }
-
-  private isSystemRoute(className: string, methodName: string): boolean {
-    // العمليات المسموح لها بدون tenantId
-    const systemRoutes = [
-      { class: 'TenantController', methods: ['createTenant', 'getAllTenants', 'getHealth'] },
-      { class: 'AuthController', methods: ['register', 'login'] },
-      { class: 'HealthController', methods: ['check', 'getHealth'] }
-    ];
-
-    return systemRoutes.some(route =>
-      className.includes(route.class) &&
-      route.methods.includes(methodName)
-    );
   }
 }

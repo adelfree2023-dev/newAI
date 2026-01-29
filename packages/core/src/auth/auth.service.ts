@@ -1,0 +1,208 @@
+import { Injectable, Logger, UnauthorizedException, ConflictException, BadRequestException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
+import { generateSecureHash, verifySecureHash } from '../common/utils/crypto.utils';
+import { v4 as uuidv4 } from 'uuid';
+import { UserRole, UserStatus } from '@prisma/client';
+import { UserService } from './services/user.service';
+import { SessionService } from './services/session.service';
+import { TwoFactorService } from './services/two-factor.service';
+import { BruteForceProtectionService } from './services/brute-force-protection.service';
+import { TenantContextService } from '../security/layers/s2-tenant-isolation/tenant-context.service';
+import { AuditService } from '../security/layers/s4-audit-logging/audit.service';
+import { EncryptionService } from '../security/layers/s7-encryption/encryption.service';
+import { RateLimiterService } from '../security/layers/s6-rate-limiting/rate-limiter.service';
+import { LoginDto } from './dtos/login.dto';
+import { RegisterDto } from './dtos/register.dto';
+import { ChangePasswordDto } from './dtos/change-password.dto';
+import { Verify2FADto } from './dtos/verify-2fa.dto';
+
+@Injectable()
+export class AuthService {
+    private readonly logger = new Logger(AuthService.name);
+    private readonly jwtExpiresInMonth: string;
+
+    constructor(
+        private readonly jwtService: JwtService,
+        private readonly configService: ConfigService,
+        private readonly userService: UserService,
+        private readonly sessionService: SessionService,
+        private readonly twoFactorService: TwoFactorService,
+        private readonly bruteForceService: BruteForceProtectionService,
+        private readonly tenantContext: TenantContextService,
+        private readonly auditService: AuditService,
+        private readonly encryptionService: EncryptionService,
+        private readonly rateLimiter: RateLimiterService
+    ) {
+        this.jwtExpiresInMonth = this.configService.get<string>('JWT_EXPIRES_IN', '15m');
+    }
+
+    async register(registerDto: RegisterDto, tenantId?: string, ipAddress?: string): Promise<{ user: any; token: string }> {
+        this.logger.log(`[M3] 📝 بدء تسجيل مستخدم جديد: ${registerDto.email} للمستأجر: ${registerDto.tenantId || 'auto'}`);
+        try {
+            const existingUser = await this.userService.findByEmail(registerDto.email);
+            if (existingUser) {
+                throw new ConflictException('البريد الإلكتروني مستخدم مسبقاً');
+            }
+            const firstName = registerDto.firstName || (registerDto.name ? registerDto.name.split(' ')[0] : 'User');
+            const lastName = registerDto.lastName || (registerDto.name ? registerDto.name.split(' ').slice(1).join(' ') : '');
+
+            const user = await this.userService.create({
+                email: registerDto.email,
+                passwordHash: registerDto.password,
+                firstName: firstName,
+                lastName: lastName,
+                role: registerDto.role || UserRole.CUSTOMER,
+                tenantId: tenantId || registerDto.tenantId || this.tenantContext.getTenantId() || null,
+                emailVerified: false,
+                status: UserStatus.ACTIVE
+            });
+            const { accessToken } = await this.createSession(user);
+            await this.auditService.logActivity({
+                action: 'USER_REGISTRATION',
+                details: {
+                    userId: user.id,
+                    email: user.email,
+                    tenantId: user.tenantId
+                }
+            });
+            return { user: this.sanitizeUser(user), token: accessToken };
+        } catch (error) {
+            this.logger.error(`[M3] ❌ فشل تسجيل المستخدم: ${error.message}`);
+            throw error;
+        }
+    }
+
+    async login(loginDto: LoginDto, tenantId?: string, ipAddress?: string): Promise<any> {
+        this.logger.log(`[M3] 🔐 محاولة تسجيل دخول: ${loginDto.email} للمستأجر: ${tenantId || 'auto'}`);
+        const isLocked = await this.bruteForceService.isAccountLocked(loginDto.email);
+        if (isLocked) throw new UnauthorizedException('الحساب مقفل مؤقتاً بسبب محاولات فاشلة متعددة (Account Locked)');
+
+        const user = await this.userService.findByEmail(loginDto.email);
+        if (!user || !(await verifySecureHash(loginDto.password, user.passwordHash))) {
+            await this.bruteForceService.recordFailedAttempt(loginDto.email, 'login');
+            throw new UnauthorizedException('بيانات الاعتماد غير صحيحة');
+        }
+
+        if (user.status !== UserStatus.ACTIVE) throw new UnauthorizedException('الحساب غير نشط');
+        await this.bruteForceService.resetFailedAttempts(loginDto.email, 'login');
+
+        if (user.isTwoFactorEnabled) {
+            const verificationToken = await this.twoFactorService.generateVerificationToken(user);
+            return { requires2FA: true, verificationToken, userId: user.id };
+        }
+
+        const currentIp = ipAddress || loginDto.ipAddress;
+        const { accessToken, refreshToken } = await this.createSession(user, currentIp, loginDto.userAgent);
+
+        await this.auditService.logActivity({
+            action: 'USER_LOGIN',
+            details: {
+                userId: user.id,
+                email: user.email,
+                tenantId: user.tenantId,
+                ip: currentIp
+            }
+        });
+
+        return {
+            accessToken,
+            refreshToken,
+            user: {
+                ...this.sanitizeUser(user),
+                isSuperAdmin: user.role === UserRole.SUPER_ADMIN
+            }
+        };
+    }
+
+    async revokeToken(token: string, tenantId?: string): Promise<void> {
+        this.logger.log(`[M3] 🚫 إبطال التوكن: ${token.substring(0, 10)}... للمستأجر: ${tenantId}`);
+        try {
+            // we can invalidate by token or by decoding it
+            await this.sessionService.invalidateByRefreshToken(token);
+        } catch (error) {
+            this.logger.error(`[M3] ❌ فشل إبطال التوكن: ${error.message}`);
+            throw error;
+        }
+    }
+
+    async verify2FA(verifyDto: Verify2FADto): Promise<any> {
+        const user = await this.userService.findById(verifyDto.userId);
+        if (!user || !user.isTwoFactorEnabled) throw new UnauthorizedException('المصادقة الثنائية غير مطلوبة');
+        const isValid = await this.twoFactorService.verifyToken(user, verifyDto.token);
+        if (!isValid) throw new UnauthorizedException('رمز التحقق غير صحيح');
+        return this.createSession(user);
+    }
+
+    async refreshToken(refreshToken: string): Promise<any> {
+        const session = await this.sessionService.findByRefreshToken(refreshToken);
+        if (!session) throw new UnauthorizedException('توكن غير صالح');
+        const user = await this.userService.findById(session.userId);
+        return this.createSession(user);
+    }
+
+    async logout(accessToken: string, refreshToken: string): Promise<void> {
+        if (refreshToken) await this.sessionService.invalidateByRefreshToken(refreshToken);
+        if (accessToken) {
+            const payload = this.jwtService.decode(accessToken) as any;
+            if (payload) await this.sessionService.invalidateAllUserSessions(payload.sub);
+        }
+    }
+
+    async logoutAll(userId: string): Promise<void> {
+        await this.sessionService.invalidateAllUserSessions(userId);
+    }
+
+    async enable2FA(userId: string): Promise<any> {
+        const user = await this.userService.findById(userId);
+        if (!user) throw new UnauthorizedException('المستخدم غير موجود');
+
+        const { secret, qrCode } = await this.twoFactorService.enableTwoFactor(user);
+        await this.userService.save(user);
+
+        return {
+            success: true,
+            secret,
+            qrCode
+        };
+    }
+
+    async changePassword(userId: string, changePasswordDto: ChangePasswordDto): Promise<void> {
+        const user = await this.userService.findById(userId);
+        if (!user || !(await verifySecureHash(changePasswordDto.currentPassword, user.passwordHash))) {
+            throw new BadRequestException('كلمة المرور الحالية غير صحيحة');
+        }
+        user.passwordHash = await generateSecureHash(changePasswordDto.newPassword);
+        await this.userService.save(user);
+        await this.sessionService.invalidateAllUserSessions(userId);
+    }
+
+    private async createSession(user: any, ipAddress?: string, userAgent?: string) {
+        const refreshToken = uuidv4();
+        const sessionId = uuidv4();
+
+        const accessToken = this.jwtService.sign({
+            sub: user.id,
+            email: user.email,
+            role: user.role,
+            tenantId: user.tenantId,
+            isSuperAdmin: user.role === UserRole.SUPER_ADMIN,
+            sid: sessionId // لضمان تفرد التوكن حتى لو تم تسجيل الدخول في نفس الثانية
+        });
+
+        await this.sessionService.create({
+            userId: user.id,
+            token: accessToken,
+            refreshToken,
+            ipAddress: ipAddress || 'unknown',
+            userAgent: userAgent || 'unknown',
+            tenantId: user.tenantId
+        });
+        return { accessToken, refreshToken };
+    }
+
+    private sanitizeUser(user: any) {
+        const { passwordHash, twoFactorSecret, ...sanitized } = user;
+        return sanitized;
+    }
+}

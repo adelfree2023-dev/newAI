@@ -1,14 +1,15 @@
 import { Module, OnModuleInit } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { EnvironmentValidatorService } from './environment-validator.service';
+import { ConfigModule } from '@nestjs/config';
+import { EnvValidatorService } from './env-validator.service';
+import { ApexConfigService } from './apex-config.service';
 
 @Module({
   imports: [ConfigModule],
-  providers: [EnvironmentValidatorService, ConfigService],
-  exports: [EnvironmentValidatorService],
+  providers: [EnvValidatorService, ApexConfigService],
+  exports: [EnvValidatorService, ApexConfigService],
 })
 export class EnvironmentVerificationModule implements OnModuleInit {
-  constructor(private readonly envValidator: EnvironmentValidatorService) {}
+  constructor(private readonly envValidator: EnvValidatorService) { }
 
   async onModuleInit() {
     await this.envValidator.onModuleInit();

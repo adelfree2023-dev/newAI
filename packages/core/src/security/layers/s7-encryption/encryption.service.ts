@@ -6,24 +6,34 @@ import { AuditService } from '../s4-audit-logging/audit.service';
 import { TenantContextService } from '../s2-tenant-isolation/tenant-context.service';
 import { Scope } from '@nestjs/common';
 
-@Injectable({ scope: Scope.REQUEST })
+@Injectable()
 export class EncryptionService implements OnModuleInit {
   private readonly logger = new Logger(EncryptionService.name);
-  private masterKey: Buffer;
+  private static masterKey: Buffer;
   private saltCache: Map<string, Buffer> = new Map();
   private hkdfCache: Map<string, Buffer> = new Map();
 
   constructor(
     private readonly configService: ConfigService,
-    private readonly auditService: AuditService,
-    private readonly tenantContext: TenantContextService
+    private readonly auditService: AuditService
   ) { }
 
   async onModuleInit() {
-    this.logger.log('🔐 [S7] بدء تهيئة خدمات التشفير...');
-    await this.initializeMasterKey();
-    await this.validateEncryptionStrength();
-    this.logger.log('✅ [S7] اكتملت تهيئة خدمات التشفير بنجاح');
+    this.logger.log('🔐 [S7] بدء تهيئة خدمات التشفير (onModuleInit)...');
+    try {
+      await this.initializeMasterKey();
+      await this.validateEncryptionStrength();
+      this.logger.log('✅ [S7] اكتملت تهيئة خدمات التشفير بنجاح');
+    } catch (error) {
+      this.logger.error(`❌ [S7] فشل تهيئة خدمات التشفير في onModuleInit: ${error.message}`);
+    }
+  }
+
+  private async ensureMasterKeyInitialized() {
+    if (!EncryptionService.masterKey) {
+      this.logger.warn('[S7] ⚠️ المفتاح الرئيسي غير مهيأ. محاولة التهيئة التلقائية...');
+      await this.initializeMasterKey();
+    }
   }
 
   private async initializeMasterKey() {
@@ -36,7 +46,7 @@ export class EncryptionService implements OnModuleInit {
     }
 
     // تحويل المفتاح إلى بايتات باستخدام HKDF
-    this.masterKey = await this.deriveKey(masterKey, 'master_encryption_key', 32);
+    EncryptionService.masterKey = await this.deriveKey(masterKey, 'master_encryption_key', 32);
     this.logger.log('✅ [S7] تم تهيئة المفتاح الرئيسي للتشفير');
   }
 
@@ -65,7 +75,7 @@ export class EncryptionService implements OnModuleInit {
     }
   }
 
-  async encryptSensitiveData(data: string, context: string = 'general'): Promise<string> {
+  async encryptSensitiveData(data: string, context: string = 'general', tenantId: string = 'system'): Promise<string> {
     if (typeof data !== 'string' || data.trim() === '') {
       this.logger.warn(`[S7] ⚠️ محاولة تشفير بيانات فارغة للسياق: ${context}`);
       return '';
@@ -74,9 +84,9 @@ export class EncryptionService implements OnModuleInit {
     try {
       this.logger.debug(`[S7] 🔒 بدء تشفير البيانات للسياق: ${context}`);
 
-      // الحصول على مفتاح فريد للمستأجر والسياق
-      const tenantId = this.tenantContext.getTenantId() || 'system';
-      const encryptionKey = await this.getTenantEncryptionKey(tenantId, context);
+      // استخدام المستأجر المبرد أو الافتراضي
+      const effectiveTenantId = tenantId || 'system';
+      const encryptionKey = await this.getTenantEncryptionKey(effectiveTenantId, context);
 
       // إنشاء IV عشوائي
       const iv = randomBytes(12);
@@ -118,7 +128,7 @@ export class EncryptionService implements OnModuleInit {
       // تسجيل حدث أمني
       this.auditService.logSecurityEvent('ENCRYPTION_FAILURE', {
         context,
-        tenantId: this.tenantContext.getTenantId() || 'system',
+        tenantId: tenantId || 'system',
         error: error.message,
         stack: error.stack,
         timestamp: new Date().toISOString()
@@ -128,7 +138,7 @@ export class EncryptionService implements OnModuleInit {
     }
   }
 
-  async decryptSensitiveData(encryptedData: string, context: string = 'general'): Promise<string> {
+  async decryptSensitiveData(encryptedData: string, context: string = 'general', tenantId?: string): Promise<string> {
     if (typeof encryptedData !== 'string' || encryptedData.trim() === '') {
       this.logger.warn(`[S7] ⚠️ محاولة فك تشفير بيانات فارغة للسياق: ${context}`);
       return '';
@@ -146,8 +156,8 @@ export class EncryptionService implements OnModuleInit {
       }
 
       // الحصول على مفتاح فك التشفير
-      const tenantId = parsedData.tenantId || this.tenantContext.getTenantId() || 'system';
-      const decryptionKey = await this.getTenantEncryptionKey(tenantId, context);
+      const effectiveTenantId = tenantId || parsedData.tenantId || 'system';
+      const decryptionKey = await this.getTenantEncryptionKey(effectiveTenantId, context);
 
       // إنشاء الـ decipher
       const decipher = createDecipheriv(
@@ -179,7 +189,7 @@ export class EncryptionService implements OnModuleInit {
       // تسجيل حدث أمني
       this.auditService.logSecurityEvent('DECRYPTION_FAILURE', {
         context,
-        tenantId: this.tenantContext.getTenantId() || 'system',
+        tenantId: tenantId || 'system',
         error: error.message,
         stack: error.stack,
         timestamp: new Date().toISOString()
@@ -199,12 +209,15 @@ export class EncryptionService implements OnModuleInit {
         return this.hkdfCache.get(keyId);
       }
 
+      // التأكد من تهيئة المفتاح الرئيسي
+      await this.ensureMasterKeyInitialized();
+
       // الحصول على الملح الخاص بالمفتاح
       const salt = await this.getTenantSalt(tenantId);
 
       // اشتقاق المفتاح باستخدام HKDF
       const hkdfKey = await this.hkdf(
-        this.masterKey,
+        EncryptionService.masterKey,
         salt,
         `apex-encryption:${tenantId}:${context}`,
         32
@@ -369,12 +382,12 @@ export class EncryptionService implements OnModuleInit {
   }
 
   async encryptFile(fileBuffer: Buffer, metadata: any): Promise<{ encryptedBuffer: Buffer; key: string }> {
+    const effectiveTenantId = metadata.tenantId || 'system';
     try {
-      this.logger.log(`[S7] 📁 بدء تشفير الملف`);
+      this.logger.log(`[S7] 📁 بدء تشفير الملف للمستأجر: ${effectiveTenantId}`);
 
       // الحصول على مفتاح التشفير
-      const tenantId = this.tenantContext.getTenantId() || 'system';
-      const fileKey = await this.getTenantEncryptionKey(tenantId, 'files');
+      const fileKey = await this.getTenantEncryptionKey(effectiveTenantId, 'files');
 
       // إنشاء IV عشوائي
       const iv = randomBytes(12);
@@ -398,7 +411,7 @@ export class EncryptionService implements OnModuleInit {
 
       // تسجيل عملية التشفير
       this.auditService.logSecurityEvent('FILE_ENCRYPTION', {
-        tenantId,
+        tenantId: effectiveTenantId,
         fileName: metadata.fileName || 'unknown',
         fileSize: fileBuffer.length,
         timestamp: new Date().toISOString(),
@@ -407,13 +420,13 @@ export class EncryptionService implements OnModuleInit {
 
       return {
         encryptedBuffer: resultBuffer,
-        key: `${tenantId}:files`
+        key: `${effectiveTenantId}:files`
       };
     } catch (error) {
       this.logger.error(`[S7] ❌ خطأ في تشفير الملف: ${error.message}`);
 
       this.auditService.logSecurityEvent('FILE_ENCRYPTION_FAILURE', {
-        tenantId: this.tenantContext.getTenantId() || 'system',
+        tenantId: effectiveTenantId,
         fileName: metadata.fileName || 'unknown',
         error: error.message,
         stack: error.stack,
@@ -425,8 +438,9 @@ export class EncryptionService implements OnModuleInit {
   }
 
   async decryptFile(encryptedBuffer: Buffer, keyId: string): Promise<Buffer> {
+    const [keyTenantId, context] = keyId.split(':');
     try {
-      this.logger.log(`[S7] 📂 بدء فك تشفير الملف`);
+      this.logger.log(`[S7] 📂 بدء فك تشفير الملف للمستأجر: ${keyTenantId}`);
 
       // فصل الـ IV (12 بايت)
       const iv = encryptedBuffer.slice(0, 12);
@@ -435,11 +449,8 @@ export class EncryptionService implements OnModuleInit {
       // البيانات المشفرة المتبقية
       const encryptedData = encryptedBuffer.slice(28);
 
-      // استخراج tenantId و context من keyId
-      const [tenantId, context] = keyId.split(':');
-
       // الحصول على مفتاح فك التشفير
-      const decryptionKey = await this.getTenantEncryptionKey(tenantId, context || 'files');
+      const decryptionKey = await this.getTenantEncryptionKey(keyTenantId, context || 'files');
 
       // إنشاء الـ decipher
       const decipher = createDecipheriv('aes-256-gcm', decryptionKey, iv);
@@ -451,7 +462,7 @@ export class EncryptionService implements OnModuleInit {
 
       // تسجيل عملية فك التشفير
       this.auditService.logSecurityEvent('FILE_DECRYPTION', {
-        tenantId,
+        tenantId: keyTenantId,
         timestamp: new Date().toISOString(),
         fileSize: decrypted.length,
         success: true
@@ -463,6 +474,7 @@ export class EncryptionService implements OnModuleInit {
 
       this.auditService.logSecurityEvent('FILE_DECRYPTION_FAILURE', {
         keyId,
+        tenantId: keyTenantId,
         error: error.message,
         stack: error.stack,
         timestamp: new Date().toISOString()

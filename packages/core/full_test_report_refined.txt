@@ -1,0 +1,1817 @@
+FAIL src/products/payment.service.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/products/payment.service.spec.ts[0m:[93m2[0m:[93m32[0m - [91merror[0m[90m TS2307: [0mCannot find module './payment.service' or its corresponding type declarations.
+
+    [7m2[0m import { PaymentService } from './payment.service';
+    [7m [0m [91m                               ~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/payment.service.spec.ts[0m:[93m3[0m:[93m31[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../prisma/prisma.service' or its corresponding type declarations.
+
+    [7m3[0m import { PrismaService } from '../../../prisma/prisma.service';
+    [7m [0m [91m                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/payment.service.spec.ts[0m:[93m4[0m:[93m36[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../common/access-control/services/rate-limiter.service' or its corresponding type declarations.
+
+    [7m4[0m import { RateLimiterService } from '../../../common/access-control/services/rate-limiter.service';
+    [7m [0m [91m                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/payment.service.spec.ts[0m:[93m5[0m:[93m60[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../common/security/encryption/encrypted-field.service' or its corresponding type declarations.
+
+    [7m5[0m import { EncryptedFieldService as EncryptionService } from '../../../common/security/encryption/encrypted-field.service';
+    [7m [0m [91m                                                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/payment.service.spec.ts[0m:[93m6[0m:[93m30[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../common/monitoring/audit/audit.service' or its corresponding type declarations.
+
+    [7m6[0m import { AuditService } from '../../../common/monitoring/audit/audit.service';
+    [7m [0m [91m                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/payment.service.spec.ts[0m:[93m7[0m:[93m29[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../common/communication/mail.service' or its corresponding type declarations.
+
+    [7m7[0m import { MailService } from '../../../common/communication/mail.service';
+    [7m [0m [91m                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/payment.service.spec.ts[0m:[93m9[0m:[93m20[0m - [91merror[0m[90m TS2307: [0mCannot find module 'stripe' or its corresponding type declarations.
+
+    [7m9[0m import Stripe from 'stripe';
+    [7m [0m [91m                   ~~~~~~~~[0m
+    [96msrc/products/payment.service.spec.ts[0m:[93m11[0m:[93m40[0m - [91merror[0m[90m TS2307: [0mCannot find module '../dto/create-payment-intent.dto' or its corresponding type declarations.
+
+    [7m11[0m import { CreatePaymentIntentDto } from '../dto/create-payment-intent.dto';
+    [7m  [0m [91m                                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/payment.service.spec.ts[0m:[93m12[0m:[93m35[0m - [91merror[0m[90m TS2307: [0mCannot find module '../dto/process-webhook.dto' or its corresponding type declarations.
+
+    [7m12[0m import { ProcessWebhookDto } from '../dto/process-webhook.dto';
+    [7m  [0m [91m                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/payment.service.spec.ts[0m:[93m13[0m:[93m29[0m - [91merror[0m[90m TS2307: [0mCannot find module '../dto/checkout.dto' or its corresponding type declarations.
+
+    [7m13[0m import { CheckoutDto } from '../dto/checkout.dto';
+    [7m  [0m [91m                            ~~~~~~~~~~~~~~~~~~~~~[0m
+
+FAIL src/products/shop.service.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/products/shop.service.spec.ts[0m:[93m2[0m:[93m29[0m - [91merror[0m[90m TS2307: [0mCannot find module './shop.service' or its corresponding type declarations.
+
+    [7m2[0m import { ShopService } from './shop.service';
+    [7m [0m [91m                            ~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/shop.service.spec.ts[0m:[93m3[0m:[93m31[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../prisma/prisma.service' or its corresponding type declarations.
+
+    [7m3[0m import { PrismaService } from '../../../prisma/prisma.service';
+    [7m [0m [91m                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/shop.service.spec.ts[0m:[93m4[0m:[93m38[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../common/security/tenant-context/tenant-context.service' or its corresponding type declarations.
+
+    [7m4[0m import { TenantContextService } from '../../../common/security/tenant-context/tenant-context.service';
+    [7m [0m [91m                                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/shop.service.spec.ts[0m:[93m5[0m:[93m36[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../common/access-control/services/rate-limiter.service' or its corresponding type declarations.
+
+    [7m5[0m import { RateLimiterService } from '../../../common/access-control/services/rate-limiter.service';
+    [7m [0m [91m                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/shop.service.spec.ts[0m:[93m6[0m:[93m60[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../common/security/encryption/encrypted-field.service' or its corresponding type declarations.
+
+    [7m6[0m import { EncryptedFieldService as EncryptionService } from '../../../common/security/encryption/encrypted-field.service';
+    [7m [0m [91m                                                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/shop.service.spec.ts[0m:[93m7[0m:[93m30[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../common/monitoring/audit/audit.service' or its corresponding type declarations.
+
+    [7m7[0m import { AuditService } from '../../../common/monitoring/audit/audit.service';
+    [7m [0m [91m                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/shop.service.spec.ts[0m:[93m8[0m:[93m29[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../common/communication/mail.service' or its corresponding type declarations.
+
+    [7m8[0m import { MailService } from '../../../common/communication/mail.service';
+    [7m [0m [91m                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/shop.service.spec.ts[0m:[93m9[0m:[93m41[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../common/access-control/services/anomaly-detection.service' or its corresponding type declarations.
+
+    [7m9[0m import { AnomalyDetectionService } from '../../../common/access-control/services/anomaly-detection.service';
+    [7m [0m [91m                                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/shop.service.spec.ts[0m:[93m10[0m:[93m39[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../common/security/validation/input-validator.service' or its corresponding type declarations.
+
+    [7m10[0m import { InputValidatorService } from '../../../common/security/validation/input-validator.service';
+    [7m  [0m [91m                                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/shop.service.spec.ts[0m:[93m13[0m:[93m29[0m - [91merror[0m[90m TS2307: [0mCannot find module '../dto/cart-item.dto' or its corresponding type declarations.
+
+    [7m13[0m import { CartItemDto } from '../dto/cart-item.dto';
+    [7m  [0m [91m                            ~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/shop.service.spec.ts[0m:[93m14[0m:[93m33[0m - [91merror[0m[90m TS2307: [0mCannot find module '../dto/customer-info.dto' or its corresponding type declarations.
+
+    [7m14[0m import { CustomerInfoDto } from '../dto/customer-info.dto';
+    [7m  [0m [91m                                ~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/shop.service.spec.ts[0m:[93m15[0m:[93m36[0m - [91merror[0m[90m TS2307: [0mCannot find module '../dto/shipping-address.dto' or its corresponding type declarations.
+
+    [7m15[0m import { ShippingAddressDto } from '../dto/shipping-address.dto';
+    [7m  [0m [91m                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/shop.service.spec.ts[0m:[93m25[0m:[93m8[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../../test/test-utils' or its corresponding type declarations.
+
+    [7m25[0m } from '../../../../test/test-utils';
+    [7m  [0m [91m       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+FAIL src/dashboard/dashboard.service.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/dashboard/dashboard.service.spec.ts[0m:[93m2[0m:[93m34[0m - [91merror[0m[90m TS2307: [0mCannot find module './dashboard.service' or its corresponding type declarations.
+
+    [7m2[0m import { DashboardService } from './dashboard.service';
+    [7m [0m [91m                                 ~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/dashboard/dashboard.service.spec.ts[0m:[93m3[0m:[93m54[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../../test/test-utils' or its corresponding type declarations.
+
+    [7m3[0m import { getCommonProviders, createMockPrisma } from '../../../../test/test-utils';
+    [7m [0m [91m                                                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/dashboard/dashboard.service.spec.ts[0m:[93m4[0m:[93m31[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../prisma/prisma.service' or its corresponding type declarations.
+
+    [7m4[0m import { PrismaService } from '../../../prisma/prisma.service';
+    [7m [0m [91m                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+FAIL src/security/security.context.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/security/security.context.spec.ts[0m:[93m3[0m:[93m30[0m - [91merror[0m[90m TS2307: [0mCannot find module '../monitoring/audit/audit.service' or its corresponding type declarations.
+
+    [7m3[0m import { AuditService } from '../monitoring/audit/audit.service';
+    [7m [0m [91m                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/security/security.context.spec.ts[0m:[93m4[0m:[93m35[0m - [91merror[0m[90m TS2307: [0mCannot find module '../core/apex-config.service' or its corresponding type declarations.
+
+    [7m4[0m import { ApexConfigService } from '../core/apex-config.service';
+    [7m [0m [91m                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+FAIL src/security/layers/s5-error-handling/all-exceptions.filter.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/security/layers/s5-error-handling/all-exceptions.filter.spec.ts[0m:[93m1[0m:[93m37[0m - [91merror[0m[90m TS2307: [0mCannot find module './all-exceptions.filter' or its corresponding type declarations.
+
+    [7m1[0m import { AllExceptionsFilter } from './all-exceptions.filter';
+    [7m [0m [91m                                    ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/security/layers/s5-error-handling/all-exceptions.filter.spec.ts[0m:[93m3[0m:[93m33[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../security/security.context' or its corresponding type declarations.
+
+    [7m3[0m import { SecurityContext } from '../../security/security.context';
+    [7m [0m [91m                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+FAIL src/security/layers/s6-rate-limiting/tenant-throttler.guard.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/security/layers/s6-rate-limiting/tenant-throttler.guard.spec.ts[0m:[93m2[0m:[93m38[0m - [91merror[0m[90m TS2307: [0mCannot find module './tenant-throttler.guard' or its corresponding type declarations.
+
+    [7m2[0m import { TenantThrottlerGuard } from './tenant-throttler.guard';
+    [7m [0m [91m                                     ~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/security/layers/s6-rate-limiting/tenant-throttler.guard.spec.ts[0m:[93m3[0m:[93m36[0m - [91merror[0m[90m TS2307: [0mCannot find module '../services/rate-limiter.service' or its corresponding type declarations.
+
+    [7m3[0m import { RateLimiterService } from '../services/rate-limiter.service';
+    [7m [0m [91m                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/security/layers/s6-rate-limiting/tenant-throttler.guard.spec.ts[0m:[93m4[0m:[93m41[0m - [91merror[0m[90m TS2307: [0mCannot find module '../services/anomaly-detection.service' or its corresponding type declarations.
+
+    [7m4[0m import { AnomalyDetectionService } from '../services/anomaly-detection.service';
+    [7m [0m [91m                                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/security/layers/s6-rate-limiting/tenant-throttler.guard.spec.ts[0m:[93m6[0m:[93m33[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../security/security.context' or its corresponding type declarations.
+
+    [7m6[0m import { SecurityContext } from '../../security/security.context';
+    [7m [0m [91m                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/security/layers/s6-rate-limiting/tenant-throttler.guard.spec.ts[0m:[93m8[0m:[93m36[0m - [91merror[0m[90m TS2307: [0mCannot find module '@nestjs/throttler' or its corresponding type declarations.
+
+    [7m8[0m import { ThrottlerException } from '@nestjs/throttler';
+    [7m [0m [91m                                   ~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/security/layers/s6-rate-limiting/tenant-throttler.guard.spec.ts[0m:[93m9[0m:[93m28[0m - [91merror[0m[90m TS2305: [0mModule '"../../../../test/test-utils"' has no exported member 'createMockRateLimiter'.
+
+    [7m9[0m import { createMockPrisma, createMockRateLimiter, createMockAnomalyDetection, createMockSecurityContext } from '../../../../test/test-utils';
+    [7m [0m [91m                           ~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/security/layers/s6-rate-limiting/tenant-throttler.guard.spec.ts[0m:[93m9[0m:[93m51[0m - [91merror[0m[90m TS2305: [0mModule '"../../../../test/test-utils"' has no exported member 'createMockAnomalyDetection'.
+
+    [7m9[0m import { createMockPrisma, createMockRateLimiter, createMockAnomalyDetection, createMockSecurityContext } from '../../../../test/test-utils';
+    [7m [0m [91m                                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/security/layers/s6-rate-limiting/tenant-throttler.guard.spec.ts[0m:[93m9[0m:[93m79[0m - [91merror[0m[90m TS2724: [0m'"../../../../test/test-utils"' has no exported member named 'createMockSecurityContext'. Did you mean 'createMockTenantContext'?
+
+    [7m9[0m import { createMockPrisma, createMockRateLimiter, createMockAnomalyDetection, createMockSecurityContext } from '../../../../test/test-utils';
+    [7m [0m [91m                                                                              ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+      [96mtest/test-utils.ts[0m:[93m40[0m:[93m14[0m
+        [7m40[0m export const createMockTenantContext = () => ({
+        [7m  [0m [96m             ~~~~~~~~~~~~~~~~~~~~~~~[0m
+        'createMockTenantContext' is declared here.
+
+FAIL src/tenants/database/system-initialization.service.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/tenants/database/system-initialization.service.spec.ts[0m:[93m2[0m:[93m45[0m - [91merror[0m[90m TS2307: [0mCannot find module './system-initialization.service' or its corresponding type declarations.
+
+    [7m2[0m import { SystemInitializationService } from './system-initialization.service';
+    [7m [0m [91m                                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/tenants/database/system-initialization.service.spec.ts[0m:[93m4[0m:[93m35[0m - [91merror[0m[90m TS2307: [0mCannot find module './apex-config.service' or its corresponding type declarations.
+
+    [7m4[0m import { ApexConfigService } from './apex-config.service';
+    [7m [0m [91m                                  ~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/tenants/database/system-initialization.service.spec.ts[0m:[93m5[0m:[93m33[0m - [91merror[0m[90m TS2307: [0mCannot find module '../security/security.context' or its corresponding type declarations.
+
+    [7m5[0m import { SecurityContext } from '../security/security.context';
+    [7m [0m [91m                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+FAIL src/tenants/tenant.utils.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/tenants/tenant.utils.spec.ts[0m:[93m1[0m:[93m92[0m - [91merror[0m[90m TS2307: [0mCannot find module './tenant.utils' or its corresponding type declarations.
+
+    [7m1[0m import { TenantUtils, getTenantSchemaName, ensureValidTenantId, isTenantSchemaReady } from './tenant.utils';
+    [7m [0m [91m                                                                                           ~~~~~~~~~~~~~~~~[0m
+
+[31m[Nest] 6436  - [39m٢٩‏/٠١‏/٢٠٢٦، ٥:٢٠:٤٩ م [31m  ERROR[39m [38;5;3m[AuthService] [39m[31m[M3] ❌ فشل إبطال التوكن: Revoke Error[39m
+[31m[Nest] 6436  - [39m٢٩‏/٠١‏/٢٠٢٦، ٥:٢٠:٤٩ م [31m  ERROR[39m [38;5;3m[AuthService] [39m[31m[M3] ❌ فشل تسجيل المستخدم: البريد الإلكتروني مستخدم مسبقاً[39m
+PASS src/auth/auth.service.spec.ts (354.384 s)
+  AuthService
+    login
+      √ should authenticate user successfully (634 ms)
+      √ should reject invalid credentials (255 ms)
+      √ should reject rate-limited requests (28 ms)
+      √ should throw UnauthorizedException on inactive user (7 ms)
+    revokeToken
+      √ should revoke token successfully (7 ms)
+      √ should throw and log error on failure (46 ms)
+    register
+      √ should register new user successfully (5 ms)
+      √ should throw ConflictException if user exists (8 ms)
+
+FAIL src/app.controller.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/app.controller.spec.ts[0m:[93m2[0m:[93m31[0m - [91merror[0m[90m TS2307: [0mCannot find module './app.controller' or its corresponding type declarations.
+
+    [7m2[0m import { AppController } from './app.controller';
+    [7m [0m [91m                              ~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/app.controller.spec.ts[0m:[93m3[0m:[93m28[0m - [91merror[0m[90m TS2307: [0mCannot find module './app.service' or its corresponding type declarations.
+
+    [7m3[0m import { AppService } from './app.service';
+    [7m [0m [91m                           ~~~~~~~~~~~~~~~[0m
+    [96msrc/app.controller.spec.ts[0m:[93m9[0m:[93m10[0m - [91merror[0m[90m TS2724: [0m'"../test/test-utils"' has no exported member named 'commonProviders'. Did you mean 'getCommonProviders'?
+
+    [7m9[0m import { commonProviders } from '../test/test-utils';
+    [7m [0m [91m         ~~~~~~~~~~~~~~~[0m
+
+      [96mtest/test-utils.ts[0m:[93m57[0m:[93m14[0m
+        [7m57[0m export const getCommonProviders = (additionalProviders: any[] = []): Provider[] => {
+        [7m  [0m [96m             ~~~~~~~~~~~~~~~~~~[0m
+        'getCommonProviders' is declared here.
+
+FAIL src/common/dtos/base.dto.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/common/dtos/base.dto.spec.ts[0m:[93m1[0m:[93m61[0m - [91merror[0m[90m TS2307: [0mCannot find module './base.dto' or its corresponding type declarations.
+
+    [7m1[0m import { BaseSchema, BaseInputSchema, secureValidate } from './base.dto';
+    [7m [0m [91m                                                            ~~~~~~~~~~~~[0m
+
+FAIL src/auth/auth.controller.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/auth/auth.controller.spec.ts[0m:[93m11[0m:[93m26[0m - [91merror[0m[90m TS2307: [0mCannot find module './dto/login.dto' or its corresponding type declarations.
+
+    [7m11[0m import { LoginDto } from './dto/login.dto';
+    [7m  [0m [91m                         ~~~~~~~~~~~~~~~~~[0m
+    [96msrc/auth/auth.controller.spec.ts[0m:[93m12[0m:[93m29[0m - [91merror[0m[90m TS2307: [0mCannot find module './dto/register.dto' or its corresponding type declarations.
+
+    [7m12[0m import { RegisterDto } from './dto/register.dto';
+    [7m  [0m [91m                            ~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/auth/auth.controller.spec.ts[0m:[93m14[0m:[93m35[0m - [91merror[0m[90m TS2307: [0mCannot find module '../common/access-control/guards/tenant-scoped.guard' or its corresponding type declarations.
+
+    [7m14[0m import { TenantScopedGuard } from '../common/access-control/guards/tenant-scoped.guard';
+    [7m  [0m [91m                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/auth/auth.controller.spec.ts[0m:[93m15[0m:[93m30[0m - [91merror[0m[90m TS2307: [0mCannot find module '../common/access-control/guards/license.guard' or its corresponding type declarations.
+
+    [7m15[0m import { LicenseGuard } from '../common/access-control/guards/license.guard';
+    [7m  [0m [91m                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/auth/auth.controller.spec.ts[0m:[93m16[0m:[93m36[0m - [91merror[0m[90m TS2307: [0mCannot find module '../common/presentation/interceptors/defense.interceptor' or its corresponding type declarations.
+
+    [7m16[0m import { DefenseInterceptor } from '../common/presentation/interceptors/defense.interceptor';
+    [7m  [0m [91m                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/auth/auth.controller.spec.ts[0m:[93m17[0m:[93m40[0m - [91merror[0m[90m TS2307: [0mCannot find module '../common/monitoring/audit/audit-logger.interceptor' or its corresponding type declarations.
+
+    [7m17[0m import { AuditLoggerInterceptor } from '../common/monitoring/audit/audit-logger.interceptor';
+    [7m  [0m [91m                                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+FAIL src/security/layers/s7-encryption/encrypted-field.service.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/security/layers/s7-encryption/encrypted-field.service.spec.ts[0m:[93m2[0m:[93m39[0m - [91merror[0m[90m TS2307: [0mCannot find module './encrypted-field.service' or its corresponding type declarations.
+
+    [7m2[0m import { EncryptedFieldService } from './encrypted-field.service';
+    [7m [0m [91m                                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+FAIL src/security/layers/s6-rate-limiting/rate-limiter.service.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/security/layers/s6-rate-limiting/rate-limiter.service.spec.ts[0m:[93m3[0m:[93m35[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../core/apex-config.service' or its corresponding type declarations.
+
+    [7m3[0m import { ApexConfigService } from '../../core/apex-config.service';
+    [7m [0m [91m                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/security/layers/s6-rate-limiting/rate-limiter.service.spec.ts[0m:[93m4[0m:[93m38[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../security/tenant-context/tenant-context.service' or its corresponding type declarations.
+
+    [7m4[0m import { TenantContextService } from '../../security/tenant-context/tenant-context.service';
+    [7m [0m [91m                                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/security/layers/s6-rate-limiting/rate-limiter.service.spec.ts[0m:[93m52[0m:[93m38[0m - [91merror[0m[90m TS2339: [0mProperty 'consume' does not exist on type 'RateLimiterService'.
+
+    [7m52[0m         const result = await service.consume('tenant1');
+    [7m  [0m [91m                                     ~~~~~~~[0m
+    [96msrc/security/layers/s6-rate-limiting/rate-limiter.service.spec.ts[0m:[93m58[0m:[93m38[0m - [91merror[0m[90m TS2339: [0mProperty 'consume' does not exist on type 'RateLimiterService'.
+
+    [7m58[0m         const result = await service.consume('tenant1');
+    [7m  [0m [91m                                     ~~~~~~~[0m
+    [96msrc/security/layers/s6-rate-limiting/rate-limiter.service.spec.ts[0m:[93m64[0m:[93m38[0m - [91merror[0m[90m TS2339: [0mProperty 'consume' does not exist on type 'RateLimiterService'.
+
+    [7m64[0m         const result = await service.consume('t1');
+    [7m  [0m [91m                                     ~~~~~~~[0m
+    [96msrc/security/layers/s6-rate-limiting/rate-limiter.service.spec.ts[0m:[93m74[0m:[93m23[0m - [91merror[0m[90m TS2339: [0mProperty 'consume' does not exist on type 'RateLimiterService'.
+
+    [7m74[0m         await service.consume('t1', 1, 1); // consumes 1
+    [7m  [0m [91m                      ~~~~~~~[0m
+    [96msrc/security/layers/s6-rate-limiting/rate-limiter.service.spec.ts[0m:[93m75[0m:[93m38[0m - [91merror[0m[90m TS2339: [0mProperty 'consume' does not exist on type 'RateLimiterService'.
+
+    [7m75[0m         const result = await service.consume('t1', 1, 1); // should be empty
+    [7m  [0m [91m                                     ~~~~~~~[0m
+    [96msrc/security/layers/s6-rate-limiting/rate-limiter.service.spec.ts[0m:[93m92[0m:[93m38[0m - [91merror[0m[90m TS2339: [0mProperty 'consume' does not exist on type 'RateLimiterService'.
+
+    [7m92[0m         const result = await service.consume(tenantId);
+    [7m  [0m [91m                                     ~~~~~~~[0m
+    [96msrc/security/layers/s6-rate-limiting/rate-limiter.service.spec.ts[0m:[93m101[0m:[93m31[0m - [91merror[0m[90m TS2339: [0mProperty 'checkLimit' does not exist on type 'RateLimiterService'.
+
+    [7m101[0m         expect((await service.checkLimit(key, options)).allowed).toBe(true);
+    [7m   [0m [91m                              ~~~~~~~~~~[0m
+    [96msrc/security/layers/s6-rate-limiting/rate-limiter.service.spec.ts[0m:[93m102[0m:[93m31[0m - [91merror[0m[90m TS2339: [0mProperty 'checkLimit' does not exist on type 'RateLimiterService'.
+
+    [7m102[0m         expect((await service.checkLimit(key, options)).allowed).toBe(true);
+    [7m   [0m [91m                              ~~~~~~~~~~[0m
+    [96msrc/security/layers/s6-rate-limiting/rate-limiter.service.spec.ts[0m:[93m103[0m:[93m31[0m - [91merror[0m[90m TS2339: [0mProperty 'checkLimit' does not exist on type 'RateLimiterService'.
+
+    [7m103[0m         expect((await service.checkLimit(key, options)).allowed).toBe(false);
+    [7m   [0m [91m                              ~~~~~~~~~~[0m
+    [96msrc/security/layers/s6-rate-limiting/rate-limiter.service.spec.ts[0m:[93m108[0m:[93m38[0m - [91merror[0m[90m TS2339: [0mProperty 'consume' does not exist on type 'RateLimiterService'.
+
+    [7m108[0m         const result = await service.consume('t1');
+    [7m   [0m [91m                                     ~~~~~~~[0m
+
+FAIL src/products/shop.controller.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/products/shop.controller.spec.ts[0m:[93m2[0m:[93m32[0m - [91merror[0m[90m TS2307: [0mCannot find module './shop.controller' or its corresponding type declarations.
+
+    [7m2[0m import { ShopController } from './shop.controller';
+    [7m [0m [91m                               ~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/shop.controller.spec.ts[0m:[93m3[0m:[93m29[0m - [91merror[0m[90m TS2307: [0mCannot find module '../services/shop.service' or its corresponding type declarations.
+
+    [7m3[0m import { ShopService } from '../services/shop.service';
+    [7m [0m [91m                            ~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/shop.controller.spec.ts[0m:[93m4[0m:[93m32[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../products/services/product.service' or its corresponding type declarations.
+
+    [7m4[0m import { ProductService } from '../../products/services/product.service';
+    [7m [0m [91m                               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/shop.controller.spec.ts[0m:[93m5[0m:[93m33[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../categories/services/category.service' or its corresponding type declarations.
+
+    [7m5[0m import { CategoryService } from '../../categories/services/category.service';
+    [7m [0m [91m                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/shop.controller.spec.ts[0m:[93m6[0m:[93m32[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../tenants/tenants.service' or its corresponding type declarations.
+
+    [7m6[0m import { TenantsService } from '../../tenants/tenants.service';
+    [7m [0m [91m                               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/shop.controller.spec.ts[0m:[93m9[0m:[93m36[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../../test/test-utils' or its corresponding type declarations.
+
+    [7m9[0m import { getCommonProviders } from '../../../../test/test-utils';
+    [7m [0m [91m                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+FAIL src/products/product.service.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/products/product.service.spec.ts[0m:[93m3[0m:[93m31[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../prisma/prisma.service' or its corresponding type declarations.
+
+    [7m3[0m import { PrismaService } from '../../../prisma/prisma.service';
+    [7m [0m [91m                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/product.service.spec.ts[0m:[93m4[0m:[93m30[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../common/monitoring/audit/audit.service' or its corresponding type declarations.
+
+    [7m4[0m import { AuditService } from '../../../common/monitoring/audit/audit.service';
+    [7m [0m [91m                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/product.service.spec.ts[0m:[93m6[0m:[93m51[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../../test/test-utils' or its corresponding type declarations.
+
+    [7m6[0m import { createMockPrisma, createMockAudit } from '../../../../test/test-utils';
+    [7m [0m [91m                                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+FAIL src/products/payment.controller.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/products/payment.controller.spec.ts[0m:[93m2[0m:[93m35[0m - [91merror[0m[90m TS2307: [0mCannot find module './payment.controller' or its corresponding type declarations.
+
+    [7m2[0m import { PaymentController } from './payment.controller';
+    [7m [0m [91m                                  ~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/payment.controller.spec.ts[0m:[93m3[0m:[93m32[0m - [91merror[0m[90m TS2307: [0mCannot find module '../services/payment.service' or its corresponding type declarations.
+
+    [7m3[0m import { PaymentService } from '../services/payment.service';
+    [7m [0m [91m                               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/payment.controller.spec.ts[0m:[93m4[0m:[93m29[0m - [91merror[0m[90m TS2307: [0mCannot find module '../dto/checkout.dto' or its corresponding type declarations.
+
+    [7m4[0m import { CheckoutDto } from '../dto/checkout.dto';
+    [7m [0m [91m                            ~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/payment.controller.spec.ts[0m:[93m7[0m:[93m54[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../../test/test-utils' or its corresponding type declarations.
+
+    [7m7[0m import { getCommonProviders, createMockPrisma } from '../../../../test/test-utils';
+    [7m [0m [91m                                                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/payment.controller.spec.ts[0m:[93m8[0m:[93m31[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../prisma/prisma.service' or its corresponding type declarations.
+
+    [7m8[0m import { PrismaService } from '../../../prisma/prisma.service';
+    [7m [0m [91m                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[31m[Nest] 10984  - [39m٢٩‏/٠١‏/٢٠٢٦، ٥:٢٧:١٢ م [31m  ERROR[39m [38;5;3m[AuditService] [39m[31m[S4] ❌ فشل تسجيل التدقيق في القاعدة: DB connection lost[39m
+[31m[Nest] 10984  - [39m٢٩‏/٠١‏/٢٠٢٦، ٥:٢٧:١٦ م [31m  ERROR[39m [38;5;3m[AuditService] [39m[31m[S4] ❌ فشل تسجيل التدقيق في القاعدة: DB Fail[39m
+[31m[Nest] 10984  - [39m٢٩‏/٠١‏/٢٠٢٦، ٥:٢٧:١٦ م [31m  ERROR[39m [38;5;3m[AuditService] [39m[31m[S4] ❌ Audit fallback logger failed: mkdir fail[39m
+PASS src/security/layers/s4-audit-logging/audit.service.spec.ts (142.474 s)
+  AuditService
+    √ logs activities (6802 ms)
+    √ logs security events (198 ms)
+    √ falls back to console when system is not ready (453 ms)
+    √ falls back to local file on database error (S4) (430 ms)
+    √ handles missing audit table schema gracefully (88 ms)
+    √ logs operations using logOperation (336 ms)
+    √ throws InternalServerErrorException on getAuditLogs failure (2318 ms)
+    √ logs activity using object argument (527 ms)
+    √ handles mkdirSync error in logToFallback (348 ms)
+
+FAIL src/dashboard/dashboard.controller.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/dashboard/dashboard.controller.spec.ts[0m:[93m2[0m:[93m37[0m - [91merror[0m[90m TS2307: [0mCannot find module './dashboard.controller' or its corresponding type declarations.
+
+    [7m2[0m import { DashboardController } from './dashboard.controller';
+    [7m [0m [91m                                    ~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/dashboard/dashboard.controller.spec.ts[0m:[93m3[0m:[93m34[0m - [91merror[0m[90m TS2307: [0mCannot find module '../services/dashboard.service' or its corresponding type declarations.
+
+    [7m3[0m import { DashboardService } from '../services/dashboard.service';
+    [7m [0m [91m                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/dashboard/dashboard.controller.spec.ts[0m:[93m6[0m:[93m54[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../../test/test-utils' or its corresponding type declarations.
+
+    [7m6[0m import { getCommonProviders, createMockPrisma } from '../../../../test/test-utils';
+    [7m [0m [91m                                                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/dashboard/dashboard.controller.spec.ts[0m:[93m7[0m:[93m31[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../prisma/prisma.service' or its corresponding type declarations.
+
+    [7m7[0m import { PrismaService } from '../../../prisma/prisma.service';
+    [7m [0m [91m                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+FAIL src/security/layers/s4-audit-logging/audit-logger.interceptor.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/security/layers/s4-audit-logging/audit-logger.interceptor.spec.ts[0m:[93m2[0m:[93m40[0m - [91merror[0m[90m TS2307: [0mCannot find module './audit-logger.interceptor' or its corresponding type declarations.
+
+    [7m2[0m import { AuditLoggerInterceptor } from './audit-logger.interceptor';
+    [7m [0m [91m                                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/security/layers/s4-audit-logging/audit-logger.interceptor.spec.ts[0m:[93m3[0m:[93m33[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../security/security.context' or its corresponding type declarations.
+
+    [7m3[0m import { SecurityContext } from '../../security/security.context';
+    [7m [0m [91m                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+FAIL src/security/behavioral/behavioral-security.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/security/behavioral/behavioral-security.spec.ts[0m:[93m1[0m:[93m50[0m - [91merror[0m[90m TS2307: [0mCannot find module './dto/base.dto' or its corresponding type declarations.
+
+    [7m1[0m import { SafeTextSchema, ExternalIdSchema } from './dto/base.dto';
+    [7m [0m [91m                                                 ~~~~~~~~~~~~~~~~[0m
+    [96msrc/security/behavioral/behavioral-security.spec.ts[0m:[93m2[0m:[93m37[0m - [91merror[0m[90m TS2307: [0mCannot find module './dto/product.dto' or its corresponding type declarations.
+
+    [7m2[0m import { UpdateProductSchema } from './dto/product.dto';
+    [7m [0m [91m                                    ~~~~~~~~~~~~~~~~~~~[0m
+
+FAIL src/app.service.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/app.service.spec.ts[0m:[93m2[0m:[93m28[0m - [91merror[0m[90m TS2307: [0mCannot find module './app.service' or its corresponding type declarations.
+
+    [7m2[0m import { AppService } from './app.service';
+    [7m [0m [91m                           ~~~~~~~~~~~~~~~[0m
+
+FAIL src/security/layers/s8-web-protection/defense.interceptor.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/security/layers/s8-web-protection/defense.interceptor.spec.ts[0m:[93m2[0m:[93m36[0m - [91merror[0m[90m TS2307: [0mCannot find module './defense.interceptor' or its corresponding type declarations.
+
+    [7m2[0m import { DefenseInterceptor } from './defense.interceptor';
+    [7m [0m [91m                                   ~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/security/layers/s8-web-protection/defense.interceptor.spec.ts[0m:[93m5[0m:[93m30[0m - [91merror[0m[90m TS2305: [0mModule '"../../../../test/test-utils"' has no exported member 'createMockAnomalyDetection'.
+
+    [7m5[0m import { getCommonProviders, createMockAnomalyDetection } from '../../../../test/test-utils';
+    [7m [0m [91m                             ~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/security/layers/s8-web-protection/defense.interceptor.spec.ts[0m:[93m6[0m:[93m41[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../access-control/services/anomaly-detection.service' or its corresponding type declarations.
+
+    [7m6[0m import { AnomalyDetectionService } from '../../access-control/services/anomaly-detection.service';
+    [7m [0m [91m                                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/security/layers/s8-web-protection/defense.interceptor.spec.ts[0m:[93m7[0m:[93m36[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../access-control/services/rate-limiter.service' or its corresponding type declarations.
+
+    [7m7[0m import { RateLimiterService } from '../../access-control/services/rate-limiter.service';
+    [7m [0m [91m                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+FAIL src/auth/guards/license.guard.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/auth/guards/license.guard.spec.ts[0m:[93m2[0m:[93m43[0m - [91merror[0m[90m TS2307: [0mCannot find module './license.guard' or its corresponding type declarations.
+
+    [7m2[0m import { LicenseGuard, LICENSE_KEY } from './license.guard';
+    [7m [0m [91m                                          ~~~~~~~~~~~~~~~~~[0m
+    [96msrc/auth/guards/license.guard.spec.ts[0m:[93m3[0m:[93m31[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../prisma/prisma.service' or its corresponding type declarations.
+
+    [7m3[0m import { PrismaService } from '../../../prisma/prisma.service';
+    [7m [0m [91m                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/auth/guards/license.guard.spec.ts[0m:[93m6[0m:[93m34[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../../test/test-utils' or its corresponding type declarations.
+
+    [7m6[0m import { createMockPrisma } from '../../../../test/test-utils';
+    [7m [0m [91m                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+FAIL src/auth/auth.module.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/auth/auth.module.spec.ts[0m:[93m20[0m:[93m31[0m - [91merror[0m[90m TS2307: [0mCannot find module '@nestjs/cache-manager' or its corresponding type declarations.
+
+    [7m20[0m import { CACHE_MANAGER } from '@nestjs/cache-manager';
+    [7m  [0m [91m                              ~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+FAIL src/security/layers/s8-web-protection/csp-config.service.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/security/layers/s8-web-protection/csp-config.service.spec.ts[0m:[93m2[0m:[93m27[0m - [91merror[0m[90m TS2307: [0mCannot find module './csp.config' or its corresponding type declarations.
+
+    [7m2[0m import { CSPConfig } from './csp.config';
+    [7m [0m [91m                          ~~~~~~~~~~~~~~[0m
+
+FAIL src/prisma/prisma.service.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/prisma/prisma.service.spec.ts[0m:[93m37[0m:[93m34[0m - [91merror[0m[90m TS2339: [0mProperty 'withTenant' does not exist on type 'PrismaService'.
+
+    [7m37[0m     const result = await service.withTenant('t-uuid', async () => 'ok');
+    [7m  [0m [91m                                 ~~~~~~~~~~[0m
+    [96msrc/prisma/prisma.service.spec.ts[0m:[93m48[0m:[93m19[0m - [91merror[0m[90m TS2339: [0mProperty 'connectWithRetry' does not exist on type 'PrismaService'.
+
+    [7m48[0m     await service.connectWithRetry(2, 50);
+    [7m  [0m [91m                  ~~~~~~~~~~~~~~~~[0m
+
+[31m[Nest] 3960  - [39m٢٩‏/٠١‏/٢٠٢٦، ٥:٢٩:٣٤ م [31m  ERROR[39m [38;5;3m[TenantService] [39m[31m❌ [M2] فشل إنشاء المستأجر المتكامل: Database error[39m
+PASS src/tenants/tenants.service.spec.ts (28.689 s)
+  TenantsService
+    createTenantWithStore
+      √ should create tenant successfully with all steps (144 ms)
+      √ should throw ConflictException if subdomain exists (64 ms)
+      √ should handle transaction failure with proper error (38 ms)
+
+FAIL src/monitoring/system-health.service.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/monitoring/system-health.service.spec.ts[0m:[93m2[0m:[93m37[0m - [91merror[0m[90m TS2307: [0mCannot find module './system-health.service' or its corresponding type declarations.
+
+    [7m2[0m import { SystemHealthService } from './system-health.service';
+    [7m [0m [91m                                    ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/monitoring/system-health.service.spec.ts[0m:[93m3[0m:[93m31[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../prisma/prisma.service' or its corresponding type declarations.
+
+    [7m3[0m import { PrismaService } from '../../prisma/prisma.service';
+    [7m [0m [91m                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/monitoring/system-health.service.spec.ts[0m:[93m4[0m:[93m41[0m - [91merror[0m[90m TS2307: [0mCannot find module '../access-control/services/anomaly-detection.service' or its corresponding type declarations.
+
+    [7m4[0m import { AnomalyDetectionService } from '../access-control/services/anomaly-detection.service';
+    [7m [0m [91m                                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/monitoring/system-health.service.spec.ts[0m:[93m5[0m:[93m36[0m - [91merror[0m[90m TS2307: [0mCannot find module '../access-control/services/rate-limiter.service' or its corresponding type declarations.
+
+    [7m5[0m import { RateLimiterService } from '../access-control/services/rate-limiter.service';
+    [7m [0m [91m                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/monitoring/system-health.service.spec.ts[0m:[93m6[0m:[93m39[0m - [91merror[0m[90m TS2307: [0mCannot find module '../security/encryption/encrypted-field.service' or its corresponding type declarations.
+
+    [7m6[0m import { EncryptedFieldService } from '../security/encryption/encrypted-field.service';
+    [7m [0m [91m                                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/monitoring/system-health.service.spec.ts[0m:[93m7[0m:[93m34[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../test/test-utils' or its corresponding type declarations.
+
+    [7m7[0m import { createMockPrisma } from '../../../test/test-utils';
+    [7m [0m [91m                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[31m[Nest] 6436  - [39m٢٩‏/٠١‏/٢٠٢٦، ٥:٢٩:٣٦ م [31m  ERROR[39m [38;5;3m[EnvValidatorService] [39m[31m❌ [S1] متغير بيئي حرج مفقود: ENCRYPTION_MASTER_KEY. النظام سيرفض التشغيل.[39m
+PASS src/security/layers/s1-environment-verification/environment-validator.service.spec.ts
+  EnvValidatorService
+    √ should be defined (10 ms)
+    √ should validate development environment with warnings (6 ms)
+    √ should throw in production if vars are missing (26 ms)
+    √ should throw in production if JWT_SECRET is weak (4 ms)
+    √ should validate system readiness (3 ms)
+
+[31m[Nest] 6436  - [39m٢٩‏/٠١‏/٢٠٢٦، ٥:٢٩:٣٨ م [31m  ERROR[39m [38;5;3m[TenantContextService] [39m[31m[S2] 🚨 محاولة اختراق: المستأجر t1 يحاول الوصول إلى بيانات t2[39m
+[31m[Nest] 6436  - [39m٢٩‏/٠١‏/٢٠٢٦، ٥:٢٩:٣٨ م [31m  ERROR[39m [38;5;3m[TenantContextService] [39m[31m[S2] 🔒 حادث أمني [672f7648-ee20-4c51-ab46-9ece2d3a863f] - النوع: TENANT_ISOLATION_VIOLATION[39m
+[31m[Nest] 6436  - [39m٢٩‏/٠١‏/٢٠٢٦، ٥:٢٩:٣٨ م [31m  ERROR[39m [38;5;3m[TenantContextService] [39m[31m{
+  "incidentId": "672f7648-ee20-4c51-ab46-9ece2d3a863f",
+  "type": "TENANT_ISOLATION_VIOLATION",
+  "details": {
+    "currentTenant": "t1",
+    "attemptedAccess": "t2",
+    "userAgent": "unknown",
+    "timestamp": "2026-01-29T15:29:38.487Z"
+  },
+  "stack": "Error: \n    at TenantContextService.logSecurityIncident (C:\\Users\\Dell\\Desktop\\52\\packages\\core\\src\\security\\layers\\s2-tenant-isolation\\tenant-context.service.ts:109:14)\n    at TenantContextService.validateTenantAccess (C:\\Users\\Dell\\Desktop\\52\\packages\\core\\src\\security\\layers\\s2-tenant-isolation\\tenant-context.service.ts:90:12)\n    at Object.<anonymous> (C:\\Users\\Dell\\Desktop\\52\\packages\\core\\src\\security\\layers\\s2-tenant-isolation\\tenant-context.service.spec.ts:71:20)\n    at Promise.then.completed (C:\\Users\\Dell\\Desktop\\52\\node_modules\\jest-circus\\build\\utils.js:298:28)\n    at new Promise (<anonymous>)\n    at callAsyncCircusFn (C:\\Users\\Dell\\Desktop\\52\\node_modules\\jest-circus\\build\\utils.js:231:10)\n    at _callCircusTest (C:\\Users\\Dell\\Desktop\\52\\node_modules\\jest-circus\\build\\run.js:316:40)\n    at processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at _runTest (C:\\Users\\Dell\\Desktop\\52\\node_modules\\jest-circus\\build\\run.js:252:3)\n    at _runTestsForDescribeBlock (C:\\Users\\Dell\\Desktop\\52\\node_modules\\jest-circus\\build\\run.js:126:9)\n    at _runTestsForDescribeBlock (C:\\Users\\Dell\\Desktop\\52\\node_modules\\jest-circus\\build\\run.js:121:9)\n    at run (C:\\Users\\Dell\\Desktop\\52\\node_modules\\jest-circus\\build\\run.js:71:3)\n    at runAndTransformResultsToJestFormat (C:\\Users\\Dell\\Desktop\\52\\node_modules\\jest-circus\\build\\legacy-code-todo-rewrite\\jestAdapterInit.js:122:21)\n    at jestAdapter (C:\\Users\\Dell\\Desktop\\52\\node_modules\\jest-circus\\build\\legacy-code-todo-rewrite\\jestAdapter.js:79:19)\n    at runTestInternal (c:\\Users\\Dell\\Desktop\\52\\node_modules\\jest-runner\\build\\runTest.js:367:16)\n    at runTest (c:\\Users\\Dell\\Desktop\\52\\node_modules\\jest-runner\\build\\runTest.js:444:34)\n    at Object.worker (c:\\Users\\Dell\\Desktop\\52\\node_modules\\jest-runner\\build\\testWorker.js:106:12)"
+}[39m
+PASS src/security/layers/s2-tenant-isolation/tenant-context.service.spec.ts
+  TenantContextService
+    √ should be defined (21 ms)
+    √ should extract tenant ID from headers (13 ms)
+    √ should extract tenant ID from subdomains (7 ms)
+    √ should return null if no tenant context found (3 ms)
+    √ should handle system context correctly (4 ms)
+    √ should validate tenant access (37 ms)
+    √ should allow system context to access any tenant (6 ms)
+
+PASS src/products/product.controller.spec.ts
+  ProductController
+    √ should be defined (12 ms)
+    createProduct
+      √ should throw FORBIDDEN if tenant ID is missing (25 ms)
+      √ should call service with tenantId and product (12 ms)
+    findAllProducts
+      √ should fetch products (10 ms)
+    deleteProduct
+      √ should delete product (10 ms)
+
+FAIL src/products/dtos/product.dto.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/products/dtos/product.dto.spec.ts[0m:[93m1[0m:[93m95[0m - [91merror[0m[90m TS2307: [0mCannot find module './product.dto' or its corresponding type declarations.
+
+    [7m1[0m import { ProductSchema, UpdateProductSchema, ProductSearchSchema, ProductVariantSchema } from './product.dto';
+    [7m [0m [91m                                                                                              ~~~~~~~~~~~~~~~[0m
+
+FAIL src/security/layers/s6-rate-limiting/anomaly-detection.service.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/security/layers/s6-rate-limiting/anomaly-detection.service.spec.ts[0m:[93m4[0m:[93m33[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../security/security.context' or its corresponding type declarations.
+
+    [7m4[0m import { SecurityContext } from '../../security/security.context';
+    [7m [0m [91m                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/security/layers/s6-rate-limiting/anomaly-detection.service.spec.ts[0m:[93m37[0m:[93m24[0m - [91merror[0m[90m TS2339: [0mProperty 'isThrottled' does not exist on type 'AnomalyDetectionService'.
+
+    [7m37[0m         expect(service.isThrottled(tenantId)).toBe(false);
+    [7m  [0m [91m                       ~~~~~~~~~~~[0m
+    [96msrc/security/layers/s6-rate-limiting/anomaly-detection.service.spec.ts[0m:[93m41[0m:[93m21[0m - [91merror[0m[90m TS2339: [0mProperty 'inspectFailedEvent' does not exist on type 'AnomalyDetectionService'.
+
+    [7m41[0m             service.inspectFailedEvent(tenantId, 'test-event', new Error('test'));
+    [7m  [0m [91m                    ~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/security/layers/s6-rate-limiting/anomaly-detection.service.spec.ts[0m:[93m44[0m:[93m24[0m - [91merror[0m[90m TS2339: [0mProperty 'isThrottled' does not exist on type 'AnomalyDetectionService'.
+
+    [7m44[0m         expect(service.isThrottled(tenantId)).toBe(true);
+    [7m  [0m [91m                       ~~~~~~~~~~~[0m
+    [96msrc/security/layers/s6-rate-limiting/anomaly-detection.service.spec.ts[0m:[93m50[0m:[93m17[0m - [91merror[0m[90m TS2339: [0mProperty 'inspect' does not exist on type 'AnomalyDetectionService'.
+
+    [7m50[0m         service.inspect(tenantId, true, { path: '/test' });
+    [7m  [0m [91m                ~~~~~~~[0m
+    [96msrc/security/layers/s6-rate-limiting/anomaly-detection.service.spec.ts[0m:[93m52[0m:[93m32[0m - [91merror[0m[90m TS2339: [0mProperty 'getStatus' does not exist on type 'AnomalyDetectionService'.
+
+    [7m52[0m         const status = service.getStatus(tenantId);
+    [7m  [0m [91m                               ~~~~~~~~~[0m
+    [96msrc/security/layers/s6-rate-limiting/anomaly-detection.service.spec.ts[0m:[93m58[0m:[93m17[0m - [91merror[0m[90m TS2339: [0mProperty 'inspectFailedLogin' does not exist on type 'AnomalyDetectionService'.
+
+    [7m58[0m         service.inspectFailedLogin(tenantId, 'user1', '127.0.0.1');
+    [7m  [0m [91m                ~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/security/layers/s6-rate-limiting/anomaly-detection.service.spec.ts[0m:[93m64[0m:[93m17[0m - [91merror[0m[90m TS2339: [0mProperty 'inspect' does not exist on type 'AnomalyDetectionService'.
+
+    [7m64[0m         service.inspect(tenantId, true); // true means critical
+    [7m  [0m [91m                ~~~~~~~[0m
+    [96msrc/security/layers/s6-rate-limiting/anomaly-detection.service.spec.ts[0m:[93m65[0m:[93m24[0m - [91merror[0m[90m TS2339: [0mProperty 'isSuspended' does not exist on type 'AnomalyDetectionService'.
+
+    [7m65[0m         expect(service.isSuspended(tenantId)).toBe(true);
+    [7m  [0m [91m                       ~~~~~~~~~~~[0m
+
+PASS src/common/utils/crypto.utils.spec.ts
+  CryptoUtils
+    generateSecureHash
+      √ should generate a hash with a colon separator (223 ms)
+      √ should use provided salt if given (124 ms)
+      √ should generate different hashes for same password with random salt (228 ms)
+    verifySecureHash
+      √ should return true for valid password and hash (242 ms)
+      √ should return false for invalid password (237 ms)
+      √ should return false for invalid hash format (1 ms)
+      √ should return false for empty hash
+      √ should handle errors gracefully
+
+[31m[Nest] 10984  - [39m٢٩‏/٠١‏/٢٠٢٦، ٥:٢٩:٥٣ م [31m  ERROR[39m [38;5;3m[TenantScopedGuard] [39m[31m[S2] 🔴 Missing tenantId for: TestController.testMethod[39m
+PASS src/security/layers/s2-tenant-isolation/tenant-scoped.guard.spec.ts
+  TenantScopedGuard
+    √ should be defined (13 ms)
+    √ should allow access if tenant ID is present in context (8 ms)
+    √ should deny access if tenant ID is missing (23 ms)
+    √ should allow system routes without tenant context (2 ms)
+    √ should allow health check routes (3 ms)
+
+FAIL src/tenants/dtos/tenant.dto.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/tenants/dtos/tenant.dto.spec.ts[0m:[93m1[0m:[93m76[0m - [91merror[0m[90m TS2307: [0mCannot find module './tenant.dto' or its corresponding type declarations.
+
+    [7m1[0m import { CreateTenantSchema, UpdateTenantSchema, TenantSearchSchema } from './tenant.dto';
+    [7m [0m [91m                                                                           ~~~~~~~~~~~~~~[0m
+
+FAIL src/events/events.module.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/events/events.module.spec.ts[0m:[93m2[0m:[93m30[0m - [91merror[0m[90m TS2307: [0mCannot find module './events.module' or its corresponding type declarations.
+
+    [7m2[0m import { EventsModule } from './events.module';
+    [7m [0m [91m                             ~~~~~~~~~~~~~~~~~[0m
+    [96msrc/events/events.module.spec.ts[0m:[93m3[0m:[93m31[0m - [91merror[0m[90m TS2307: [0mCannot find module './events.service' or its corresponding type declarations.
+
+    [7m3[0m import { EventsService } from './events.service';
+    [7m [0m [91m                              ~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/events/events.module.spec.ts[0m:[93m8[0m:[93m10[0m - [91merror[0m[90m TS2724: [0m'"../../test/test-utils"' has no exported member named 'createMockSecurityContext'. Did you mean 'createMockTenantContext'?
+
+    [7m8[0m import { createMockSecurityContext, createMockPrisma, createMockAnomalyDetection, createMockTenantContext, createMockInputValidator, createMockCache } from '../../test/test-utils';
+    [7m [0m [91m         ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+      [96mtest/test-utils.ts[0m:[93m40[0m:[93m14[0m
+        [7m40[0m export const createMockTenantContext = () => ({
+        [7m  [0m [96m             ~~~~~~~~~~~~~~~~~~~~~~~[0m
+        'createMockTenantContext' is declared here.
+    [96msrc/events/events.module.spec.ts[0m:[93m8[0m:[93m55[0m - [91merror[0m[90m TS2305: [0mModule '"../../test/test-utils"' has no exported member 'createMockAnomalyDetection'.
+
+    [7m8[0m import { createMockSecurityContext, createMockPrisma, createMockAnomalyDetection, createMockTenantContext, createMockInputValidator, createMockCache } from '../../test/test-utils';
+    [7m [0m [91m                                                      ~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/events/events.module.spec.ts[0m:[93m8[0m:[93m108[0m - [91merror[0m[90m TS2305: [0mModule '"../../test/test-utils"' has no exported member 'createMockInputValidator'.
+
+    [7m8[0m import { createMockSecurityContext, createMockPrisma, createMockAnomalyDetection, createMockTenantContext, createMockInputValidator, createMockCache } from '../../test/test-utils';
+    [7m [0m [91m                                                                                                           ~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/events/events.module.spec.ts[0m:[93m8[0m:[93m134[0m - [91merror[0m[90m TS2305: [0mModule '"../../test/test-utils"' has no exported member 'createMockCache'.
+
+    [7m8[0m import { createMockSecurityContext, createMockPrisma, createMockAnomalyDetection, createMockTenantContext, createMockInputValidator, createMockCache } from '../../test/test-utils';
+    [7m [0m [91m                                                                                                                                     ~~~~~~~~~~~~~~~[0m
+
+FAIL src/security/layers/s3-input-validation/sanitizer.service.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/security/layers/s3-input-validation/sanitizer.service.spec.ts[0m:[93m2[0m:[93m34[0m - [91merror[0m[90m TS2307: [0mCannot find module './sanitizer.service' or its corresponding type declarations.
+
+    [7m2[0m import { SanitizerService } from './sanitizer.service';
+    [7m [0m [91m                                 ~~~~~~~~~~~~~~~~~~~~~[0m
+
+FAIL src/auth/services/jwt.service.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/auth/services/jwt.service.spec.ts[0m:[93m2[0m:[93m28[0m - [91merror[0m[90m TS2307: [0mCannot find module './jwt.service' or its corresponding type declarations.
+
+    [7m2[0m import { JwtService } from './jwt.service';
+    [7m [0m [91m                           ~~~~~~~~~~~~~~~[0m
+    [96msrc/auth/services/jwt.service.spec.ts[0m:[93m4[0m:[93m31[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../prisma/prisma.service' or its corresponding type declarations.
+
+    [7m4[0m import { PrismaService } from '../../../prisma/prisma.service';
+    [7m [0m [91m                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/auth/services/jwt.service.spec.ts[0m:[93m5[0m:[93m30[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../caching/cache.service' or its corresponding type declarations.
+
+    [7m5[0m import { CacheService } from '../../caching/cache.service';
+    [7m [0m [91m                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+PASS src/security/layers/s2-tenant-isolation/tenant-context.interceptor.spec.ts
+  TenantContextInterceptor
+    √ should be defined (11 ms)
+    √ should pass through the request (9 ms)
+
+FAIL src/security/layers/s8-web-protection/helmet.config.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/security/layers/s8-web-protection/helmet.config.spec.ts[0m:[93m2[0m:[93m30[0m - [91merror[0m[90m TS2307: [0mCannot find module './helmet.config' or its corresponding type declarations.
+
+    [7m2[0m import { HelmetConfig } from './helmet.config';
+    [7m [0m [91m                             ~~~~~~~~~~~~~~~~~[0m
+
+PASS src/security/layers/s7-encryption/encryption.service.spec.ts
+  EncryptionService
+    √ should be defined (193 ms)
+    √ should encrypt and decrypt (369 ms)
+
+FAIL src/security/layers/s4-audit-logging/audit.controller.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/security/layers/s4-audit-logging/audit.controller.spec.ts[0m:[93m2[0m:[93m33[0m - [91merror[0m[90m TS2307: [0mCannot find module './audit.controller' or its corresponding type declarations.
+
+    [7m2[0m import { AuditController } from './audit.controller';
+    [7m [0m [91m                                ~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/security/layers/s4-audit-logging/audit.controller.spec.ts[0m:[93m4[0m:[93m35[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../access-control/guards/tenant-scoped.guard' or its corresponding type declarations.
+
+    [7m4[0m import { TenantScopedGuard } from '../../access-control/guards/tenant-scoped.guard';
+    [7m [0m [91m                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+PASS src/security/layers/s1-environment-verification/apex-config.service.spec.ts
+  ApexConfigService
+    √ should be defined (35 ms)
+    √ should retrieve keys correctly (3 ms)
+    √ should identify production environment (3 ms)
+    √ should throw in production if critical vars are missing (44 ms)
+    √ should get numbers and booleans (4 ms)
+
+FAIL src/common/communication/mail.service.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/common/communication/mail.service.spec.ts[0m:[93m2[0m:[93m29[0m - [91merror[0m[90m TS2307: [0mCannot find module './mail.service' or its corresponding type declarations.
+
+    [7m2[0m import { MailService } from './mail.service';
+    [7m [0m [91m                            ~~~~~~~~~~~~~~~~[0m
+
+FAIL src/auth/guards/super-admin.guard.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/auth/guards/super-admin.guard.spec.ts[0m:[93m2[0m:[93m33[0m - [91merror[0m[90m TS2307: [0mCannot find module './super-admin.guard' or its corresponding type declarations.
+
+    [7m2[0m import { SuperAdminGuard } from './super-admin.guard';
+    [7m [0m [91m                                ~~~~~~~~~~~~~~~~~~~~~[0m
+
+FAIL src/main.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/main.spec.ts[0m:[93m4[0m:[93m31[0m - [91merror[0m[90m TS2307: [0mCannot find module './app.controller' or its corresponding type declarations.
+
+    [7m4[0m import { AppController } from './app.controller';
+    [7m [0m [91m                              ~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/main.spec.ts[0m:[93m5[0m:[93m28[0m - [91merror[0m[90m TS2307: [0mCannot find module './app.service' or its corresponding type declarations.
+
+    [7m5[0m import { AppService } from './app.service';
+    [7m [0m [91m                           ~~~~~~~~~~~~~~~[0m
+    [96msrc/main.spec.ts[0m:[93m7[0m:[93m37[0m - [91merror[0m[90m TS2307: [0mCannot find module './common/presentation/filters/all-exceptions.filter' or its corresponding type declarations.
+
+    [7m7[0m import { AllExceptionsFilter } from './common/presentation/filters/all-exceptions.filter';
+    [7m [0m [91m                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+PASS src/common/caching/cache.service.spec.ts
+  CacheService
+    √ should be defined (9 ms)
+    √ should set and get values (4 ms)
+    √ should return null for non-existent keys (3 ms)
+    √ should delete keys (3 ms)
+    √ should clear all keys (3 ms)
+
+FAIL src/events/events.service.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/events/events.service.spec.ts[0m:[93m2[0m:[93m31[0m - [91merror[0m[90m TS2307: [0mCannot find module './events.service' or its corresponding type declarations.
+
+    [7m2[0m import { EventsService } from './events.service';
+    [7m [0m [91m                              ~~~~~~~~~~~~~~~~~~[0m
+
+FAIL src/tenants/tenant.middleware.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/tenants/tenant.middleware.spec.ts[0m:[93m1[0m:[93m34[0m - [91merror[0m[90m TS2307: [0mCannot find module './tenant.middleware' or its corresponding type declarations.
+
+    [7m1[0m import { TenantMiddleware } from './tenant.middleware';
+    [7m [0m [91m                                 ~~~~~~~~~~~~~~~~~~~~~[0m
+
+FAIL src/security/layers/s3-input-validation/input-validator.service.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/security/layers/s3-input-validation/input-validator.service.spec.ts[0m:[93m24[0m:[93m34[0m - [91merror[0m[90m TS2339: [0mProperty 'secureValidate' does not exist on type 'InputValidatorService'.
+
+    [7m24[0m     const result = await service.secureValidate(schema, data, 'test');
+    [7m  [0m [91m                                 ~~~~~~~~~~~~~~[0m
+    [96msrc/security/layers/s3-input-validation/input-validator.service.spec.ts[0m:[93m30[0m:[93m26[0m - [91merror[0m[90m TS2339: [0mProperty 'secureValidate' does not exist on type 'InputValidatorService'.
+
+    [7m30[0m     await expect(service.secureValidate(schema, data, 'test')).rejects.toThrow(BadRequestException);
+    [7m  [0m [91m                         ~~~~~~~~~~~~~~[0m
+
+FAIL src/tenants/dtos/create-tenant.dto.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/tenants/dtos/create-tenant.dto.spec.ts[0m:[93m3[0m:[93m33[0m - [91merror[0m[90m TS2307: [0mCannot find module './create-tenant.dto' or its corresponding type declarations.
+
+    [7m3[0m import { CreateTenantDto } from './create-tenant.dto';
+    [7m [0m [91m                                ~~~~~~~~~~~~~~~~~~~~~[0m
+
+PASS src/auth/dtos/login.dto.spec.ts
+  LoginDto validation
+    √ validates a correct DTO (20 ms)
+    √ fails when email is missing (2 ms)
+    √ fails when password is too short (4 ms)
+
+PASS src/auth/dtos/register.dto.spec.ts (6.489 s)
+  RegisterDto validation
+    √ passes with valid data (19 ms)
+    √ fails when email format is wrong (2 ms)
+    √ fails when password is too short (2 ms)
+
+FAIL src/events/events.controller.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/events/events.controller.spec.ts[0m:[93m2[0m:[93m34[0m - [91merror[0m[90m TS2307: [0mCannot find module './events.controller' or its corresponding type declarations.
+
+    [7m2[0m import { EventsController } from './events.controller';
+    [7m [0m [91m                                 ~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/events/events.controller.spec.ts[0m:[93m3[0m:[93m31[0m - [91merror[0m[90m TS2307: [0mCannot find module './events.service' or its corresponding type declarations.
+
+    [7m3[0m import { EventsService } from './events.service';
+    [7m [0m [91m                              ~~~~~~~~~~~~~~~~~~[0m
+
+FAIL src/tenants/tenants.controller.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/tenants/tenants.controller.spec.ts[0m:[93m2[0m:[93m35[0m - [91merror[0m[90m TS2307: [0mCannot find module './tenants.controller' or its corresponding type declarations.
+
+    [7m2[0m import { TenantsController } from './tenants.controller';
+    [7m [0m [91m                                  ~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/tenants/tenants.controller.spec.ts[0m:[93m3[0m:[93m32[0m - [91merror[0m[90m TS2307: [0mCannot find module './tenants.service' or its corresponding type declarations.
+
+    [7m3[0m import { TenantsService } from './tenants.service';
+    [7m [0m [91m                               ~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/tenants/tenants.controller.spec.ts[0m:[93m4[0m:[93m36[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../test/test-utils' or its corresponding type declarations.
+
+    [7m4[0m import { getCommonProviders } from '../../../test/test-utils';
+    [7m [0m [91m                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+PASS src/security/layers/s2-tenant-isolation/tenant-context.module.spec.ts
+  TenantContextModule
+    √ exports TenantContextService (3 ms)
+
+PASS src/products/business.controller.spec.ts (26.864 s)
+  BusinessController
+    √ should be defined (26 ms)
+    createProduct
+      √ should throw FORBIDDEN if tenant ID is missing (24 ms)
+    createCustomer
+      √ should call service for customer creation (5 ms)
+
+FAIL src/security/layers/s7-encryption/key-management.service.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/security/layers/s7-encryption/key-management.service.spec.ts[0m:[93m2[0m:[93m38[0m - [91merror[0m[90m TS2307: [0mCannot find module './key-management.service' or its corresponding type declarations.
+
+    [7m2[0m import { KeyManagementService } from './key-management.service';
+    [7m [0m [91m                                     ~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+FAIL src/tenants/tenants.module.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/tenants/tenants.module.spec.ts[0m:[93m2[0m:[93m32[0m - [91merror[0m[90m TS2307: [0mCannot find module './tenants.service' or its corresponding type declarations.
+
+    [7m2[0m import { TenantsService } from './tenants.service';
+    [7m [0m [91m                               ~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/tenants/tenants.module.spec.ts[0m:[93m3[0m:[93m36[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../test/test-utils' or its corresponding type declarations.
+
+    [7m3[0m import { getCommonProviders } from '../../../test/test-utils';
+    [7m [0m [91m                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+PASS src/prisma/prisma.module.spec.ts
+  PrismaModule
+    √ exports PrismaService (3 ms)
+
+FAIL src/security/layers/s4-audit-logging/audit.module.spec.ts
+  AuditModule
+    × exports AuditService
+
+  ● AuditModule › exports AuditService
+
+    Nest can't resolve dependencies of the AuditService (REQUEST, TenantContextService, ?). Please make sure that the argument PrismaService at index [2] is available in the RootTestModule context.
+
+    Potential solutions:
+    - Is RootTestModule a valid NestJS module?
+    - If PrismaService is a provider, is it part of the current RootTestModule?
+    - If PrismaService is exported from a separate @Module, is that module imported within RootTestModule?
+      @Module({
+        imports: [ /* the Module containing PrismaService */ ]
+      })
+
+    [0m [90m  6 |[39m   [36mlet[39m module[33m:[39m [33mTestingModule[39m[33m;[39m
+     [90m  7 |[39m   beforeAll([36masync[39m () [33m=>[39m {
+    [31m[1m>[22m[39m[90m  8 |[39m     module [33m=[39m [36mawait[39m [33mTest[39m[33m.[39mcreateTestingModule({
+     [90m    |[39m              [31m[1m^[22m[39m
+     [90m  9 |[39m       providers[33m:[39m [
+     [90m 10 |[39m         [33mAuditService[39m[33m,[39m
+     [90m 11 |[39m         [33m...[39mgetCommonProviders([[33mAuditService[39m])[33m,[39m[0m
+
+      at TestingInjector.lookupComponentInParentModules (../../../node_modules/@nestjs/core/injector/injector.js:262:19)
+      at TestingInjector.resolveComponentInstance (../../../node_modules/@nestjs/core/injector/injector.js:215:33)
+      at TestingInjector.resolveComponentInstance (../../../node_modules/@nestjs/testing/testing-injector.js:19:45)
+      at resolveParam (../../../node_modules/@nestjs/core/injector/injector.js:129:38)
+          at async Promise.all (index 2)
+      at TestingInjector.resolveConstructorParams (../../../node_modules/@nestjs/core/injector/injector.js:144:27)
+      at TestingInjector.loadInstance (../../../node_modules/@nestjs/core/injector/injector.js:70:13)
+      at TestingInjector.loadProvider (../../../node_modules/@nestjs/core/injector/injector.js:98:9)
+      at ../../../node_modules/@nestjs/core/injector/instance-loader.js:56:13
+          at async Promise.all (index 3)
+      at TestingInstanceLoader.createInstancesOfProviders (../../../node_modules/@nestjs/core/injector/instance-loader.js:55:9)
+      at ../../../node_modules/@nestjs/core/injector/instance-loader.js:40:13
+          at async Promise.all (index 1)
+      at TestingInstanceLoader.createInstances (../../../node_modules/@nestjs/core/injector/instance-loader.js:39:9)
+      at TestingInstanceLoader.createInstancesOfDependencies (../../../node_modules/@nestjs/core/injector/instance-loader.js:22:13)
+      at TestingInstanceLoader.createInstancesOfDependencies (../../../node_modules/@nestjs/testing/testing-instance-loader.js:9:9)
+      at TestingModuleBuilder.createInstancesOfDependencies (../../../node_modules/@nestjs/testing/testing-module.builder.js:118:9)
+      at TestingModuleBuilder.compile (../../../node_modules/@nestjs/testing/testing-module.builder.js:74:9)
+      at Object.<anonymous> (security/layers/s4-audit-logging/audit.module.spec.ts:8:14)
+
+A worker process has failed to exit gracefully and has been force exited. This is likely caused by tests leaking due to improper teardown. Try running with --detectOpenHandles to find leaks. Active timers can also cause this, ensure that .unref() was called on them.
+Summary of all failing tests
+FAIL products/payment.service.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/products/payment.service.spec.ts[0m:[93m2[0m:[93m32[0m - [91merror[0m[90m TS2307: [0mCannot find module './payment.service' or its corresponding type declarations.
+
+    [7m2[0m import { PaymentService } from './payment.service';
+    [7m [0m [91m                               ~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/payment.service.spec.ts[0m:[93m3[0m:[93m31[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../prisma/prisma.service' or its corresponding type declarations.
+
+    [7m3[0m import { PrismaService } from '../../../prisma/prisma.service';
+    [7m [0m [91m                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/payment.service.spec.ts[0m:[93m4[0m:[93m36[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../common/access-control/services/rate-limiter.service' or its corresponding type declarations.
+
+    [7m4[0m import { RateLimiterService } from '../../../common/access-control/services/rate-limiter.service';
+    [7m [0m [91m                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/payment.service.spec.ts[0m:[93m5[0m:[93m60[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../common/security/encryption/encrypted-field.service' or its corresponding type declarations.
+
+    [7m5[0m import { EncryptedFieldService as EncryptionService } from '../../../common/security/encryption/encrypted-field.service';
+    [7m [0m [91m                                                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/payment.service.spec.ts[0m:[93m6[0m:[93m30[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../common/monitoring/audit/audit.service' or its corresponding type declarations.
+
+    [7m6[0m import { AuditService } from '../../../common/monitoring/audit/audit.service';
+    [7m [0m [91m                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/payment.service.spec.ts[0m:[93m7[0m:[93m29[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../common/communication/mail.service' or its corresponding type declarations.
+
+    [7m7[0m import { MailService } from '../../../common/communication/mail.service';
+    [7m [0m [91m                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/payment.service.spec.ts[0m:[93m9[0m:[93m20[0m - [91merror[0m[90m TS2307: [0mCannot find module 'stripe' or its corresponding type declarations.
+
+    [7m9[0m import Stripe from 'stripe';
+    [7m [0m [91m                   ~~~~~~~~[0m
+    [96msrc/products/payment.service.spec.ts[0m:[93m11[0m:[93m40[0m - [91merror[0m[90m TS2307: [0mCannot find module '../dto/create-payment-intent.dto' or its corresponding type declarations.
+
+    [7m11[0m import { CreatePaymentIntentDto } from '../dto/create-payment-intent.dto';
+    [7m  [0m [91m                                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/payment.service.spec.ts[0m:[93m12[0m:[93m35[0m - [91merror[0m[90m TS2307: [0mCannot find module '../dto/process-webhook.dto' or its corresponding type declarations.
+
+    [7m12[0m import { ProcessWebhookDto } from '../dto/process-webhook.dto';
+    [7m  [0m [91m                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/payment.service.spec.ts[0m:[93m13[0m:[93m29[0m - [91merror[0m[90m TS2307: [0mCannot find module '../dto/checkout.dto' or its corresponding type declarations.
+
+    [7m13[0m import { CheckoutDto } from '../dto/checkout.dto';
+    [7m  [0m [91m                            ~~~~~~~~~~~~~~~~~~~~~[0m
+
+FAIL products/shop.service.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/products/shop.service.spec.ts[0m:[93m2[0m:[93m29[0m - [91merror[0m[90m TS2307: [0mCannot find module './shop.service' or its corresponding type declarations.
+
+    [7m2[0m import { ShopService } from './shop.service';
+    [7m [0m [91m                            ~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/shop.service.spec.ts[0m:[93m3[0m:[93m31[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../prisma/prisma.service' or its corresponding type declarations.
+
+    [7m3[0m import { PrismaService } from '../../../prisma/prisma.service';
+    [7m [0m [91m                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/shop.service.spec.ts[0m:[93m4[0m:[93m38[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../common/security/tenant-context/tenant-context.service' or its corresponding type declarations.
+
+    [7m4[0m import { TenantContextService } from '../../../common/security/tenant-context/tenant-context.service';
+    [7m [0m [91m                                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/shop.service.spec.ts[0m:[93m5[0m:[93m36[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../common/access-control/services/rate-limiter.service' or its corresponding type declarations.
+
+    [7m5[0m import { RateLimiterService } from '../../../common/access-control/services/rate-limiter.service';
+    [7m [0m [91m                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/shop.service.spec.ts[0m:[93m6[0m:[93m60[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../common/security/encryption/encrypted-field.service' or its corresponding type declarations.
+
+    [7m6[0m import { EncryptedFieldService as EncryptionService } from '../../../common/security/encryption/encrypted-field.service';
+    [7m [0m [91m                                                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/shop.service.spec.ts[0m:[93m7[0m:[93m30[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../common/monitoring/audit/audit.service' or its corresponding type declarations.
+
+    [7m7[0m import { AuditService } from '../../../common/monitoring/audit/audit.service';
+    [7m [0m [91m                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/shop.service.spec.ts[0m:[93m8[0m:[93m29[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../common/communication/mail.service' or its corresponding type declarations.
+
+    [7m8[0m import { MailService } from '../../../common/communication/mail.service';
+    [7m [0m [91m                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/shop.service.spec.ts[0m:[93m9[0m:[93m41[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../common/access-control/services/anomaly-detection.service' or its corresponding type declarations.
+
+    [7m9[0m import { AnomalyDetectionService } from '../../../common/access-control/services/anomaly-detection.service';
+    [7m [0m [91m                                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/shop.service.spec.ts[0m:[93m10[0m:[93m39[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../common/security/validation/input-validator.service' or its corresponding type declarations.
+
+    [7m10[0m import { InputValidatorService } from '../../../common/security/validation/input-validator.service';
+    [7m  [0m [91m                                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/shop.service.spec.ts[0m:[93m13[0m:[93m29[0m - [91merror[0m[90m TS2307: [0mCannot find module '../dto/cart-item.dto' or its corresponding type declarations.
+
+    [7m13[0m import { CartItemDto } from '../dto/cart-item.dto';
+    [7m  [0m [91m                            ~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/shop.service.spec.ts[0m:[93m14[0m:[93m33[0m - [91merror[0m[90m TS2307: [0mCannot find module '../dto/customer-info.dto' or its corresponding type declarations.
+
+    [7m14[0m import { CustomerInfoDto } from '../dto/customer-info.dto';
+    [7m  [0m [91m                                ~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/shop.service.spec.ts[0m:[93m15[0m:[93m36[0m - [91merror[0m[90m TS2307: [0mCannot find module '../dto/shipping-address.dto' or its corresponding type declarations.
+
+    [7m15[0m import { ShippingAddressDto } from '../dto/shipping-address.dto';
+    [7m  [0m [91m                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/shop.service.spec.ts[0m:[93m25[0m:[93m8[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../../test/test-utils' or its corresponding type declarations.
+
+    [7m25[0m } from '../../../../test/test-utils';
+    [7m  [0m [91m       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+FAIL dashboard/dashboard.service.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/dashboard/dashboard.service.spec.ts[0m:[93m2[0m:[93m34[0m - [91merror[0m[90m TS2307: [0mCannot find module './dashboard.service' or its corresponding type declarations.
+
+    [7m2[0m import { DashboardService } from './dashboard.service';
+    [7m [0m [91m                                 ~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/dashboard/dashboard.service.spec.ts[0m:[93m3[0m:[93m54[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../../test/test-utils' or its corresponding type declarations.
+
+    [7m3[0m import { getCommonProviders, createMockPrisma } from '../../../../test/test-utils';
+    [7m [0m [91m                                                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/dashboard/dashboard.service.spec.ts[0m:[93m4[0m:[93m31[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../prisma/prisma.service' or its corresponding type declarations.
+
+    [7m4[0m import { PrismaService } from '../../../prisma/prisma.service';
+    [7m [0m [91m                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+FAIL security/security.context.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/security/security.context.spec.ts[0m:[93m3[0m:[93m30[0m - [91merror[0m[90m TS2307: [0mCannot find module '../monitoring/audit/audit.service' or its corresponding type declarations.
+
+    [7m3[0m import { AuditService } from '../monitoring/audit/audit.service';
+    [7m [0m [91m                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/security/security.context.spec.ts[0m:[93m4[0m:[93m35[0m - [91merror[0m[90m TS2307: [0mCannot find module '../core/apex-config.service' or its corresponding type declarations.
+
+    [7m4[0m import { ApexConfigService } from '../core/apex-config.service';
+    [7m [0m [91m                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+FAIL security/layers/s5-error-handling/all-exceptions.filter.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/security/layers/s5-error-handling/all-exceptions.filter.spec.ts[0m:[93m1[0m:[93m37[0m - [91merror[0m[90m TS2307: [0mCannot find module './all-exceptions.filter' or its corresponding type declarations.
+
+    [7m1[0m import { AllExceptionsFilter } from './all-exceptions.filter';
+    [7m [0m [91m                                    ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/security/layers/s5-error-handling/all-exceptions.filter.spec.ts[0m:[93m3[0m:[93m33[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../security/security.context' or its corresponding type declarations.
+
+    [7m3[0m import { SecurityContext } from '../../security/security.context';
+    [7m [0m [91m                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+FAIL security/layers/s6-rate-limiting/tenant-throttler.guard.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/security/layers/s6-rate-limiting/tenant-throttler.guard.spec.ts[0m:[93m2[0m:[93m38[0m - [91merror[0m[90m TS2307: [0mCannot find module './tenant-throttler.guard' or its corresponding type declarations.
+
+    [7m2[0m import { TenantThrottlerGuard } from './tenant-throttler.guard';
+    [7m [0m [91m                                     ~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/security/layers/s6-rate-limiting/tenant-throttler.guard.spec.ts[0m:[93m3[0m:[93m36[0m - [91merror[0m[90m TS2307: [0mCannot find module '../services/rate-limiter.service' or its corresponding type declarations.
+
+    [7m3[0m import { RateLimiterService } from '../services/rate-limiter.service';
+    [7m [0m [91m                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/security/layers/s6-rate-limiting/tenant-throttler.guard.spec.ts[0m:[93m4[0m:[93m41[0m - [91merror[0m[90m TS2307: [0mCannot find module '../services/anomaly-detection.service' or its corresponding type declarations.
+
+    [7m4[0m import { AnomalyDetectionService } from '../services/anomaly-detection.service';
+    [7m [0m [91m                                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/security/layers/s6-rate-limiting/tenant-throttler.guard.spec.ts[0m:[93m6[0m:[93m33[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../security/security.context' or its corresponding type declarations.
+
+    [7m6[0m import { SecurityContext } from '../../security/security.context';
+    [7m [0m [91m                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/security/layers/s6-rate-limiting/tenant-throttler.guard.spec.ts[0m:[93m8[0m:[93m36[0m - [91merror[0m[90m TS2307: [0mCannot find module '@nestjs/throttler' or its corresponding type declarations.
+
+    [7m8[0m import { ThrottlerException } from '@nestjs/throttler';
+    [7m [0m [91m                                   ~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/security/layers/s6-rate-limiting/tenant-throttler.guard.spec.ts[0m:[93m9[0m:[93m28[0m - [91merror[0m[90m TS2305: [0mModule '"../../../../test/test-utils"' has no exported member 'createMockRateLimiter'.
+
+    [7m9[0m import { createMockPrisma, createMockRateLimiter, createMockAnomalyDetection, createMockSecurityContext } from '../../../../test/test-utils';
+    [7m [0m [91m                           ~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/security/layers/s6-rate-limiting/tenant-throttler.guard.spec.ts[0m:[93m9[0m:[93m51[0m - [91merror[0m[90m TS2305: [0mModule '"../../../../test/test-utils"' has no exported member 'createMockAnomalyDetection'.
+
+    [7m9[0m import { createMockPrisma, createMockRateLimiter, createMockAnomalyDetection, createMockSecurityContext } from '../../../../test/test-utils';
+    [7m [0m [91m                                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/security/layers/s6-rate-limiting/tenant-throttler.guard.spec.ts[0m:[93m9[0m:[93m79[0m - [91merror[0m[90m TS2724: [0m'"../../../../test/test-utils"' has no exported member named 'createMockSecurityContext'. Did you mean 'createMockTenantContext'?
+
+    [7m9[0m import { createMockPrisma, createMockRateLimiter, createMockAnomalyDetection, createMockSecurityContext } from '../../../../test/test-utils';
+    [7m [0m [91m                                                                              ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+      [96mtest/test-utils.ts[0m:[93m40[0m:[93m14[0m
+        [7m40[0m export const createMockTenantContext = () => ({
+        [7m  [0m [96m             ~~~~~~~~~~~~~~~~~~~~~~~[0m
+        'createMockTenantContext' is declared here.
+
+FAIL tenants/database/system-initialization.service.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/tenants/database/system-initialization.service.spec.ts[0m:[93m2[0m:[93m45[0m - [91merror[0m[90m TS2307: [0mCannot find module './system-initialization.service' or its corresponding type declarations.
+
+    [7m2[0m import { SystemInitializationService } from './system-initialization.service';
+    [7m [0m [91m                                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/tenants/database/system-initialization.service.spec.ts[0m:[93m4[0m:[93m35[0m - [91merror[0m[90m TS2307: [0mCannot find module './apex-config.service' or its corresponding type declarations.
+
+    [7m4[0m import { ApexConfigService } from './apex-config.service';
+    [7m [0m [91m                                  ~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/tenants/database/system-initialization.service.spec.ts[0m:[93m5[0m:[93m33[0m - [91merror[0m[90m TS2307: [0mCannot find module '../security/security.context' or its corresponding type declarations.
+
+    [7m5[0m import { SecurityContext } from '../security/security.context';
+    [7m [0m [91m                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+FAIL tenants/tenant.utils.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/tenants/tenant.utils.spec.ts[0m:[93m1[0m:[93m92[0m - [91merror[0m[90m TS2307: [0mCannot find module './tenant.utils' or its corresponding type declarations.
+
+    [7m1[0m import { TenantUtils, getTenantSchemaName, ensureValidTenantId, isTenantSchemaReady } from './tenant.utils';
+    [7m [0m [91m                                                                                           ~~~~~~~~~~~~~~~~[0m
+
+FAIL ./app.controller.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/app.controller.spec.ts[0m:[93m2[0m:[93m31[0m - [91merror[0m[90m TS2307: [0mCannot find module './app.controller' or its corresponding type declarations.
+
+    [7m2[0m import { AppController } from './app.controller';
+    [7m [0m [91m                              ~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/app.controller.spec.ts[0m:[93m3[0m:[93m28[0m - [91merror[0m[90m TS2307: [0mCannot find module './app.service' or its corresponding type declarations.
+
+    [7m3[0m import { AppService } from './app.service';
+    [7m [0m [91m                           ~~~~~~~~~~~~~~~[0m
+    [96msrc/app.controller.spec.ts[0m:[93m9[0m:[93m10[0m - [91merror[0m[90m TS2724: [0m'"../test/test-utils"' has no exported member named 'commonProviders'. Did you mean 'getCommonProviders'?
+
+    [7m9[0m import { commonProviders } from '../test/test-utils';
+    [7m [0m [91m         ~~~~~~~~~~~~~~~[0m
+
+      [96mtest/test-utils.ts[0m:[93m57[0m:[93m14[0m
+        [7m57[0m export const getCommonProviders = (additionalProviders: any[] = []): Provider[] => {
+        [7m  [0m [96m             ~~~~~~~~~~~~~~~~~~[0m
+        'getCommonProviders' is declared here.
+
+FAIL common/dtos/base.dto.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/common/dtos/base.dto.spec.ts[0m:[93m1[0m:[93m61[0m - [91merror[0m[90m TS2307: [0mCannot find module './base.dto' or its corresponding type declarations.
+
+    [7m1[0m import { BaseSchema, BaseInputSchema, secureValidate } from './base.dto';
+    [7m [0m [91m                                                            ~~~~~~~~~~~~[0m
+
+FAIL auth/auth.controller.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/auth/auth.controller.spec.ts[0m:[93m11[0m:[93m26[0m - [91merror[0m[90m TS2307: [0mCannot find module './dto/login.dto' or its corresponding type declarations.
+
+    [7m11[0m import { LoginDto } from './dto/login.dto';
+    [7m  [0m [91m                         ~~~~~~~~~~~~~~~~~[0m
+    [96msrc/auth/auth.controller.spec.ts[0m:[93m12[0m:[93m29[0m - [91merror[0m[90m TS2307: [0mCannot find module './dto/register.dto' or its corresponding type declarations.
+
+    [7m12[0m import { RegisterDto } from './dto/register.dto';
+    [7m  [0m [91m                            ~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/auth/auth.controller.spec.ts[0m:[93m14[0m:[93m35[0m - [91merror[0m[90m TS2307: [0mCannot find module '../common/access-control/guards/tenant-scoped.guard' or its corresponding type declarations.
+
+    [7m14[0m import { TenantScopedGuard } from '../common/access-control/guards/tenant-scoped.guard';
+    [7m  [0m [91m                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/auth/auth.controller.spec.ts[0m:[93m15[0m:[93m30[0m - [91merror[0m[90m TS2307: [0mCannot find module '../common/access-control/guards/license.guard' or its corresponding type declarations.
+
+    [7m15[0m import { LicenseGuard } from '../common/access-control/guards/license.guard';
+    [7m  [0m [91m                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/auth/auth.controller.spec.ts[0m:[93m16[0m:[93m36[0m - [91merror[0m[90m TS2307: [0mCannot find module '../common/presentation/interceptors/defense.interceptor' or its corresponding type declarations.
+
+    [7m16[0m import { DefenseInterceptor } from '../common/presentation/interceptors/defense.interceptor';
+    [7m  [0m [91m                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/auth/auth.controller.spec.ts[0m:[93m17[0m:[93m40[0m - [91merror[0m[90m TS2307: [0mCannot find module '../common/monitoring/audit/audit-logger.interceptor' or its corresponding type declarations.
+
+    [7m17[0m import { AuditLoggerInterceptor } from '../common/monitoring/audit/audit-logger.interceptor';
+    [7m  [0m [91m                                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+FAIL security/layers/s7-encryption/encrypted-field.service.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/security/layers/s7-encryption/encrypted-field.service.spec.ts[0m:[93m2[0m:[93m39[0m - [91merror[0m[90m TS2307: [0mCannot find module './encrypted-field.service' or its corresponding type declarations.
+
+    [7m2[0m import { EncryptedFieldService } from './encrypted-field.service';
+    [7m [0m [91m                                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+FAIL security/layers/s6-rate-limiting/rate-limiter.service.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/security/layers/s6-rate-limiting/rate-limiter.service.spec.ts[0m:[93m3[0m:[93m35[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../core/apex-config.service' or its corresponding type declarations.
+
+    [7m3[0m import { ApexConfigService } from '../../core/apex-config.service';
+    [7m [0m [91m                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/security/layers/s6-rate-limiting/rate-limiter.service.spec.ts[0m:[93m4[0m:[93m38[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../security/tenant-context/tenant-context.service' or its corresponding type declarations.
+
+    [7m4[0m import { TenantContextService } from '../../security/tenant-context/tenant-context.service';
+    [7m [0m [91m                                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/security/layers/s6-rate-limiting/rate-limiter.service.spec.ts[0m:[93m52[0m:[93m38[0m - [91merror[0m[90m TS2339: [0mProperty 'consume' does not exist on type 'RateLimiterService'.
+
+    [7m52[0m         const result = await service.consume('tenant1');
+    [7m  [0m [91m                                     ~~~~~~~[0m
+    [96msrc/security/layers/s6-rate-limiting/rate-limiter.service.spec.ts[0m:[93m58[0m:[93m38[0m - [91merror[0m[90m TS2339: [0mProperty 'consume' does not exist on type 'RateLimiterService'.
+
+    [7m58[0m         const result = await service.consume('tenant1');
+    [7m  [0m [91m                                     ~~~~~~~[0m
+    [96msrc/security/layers/s6-rate-limiting/rate-limiter.service.spec.ts[0m:[93m64[0m:[93m38[0m - [91merror[0m[90m TS2339: [0mProperty 'consume' does not exist on type 'RateLimiterService'.
+
+    [7m64[0m         const result = await service.consume('t1');
+    [7m  [0m [91m                                     ~~~~~~~[0m
+    [96msrc/security/layers/s6-rate-limiting/rate-limiter.service.spec.ts[0m:[93m74[0m:[93m23[0m - [91merror[0m[90m TS2339: [0mProperty 'consume' does not exist on type 'RateLimiterService'.
+
+    [7m74[0m         await service.consume('t1', 1, 1); // consumes 1
+    [7m  [0m [91m                      ~~~~~~~[0m
+    [96msrc/security/layers/s6-rate-limiting/rate-limiter.service.spec.ts[0m:[93m75[0m:[93m38[0m - [91merror[0m[90m TS2339: [0mProperty 'consume' does not exist on type 'RateLimiterService'.
+
+    [7m75[0m         const result = await service.consume('t1', 1, 1); // should be empty
+    [7m  [0m [91m                                     ~~~~~~~[0m
+    [96msrc/security/layers/s6-rate-limiting/rate-limiter.service.spec.ts[0m:[93m92[0m:[93m38[0m - [91merror[0m[90m TS2339: [0mProperty 'consume' does not exist on type 'RateLimiterService'.
+
+    [7m92[0m         const result = await service.consume(tenantId);
+    [7m  [0m [91m                                     ~~~~~~~[0m
+    [96msrc/security/layers/s6-rate-limiting/rate-limiter.service.spec.ts[0m:[93m101[0m:[93m31[0m - [91merror[0m[90m TS2339: [0mProperty 'checkLimit' does not exist on type 'RateLimiterService'.
+
+    [7m101[0m         expect((await service.checkLimit(key, options)).allowed).toBe(true);
+    [7m   [0m [91m                              ~~~~~~~~~~[0m
+    [96msrc/security/layers/s6-rate-limiting/rate-limiter.service.spec.ts[0m:[93m102[0m:[93m31[0m - [91merror[0m[90m TS2339: [0mProperty 'checkLimit' does not exist on type 'RateLimiterService'.
+
+    [7m102[0m         expect((await service.checkLimit(key, options)).allowed).toBe(true);
+    [7m   [0m [91m                              ~~~~~~~~~~[0m
+    [96msrc/security/layers/s6-rate-limiting/rate-limiter.service.spec.ts[0m:[93m103[0m:[93m31[0m - [91merror[0m[90m TS2339: [0mProperty 'checkLimit' does not exist on type 'RateLimiterService'.
+
+    [7m103[0m         expect((await service.checkLimit(key, options)).allowed).toBe(false);
+    [7m   [0m [91m                              ~~~~~~~~~~[0m
+    [96msrc/security/layers/s6-rate-limiting/rate-limiter.service.spec.ts[0m:[93m108[0m:[93m38[0m - [91merror[0m[90m TS2339: [0mProperty 'consume' does not exist on type 'RateLimiterService'.
+
+    [7m108[0m         const result = await service.consume('t1');
+    [7m   [0m [91m                                     ~~~~~~~[0m
+
+FAIL products/shop.controller.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/products/shop.controller.spec.ts[0m:[93m2[0m:[93m32[0m - [91merror[0m[90m TS2307: [0mCannot find module './shop.controller' or its corresponding type declarations.
+
+    [7m2[0m import { ShopController } from './shop.controller';
+    [7m [0m [91m                               ~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/shop.controller.spec.ts[0m:[93m3[0m:[93m29[0m - [91merror[0m[90m TS2307: [0mCannot find module '../services/shop.service' or its corresponding type declarations.
+
+    [7m3[0m import { ShopService } from '../services/shop.service';
+    [7m [0m [91m                            ~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/shop.controller.spec.ts[0m:[93m4[0m:[93m32[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../products/services/product.service' or its corresponding type declarations.
+
+    [7m4[0m import { ProductService } from '../../products/services/product.service';
+    [7m [0m [91m                               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/shop.controller.spec.ts[0m:[93m5[0m:[93m33[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../categories/services/category.service' or its corresponding type declarations.
+
+    [7m5[0m import { CategoryService } from '../../categories/services/category.service';
+    [7m [0m [91m                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/shop.controller.spec.ts[0m:[93m6[0m:[93m32[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../tenants/tenants.service' or its corresponding type declarations.
+
+    [7m6[0m import { TenantsService } from '../../tenants/tenants.service';
+    [7m [0m [91m                               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/shop.controller.spec.ts[0m:[93m9[0m:[93m36[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../../test/test-utils' or its corresponding type declarations.
+
+    [7m9[0m import { getCommonProviders } from '../../../../test/test-utils';
+    [7m [0m [91m                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+FAIL products/product.service.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/products/product.service.spec.ts[0m:[93m3[0m:[93m31[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../prisma/prisma.service' or its corresponding type declarations.
+
+    [7m3[0m import { PrismaService } from '../../../prisma/prisma.service';
+    [7m [0m [91m                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/product.service.spec.ts[0m:[93m4[0m:[93m30[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../common/monitoring/audit/audit.service' or its corresponding type declarations.
+
+    [7m4[0m import { AuditService } from '../../../common/monitoring/audit/audit.service';
+    [7m [0m [91m                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/product.service.spec.ts[0m:[93m6[0m:[93m51[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../../test/test-utils' or its corresponding type declarations.
+
+    [7m6[0m import { createMockPrisma, createMockAudit } from '../../../../test/test-utils';
+    [7m [0m [91m                                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+FAIL products/payment.controller.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/products/payment.controller.spec.ts[0m:[93m2[0m:[93m35[0m - [91merror[0m[90m TS2307: [0mCannot find module './payment.controller' or its corresponding type declarations.
+
+    [7m2[0m import { PaymentController } from './payment.controller';
+    [7m [0m [91m                                  ~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/payment.controller.spec.ts[0m:[93m3[0m:[93m32[0m - [91merror[0m[90m TS2307: [0mCannot find module '../services/payment.service' or its corresponding type declarations.
+
+    [7m3[0m import { PaymentService } from '../services/payment.service';
+    [7m [0m [91m                               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/payment.controller.spec.ts[0m:[93m4[0m:[93m29[0m - [91merror[0m[90m TS2307: [0mCannot find module '../dto/checkout.dto' or its corresponding type declarations.
+
+    [7m4[0m import { CheckoutDto } from '../dto/checkout.dto';
+    [7m [0m [91m                            ~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/payment.controller.spec.ts[0m:[93m7[0m:[93m54[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../../test/test-utils' or its corresponding type declarations.
+
+    [7m7[0m import { getCommonProviders, createMockPrisma } from '../../../../test/test-utils';
+    [7m [0m [91m                                                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/products/payment.controller.spec.ts[0m:[93m8[0m:[93m31[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../prisma/prisma.service' or its corresponding type declarations.
+
+    [7m8[0m import { PrismaService } from '../../../prisma/prisma.service';
+    [7m [0m [91m                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+FAIL dashboard/dashboard.controller.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/dashboard/dashboard.controller.spec.ts[0m:[93m2[0m:[93m37[0m - [91merror[0m[90m TS2307: [0mCannot find module './dashboard.controller' or its corresponding type declarations.
+
+    [7m2[0m import { DashboardController } from './dashboard.controller';
+    [7m [0m [91m                                    ~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/dashboard/dashboard.controller.spec.ts[0m:[93m3[0m:[93m34[0m - [91merror[0m[90m TS2307: [0mCannot find module '../services/dashboard.service' or its corresponding type declarations.
+
+    [7m3[0m import { DashboardService } from '../services/dashboard.service';
+    [7m [0m [91m                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/dashboard/dashboard.controller.spec.ts[0m:[93m6[0m:[93m54[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../../test/test-utils' or its corresponding type declarations.
+
+    [7m6[0m import { getCommonProviders, createMockPrisma } from '../../../../test/test-utils';
+    [7m [0m [91m                                                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/dashboard/dashboard.controller.spec.ts[0m:[93m7[0m:[93m31[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../prisma/prisma.service' or its corresponding type declarations.
+
+    [7m7[0m import { PrismaService } from '../../../prisma/prisma.service';
+    [7m [0m [91m                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+FAIL security/layers/s4-audit-logging/audit-logger.interceptor.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/security/layers/s4-audit-logging/audit-logger.interceptor.spec.ts[0m:[93m2[0m:[93m40[0m - [91merror[0m[90m TS2307: [0mCannot find module './audit-logger.interceptor' or its corresponding type declarations.
+
+    [7m2[0m import { AuditLoggerInterceptor } from './audit-logger.interceptor';
+    [7m [0m [91m                                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/security/layers/s4-audit-logging/audit-logger.interceptor.spec.ts[0m:[93m3[0m:[93m33[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../security/security.context' or its corresponding type declarations.
+
+    [7m3[0m import { SecurityContext } from '../../security/security.context';
+    [7m [0m [91m                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+FAIL security/behavioral/behavioral-security.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/security/behavioral/behavioral-security.spec.ts[0m:[93m1[0m:[93m50[0m - [91merror[0m[90m TS2307: [0mCannot find module './dto/base.dto' or its corresponding type declarations.
+
+    [7m1[0m import { SafeTextSchema, ExternalIdSchema } from './dto/base.dto';
+    [7m [0m [91m                                                 ~~~~~~~~~~~~~~~~[0m
+    [96msrc/security/behavioral/behavioral-security.spec.ts[0m:[93m2[0m:[93m37[0m - [91merror[0m[90m TS2307: [0mCannot find module './dto/product.dto' or its corresponding type declarations.
+
+    [7m2[0m import { UpdateProductSchema } from './dto/product.dto';
+    [7m [0m [91m                                    ~~~~~~~~~~~~~~~~~~~[0m
+
+FAIL ./app.service.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/app.service.spec.ts[0m:[93m2[0m:[93m28[0m - [91merror[0m[90m TS2307: [0mCannot find module './app.service' or its corresponding type declarations.
+
+    [7m2[0m import { AppService } from './app.service';
+    [7m [0m [91m                           ~~~~~~~~~~~~~~~[0m
+
+FAIL security/layers/s8-web-protection/defense.interceptor.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/security/layers/s8-web-protection/defense.interceptor.spec.ts[0m:[93m2[0m:[93m36[0m - [91merror[0m[90m TS2307: [0mCannot find module './defense.interceptor' or its corresponding type declarations.
+
+    [7m2[0m import { DefenseInterceptor } from './defense.interceptor';
+    [7m [0m [91m                                   ~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/security/layers/s8-web-protection/defense.interceptor.spec.ts[0m:[93m5[0m:[93m30[0m - [91merror[0m[90m TS2305: [0mModule '"../../../../test/test-utils"' has no exported member 'createMockAnomalyDetection'.
+
+    [7m5[0m import { getCommonProviders, createMockAnomalyDetection } from '../../../../test/test-utils';
+    [7m [0m [91m                             ~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/security/layers/s8-web-protection/defense.interceptor.spec.ts[0m:[93m6[0m:[93m41[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../access-control/services/anomaly-detection.service' or its corresponding type declarations.
+
+    [7m6[0m import { AnomalyDetectionService } from '../../access-control/services/anomaly-detection.service';
+    [7m [0m [91m                                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/security/layers/s8-web-protection/defense.interceptor.spec.ts[0m:[93m7[0m:[93m36[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../access-control/services/rate-limiter.service' or its corresponding type declarations.
+
+    [7m7[0m import { RateLimiterService } from '../../access-control/services/rate-limiter.service';
+    [7m [0m [91m                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+FAIL auth/guards/license.guard.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/auth/guards/license.guard.spec.ts[0m:[93m2[0m:[93m43[0m - [91merror[0m[90m TS2307: [0mCannot find module './license.guard' or its corresponding type declarations.
+
+    [7m2[0m import { LicenseGuard, LICENSE_KEY } from './license.guard';
+    [7m [0m [91m                                          ~~~~~~~~~~~~~~~~~[0m
+    [96msrc/auth/guards/license.guard.spec.ts[0m:[93m3[0m:[93m31[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../prisma/prisma.service' or its corresponding type declarations.
+
+    [7m3[0m import { PrismaService } from '../../../prisma/prisma.service';
+    [7m [0m [91m                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/auth/guards/license.guard.spec.ts[0m:[93m6[0m:[93m34[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../../test/test-utils' or its corresponding type declarations.
+
+    [7m6[0m import { createMockPrisma } from '../../../../test/test-utils';
+    [7m [0m [91m                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+FAIL auth/auth.module.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/auth/auth.module.spec.ts[0m:[93m20[0m:[93m31[0m - [91merror[0m[90m TS2307: [0mCannot find module '@nestjs/cache-manager' or its corresponding type declarations.
+
+    [7m20[0m import { CACHE_MANAGER } from '@nestjs/cache-manager';
+    [7m  [0m [91m                              ~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+FAIL security/layers/s8-web-protection/csp-config.service.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/security/layers/s8-web-protection/csp-config.service.spec.ts[0m:[93m2[0m:[93m27[0m - [91merror[0m[90m TS2307: [0mCannot find module './csp.config' or its corresponding type declarations.
+
+    [7m2[0m import { CSPConfig } from './csp.config';
+    [7m [0m [91m                          ~~~~~~~~~~~~~~[0m
+
+FAIL prisma/prisma.service.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/prisma/prisma.service.spec.ts[0m:[93m37[0m:[93m34[0m - [91merror[0m[90m TS2339: [0mProperty 'withTenant' does not exist on type 'PrismaService'.
+
+    [7m37[0m     const result = await service.withTenant('t-uuid', async () => 'ok');
+    [7m  [0m [91m                                 ~~~~~~~~~~[0m
+    [96msrc/prisma/prisma.service.spec.ts[0m:[93m48[0m:[93m19[0m - [91merror[0m[90m TS2339: [0mProperty 'connectWithRetry' does not exist on type 'PrismaService'.
+
+    [7m48[0m     await service.connectWithRetry(2, 50);
+    [7m  [0m [91m                  ~~~~~~~~~~~~~~~~[0m
+
+FAIL monitoring/system-health.service.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/monitoring/system-health.service.spec.ts[0m:[93m2[0m:[93m37[0m - [91merror[0m[90m TS2307: [0mCannot find module './system-health.service' or its corresponding type declarations.
+
+    [7m2[0m import { SystemHealthService } from './system-health.service';
+    [7m [0m [91m                                    ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/monitoring/system-health.service.spec.ts[0m:[93m3[0m:[93m31[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../prisma/prisma.service' or its corresponding type declarations.
+
+    [7m3[0m import { PrismaService } from '../../prisma/prisma.service';
+    [7m [0m [91m                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/monitoring/system-health.service.spec.ts[0m:[93m4[0m:[93m41[0m - [91merror[0m[90m TS2307: [0mCannot find module '../access-control/services/anomaly-detection.service' or its corresponding type declarations.
+
+    [7m4[0m import { AnomalyDetectionService } from '../access-control/services/anomaly-detection.service';
+    [7m [0m [91m                                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/monitoring/system-health.service.spec.ts[0m:[93m5[0m:[93m36[0m - [91merror[0m[90m TS2307: [0mCannot find module '../access-control/services/rate-limiter.service' or its corresponding type declarations.
+
+    [7m5[0m import { RateLimiterService } from '../access-control/services/rate-limiter.service';
+    [7m [0m [91m                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/monitoring/system-health.service.spec.ts[0m:[93m6[0m:[93m39[0m - [91merror[0m[90m TS2307: [0mCannot find module '../security/encryption/encrypted-field.service' or its corresponding type declarations.
+
+    [7m6[0m import { EncryptedFieldService } from '../security/encryption/encrypted-field.service';
+    [7m [0m [91m                                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/monitoring/system-health.service.spec.ts[0m:[93m7[0m:[93m34[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../test/test-utils' or its corresponding type declarations.
+
+    [7m7[0m import { createMockPrisma } from '../../../test/test-utils';
+    [7m [0m [91m                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+FAIL products/dtos/product.dto.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/products/dtos/product.dto.spec.ts[0m:[93m1[0m:[93m95[0m - [91merror[0m[90m TS2307: [0mCannot find module './product.dto' or its corresponding type declarations.
+
+    [7m1[0m import { ProductSchema, UpdateProductSchema, ProductSearchSchema, ProductVariantSchema } from './product.dto';
+    [7m [0m [91m                                                                                              ~~~~~~~~~~~~~~~[0m
+
+FAIL security/layers/s6-rate-limiting/anomaly-detection.service.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/security/layers/s6-rate-limiting/anomaly-detection.service.spec.ts[0m:[93m4[0m:[93m33[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../security/security.context' or its corresponding type declarations.
+
+    [7m4[0m import { SecurityContext } from '../../security/security.context';
+    [7m [0m [91m                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/security/layers/s6-rate-limiting/anomaly-detection.service.spec.ts[0m:[93m37[0m:[93m24[0m - [91merror[0m[90m TS2339: [0mProperty 'isThrottled' does not exist on type 'AnomalyDetectionService'.
+
+    [7m37[0m         expect(service.isThrottled(tenantId)).toBe(false);
+    [7m  [0m [91m                       ~~~~~~~~~~~[0m
+    [96msrc/security/layers/s6-rate-limiting/anomaly-detection.service.spec.ts[0m:[93m41[0m:[93m21[0m - [91merror[0m[90m TS2339: [0mProperty 'inspectFailedEvent' does not exist on type 'AnomalyDetectionService'.
+
+    [7m41[0m             service.inspectFailedEvent(tenantId, 'test-event', new Error('test'));
+    [7m  [0m [91m                    ~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/security/layers/s6-rate-limiting/anomaly-detection.service.spec.ts[0m:[93m44[0m:[93m24[0m - [91merror[0m[90m TS2339: [0mProperty 'isThrottled' does not exist on type 'AnomalyDetectionService'.
+
+    [7m44[0m         expect(service.isThrottled(tenantId)).toBe(true);
+    [7m  [0m [91m                       ~~~~~~~~~~~[0m
+    [96msrc/security/layers/s6-rate-limiting/anomaly-detection.service.spec.ts[0m:[93m50[0m:[93m17[0m - [91merror[0m[90m TS2339: [0mProperty 'inspect' does not exist on type 'AnomalyDetectionService'.
+
+    [7m50[0m         service.inspect(tenantId, true, { path: '/test' });
+    [7m  [0m [91m                ~~~~~~~[0m
+    [96msrc/security/layers/s6-rate-limiting/anomaly-detection.service.spec.ts[0m:[93m52[0m:[93m32[0m - [91merror[0m[90m TS2339: [0mProperty 'getStatus' does not exist on type 'AnomalyDetectionService'.
+
+    [7m52[0m         const status = service.getStatus(tenantId);
+    [7m  [0m [91m                               ~~~~~~~~~[0m
+    [96msrc/security/layers/s6-rate-limiting/anomaly-detection.service.spec.ts[0m:[93m58[0m:[93m17[0m - [91merror[0m[90m TS2339: [0mProperty 'inspectFailedLogin' does not exist on type 'AnomalyDetectionService'.
+
+    [7m58[0m         service.inspectFailedLogin(tenantId, 'user1', '127.0.0.1');
+    [7m  [0m [91m                ~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/security/layers/s6-rate-limiting/anomaly-detection.service.spec.ts[0m:[93m64[0m:[93m17[0m - [91merror[0m[90m TS2339: [0mProperty 'inspect' does not exist on type 'AnomalyDetectionService'.
+
+    [7m64[0m         service.inspect(tenantId, true); // true means critical
+    [7m  [0m [91m                ~~~~~~~[0m
+    [96msrc/security/layers/s6-rate-limiting/anomaly-detection.service.spec.ts[0m:[93m65[0m:[93m24[0m - [91merror[0m[90m TS2339: [0mProperty 'isSuspended' does not exist on type 'AnomalyDetectionService'.
+
+    [7m65[0m         expect(service.isSuspended(tenantId)).toBe(true);
+    [7m  [0m [91m                       ~~~~~~~~~~~[0m
+
+FAIL tenants/dtos/tenant.dto.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/tenants/dtos/tenant.dto.spec.ts[0m:[93m1[0m:[93m76[0m - [91merror[0m[90m TS2307: [0mCannot find module './tenant.dto' or its corresponding type declarations.
+
+    [7m1[0m import { CreateTenantSchema, UpdateTenantSchema, TenantSearchSchema } from './tenant.dto';
+    [7m [0m [91m                                                                           ~~~~~~~~~~~~~~[0m
+
+FAIL events/events.module.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/events/events.module.spec.ts[0m:[93m2[0m:[93m30[0m - [91merror[0m[90m TS2307: [0mCannot find module './events.module' or its corresponding type declarations.
+
+    [7m2[0m import { EventsModule } from './events.module';
+    [7m [0m [91m                             ~~~~~~~~~~~~~~~~~[0m
+    [96msrc/events/events.module.spec.ts[0m:[93m3[0m:[93m31[0m - [91merror[0m[90m TS2307: [0mCannot find module './events.service' or its corresponding type declarations.
+
+    [7m3[0m import { EventsService } from './events.service';
+    [7m [0m [91m                              ~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/events/events.module.spec.ts[0m:[93m8[0m:[93m10[0m - [91merror[0m[90m TS2724: [0m'"../../test/test-utils"' has no exported member named 'createMockSecurityContext'. Did you mean 'createMockTenantContext'?
+
+    [7m8[0m import { createMockSecurityContext, createMockPrisma, createMockAnomalyDetection, createMockTenantContext, createMockInputValidator, createMockCache } from '../../test/test-utils';
+    [7m [0m [91m         ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+      [96mtest/test-utils.ts[0m:[93m40[0m:[93m14[0m
+        [7m40[0m export const createMockTenantContext = () => ({
+        [7m  [0m [96m             ~~~~~~~~~~~~~~~~~~~~~~~[0m
+        'createMockTenantContext' is declared here.
+    [96msrc/events/events.module.spec.ts[0m:[93m8[0m:[93m55[0m - [91merror[0m[90m TS2305: [0mModule '"../../test/test-utils"' has no exported member 'createMockAnomalyDetection'.
+
+    [7m8[0m import { createMockSecurityContext, createMockPrisma, createMockAnomalyDetection, createMockTenantContext, createMockInputValidator, createMockCache } from '../../test/test-utils';
+    [7m [0m [91m                                                      ~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/events/events.module.spec.ts[0m:[93m8[0m:[93m108[0m - [91merror[0m[90m TS2305: [0mModule '"../../test/test-utils"' has no exported member 'createMockInputValidator'.
+
+    [7m8[0m import { createMockSecurityContext, createMockPrisma, createMockAnomalyDetection, createMockTenantContext, createMockInputValidator, createMockCache } from '../../test/test-utils';
+    [7m [0m [91m                                                                                                           ~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/events/events.module.spec.ts[0m:[93m8[0m:[93m134[0m - [91merror[0m[90m TS2305: [0mModule '"../../test/test-utils"' has no exported member 'createMockCache'.
+
+    [7m8[0m import { createMockSecurityContext, createMockPrisma, createMockAnomalyDetection, createMockTenantContext, createMockInputValidator, createMockCache } from '../../test/test-utils';
+    [7m [0m [91m                                                                                                                                     ~~~~~~~~~~~~~~~[0m
+
+FAIL security/layers/s3-input-validation/sanitizer.service.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/security/layers/s3-input-validation/sanitizer.service.spec.ts[0m:[93m2[0m:[93m34[0m - [91merror[0m[90m TS2307: [0mCannot find module './sanitizer.service' or its corresponding type declarations.
+
+    [7m2[0m import { SanitizerService } from './sanitizer.service';
+    [7m [0m [91m                                 ~~~~~~~~~~~~~~~~~~~~~[0m
+
+FAIL auth/services/jwt.service.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/auth/services/jwt.service.spec.ts[0m:[93m2[0m:[93m28[0m - [91merror[0m[90m TS2307: [0mCannot find module './jwt.service' or its corresponding type declarations.
+
+    [7m2[0m import { JwtService } from './jwt.service';
+    [7m [0m [91m                           ~~~~~~~~~~~~~~~[0m
+    [96msrc/auth/services/jwt.service.spec.ts[0m:[93m4[0m:[93m31[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../prisma/prisma.service' or its corresponding type declarations.
+
+    [7m4[0m import { PrismaService } from '../../../prisma/prisma.service';
+    [7m [0m [91m                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/auth/services/jwt.service.spec.ts[0m:[93m5[0m:[93m30[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../caching/cache.service' or its corresponding type declarations.
+
+    [7m5[0m import { CacheService } from '../../caching/cache.service';
+    [7m [0m [91m                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+FAIL security/layers/s8-web-protection/helmet.config.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/security/layers/s8-web-protection/helmet.config.spec.ts[0m:[93m2[0m:[93m30[0m - [91merror[0m[90m TS2307: [0mCannot find module './helmet.config' or its corresponding type declarations.
+
+    [7m2[0m import { HelmetConfig } from './helmet.config';
+    [7m [0m [91m                             ~~~~~~~~~~~~~~~~~[0m
+
+FAIL security/layers/s4-audit-logging/audit.controller.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/security/layers/s4-audit-logging/audit.controller.spec.ts[0m:[93m2[0m:[93m33[0m - [91merror[0m[90m TS2307: [0mCannot find module './audit.controller' or its corresponding type declarations.
+
+    [7m2[0m import { AuditController } from './audit.controller';
+    [7m [0m [91m                                ~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/security/layers/s4-audit-logging/audit.controller.spec.ts[0m:[93m4[0m:[93m35[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../access-control/guards/tenant-scoped.guard' or its corresponding type declarations.
+
+    [7m4[0m import { TenantScopedGuard } from '../../access-control/guards/tenant-scoped.guard';
+    [7m [0m [91m                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+FAIL common/communication/mail.service.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/common/communication/mail.service.spec.ts[0m:[93m2[0m:[93m29[0m - [91merror[0m[90m TS2307: [0mCannot find module './mail.service' or its corresponding type declarations.
+
+    [7m2[0m import { MailService } from './mail.service';
+    [7m [0m [91m                            ~~~~~~~~~~~~~~~~[0m
+
+FAIL auth/guards/super-admin.guard.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/auth/guards/super-admin.guard.spec.ts[0m:[93m2[0m:[93m33[0m - [91merror[0m[90m TS2307: [0mCannot find module './super-admin.guard' or its corresponding type declarations.
+
+    [7m2[0m import { SuperAdminGuard } from './super-admin.guard';
+    [7m [0m [91m                                ~~~~~~~~~~~~~~~~~~~~~[0m
+
+FAIL ./main.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/main.spec.ts[0m:[93m4[0m:[93m31[0m - [91merror[0m[90m TS2307: [0mCannot find module './app.controller' or its corresponding type declarations.
+
+    [7m4[0m import { AppController } from './app.controller';
+    [7m [0m [91m                              ~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/main.spec.ts[0m:[93m5[0m:[93m28[0m - [91merror[0m[90m TS2307: [0mCannot find module './app.service' or its corresponding type declarations.
+
+    [7m5[0m import { AppService } from './app.service';
+    [7m [0m [91m                           ~~~~~~~~~~~~~~~[0m
+    [96msrc/main.spec.ts[0m:[93m7[0m:[93m37[0m - [91merror[0m[90m TS2307: [0mCannot find module './common/presentation/filters/all-exceptions.filter' or its corresponding type declarations.
+
+    [7m7[0m import { AllExceptionsFilter } from './common/presentation/filters/all-exceptions.filter';
+    [7m [0m [91m                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+FAIL events/events.service.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/events/events.service.spec.ts[0m:[93m2[0m:[93m31[0m - [91merror[0m[90m TS2307: [0mCannot find module './events.service' or its corresponding type declarations.
+
+    [7m2[0m import { EventsService } from './events.service';
+    [7m [0m [91m                              ~~~~~~~~~~~~~~~~~~[0m
+
+FAIL tenants/tenant.middleware.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/tenants/tenant.middleware.spec.ts[0m:[93m1[0m:[93m34[0m - [91merror[0m[90m TS2307: [0mCannot find module './tenant.middleware' or its corresponding type declarations.
+
+    [7m1[0m import { TenantMiddleware } from './tenant.middleware';
+    [7m [0m [91m                                 ~~~~~~~~~~~~~~~~~~~~~[0m
+
+FAIL security/layers/s3-input-validation/input-validator.service.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/security/layers/s3-input-validation/input-validator.service.spec.ts[0m:[93m24[0m:[93m34[0m - [91merror[0m[90m TS2339: [0mProperty 'secureValidate' does not exist on type 'InputValidatorService'.
+
+    [7m24[0m     const result = await service.secureValidate(schema, data, 'test');
+    [7m  [0m [91m                                 ~~~~~~~~~~~~~~[0m
+    [96msrc/security/layers/s3-input-validation/input-validator.service.spec.ts[0m:[93m30[0m:[93m26[0m - [91merror[0m[90m TS2339: [0mProperty 'secureValidate' does not exist on type 'InputValidatorService'.
+
+    [7m30[0m     await expect(service.secureValidate(schema, data, 'test')).rejects.toThrow(BadRequestException);
+    [7m  [0m [91m                         ~~~~~~~~~~~~~~[0m
+
+FAIL tenants/dtos/create-tenant.dto.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/tenants/dtos/create-tenant.dto.spec.ts[0m:[93m3[0m:[93m33[0m - [91merror[0m[90m TS2307: [0mCannot find module './create-tenant.dto' or its corresponding type declarations.
+
+    [7m3[0m import { CreateTenantDto } from './create-tenant.dto';
+    [7m [0m [91m                                ~~~~~~~~~~~~~~~~~~~~~[0m
+
+FAIL events/events.controller.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/events/events.controller.spec.ts[0m:[93m2[0m:[93m34[0m - [91merror[0m[90m TS2307: [0mCannot find module './events.controller' or its corresponding type declarations.
+
+    [7m2[0m import { EventsController } from './events.controller';
+    [7m [0m [91m                                 ~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/events/events.controller.spec.ts[0m:[93m3[0m:[93m31[0m - [91merror[0m[90m TS2307: [0mCannot find module './events.service' or its corresponding type declarations.
+
+    [7m3[0m import { EventsService } from './events.service';
+    [7m [0m [91m                              ~~~~~~~~~~~~~~~~~~[0m
+
+FAIL tenants/tenants.controller.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/tenants/tenants.controller.spec.ts[0m:[93m2[0m:[93m35[0m - [91merror[0m[90m TS2307: [0mCannot find module './tenants.controller' or its corresponding type declarations.
+
+    [7m2[0m import { TenantsController } from './tenants.controller';
+    [7m [0m [91m                                  ~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/tenants/tenants.controller.spec.ts[0m:[93m3[0m:[93m32[0m - [91merror[0m[90m TS2307: [0mCannot find module './tenants.service' or its corresponding type declarations.
+
+    [7m3[0m import { TenantsService } from './tenants.service';
+    [7m [0m [91m                               ~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/tenants/tenants.controller.spec.ts[0m:[93m4[0m:[93m36[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../test/test-utils' or its corresponding type declarations.
+
+    [7m4[0m import { getCommonProviders } from '../../../test/test-utils';
+    [7m [0m [91m                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+FAIL security/layers/s7-encryption/key-management.service.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/security/layers/s7-encryption/key-management.service.spec.ts[0m:[93m2[0m:[93m38[0m - [91merror[0m[90m TS2307: [0mCannot find module './key-management.service' or its corresponding type declarations.
+
+    [7m2[0m import { KeyManagementService } from './key-management.service';
+    [7m [0m [91m                                     ~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+FAIL tenants/tenants.module.spec.ts
+  ● Test suite failed to run
+
+    [96msrc/tenants/tenants.module.spec.ts[0m:[93m2[0m:[93m32[0m - [91merror[0m[90m TS2307: [0mCannot find module './tenants.service' or its corresponding type declarations.
+
+    [7m2[0m import { TenantsService } from './tenants.service';
+    [7m [0m [91m                               ~~~~~~~~~~~~~~~~~~~[0m
+    [96msrc/tenants/tenants.module.spec.ts[0m:[93m3[0m:[93m36[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../test/test-utils' or its corresponding type declarations.
+
+    [7m3[0m import { getCommonProviders } from '../../../test/test-utils';
+    [7m [0m [91m                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+FAIL security/layers/s4-audit-logging/audit.module.spec.ts
+  ● AuditModule › exports AuditService
+
+    Nest can't resolve dependencies of the AuditService (REQUEST, TenantContextService, ?). Please make sure that the argument PrismaService at index [2] is available in the RootTestModule context.
+
+    Potential solutions:
+    - Is RootTestModule a valid NestJS module?
+    - If PrismaService is a provider, is it part of the current RootTestModule?
+    - If PrismaService is exported from a separate @Module, is that module imported within RootTestModule?
+      @Module({
+        imports: [ /* the Module containing PrismaService */ ]
+      })
+
+    [0m [90m  6 |[39m   [36mlet[39m module[33m:[39m [33mTestingModule[39m[33m;[39m
+     [90m  7 |[39m   beforeAll([36masync[39m () [33m=>[39m {
+    [31m[1m>[22m[39m[90m  8 |[39m     module [33m=[39m [36mawait[39m [33mTest[39m[33m.[39mcreateTestingModule({
+     [90m    |[39m              [31m[1m^[22m[39m
+     [90m  9 |[39m       providers[33m:[39m [
+     [90m 10 |[39m         [33mAuditService[39m[33m,[39m
+     [90m 11 |[39m         [33m...[39mgetCommonProviders([[33mAuditService[39m])[33m,[39m[0m
+
+      at TestingInjector.lookupComponentInParentModules (../../../node_modules/@nestjs/core/injector/injector.js:262:19)
+      at TestingInjector.resolveComponentInstance (../../../node_modules/@nestjs/core/injector/injector.js:215:33)
+      at TestingInjector.resolveComponentInstance (../../../node_modules/@nestjs/testing/testing-injector.js:19:45)
+      at resolveParam (../../../node_modules/@nestjs/core/injector/injector.js:129:38)
+          at async Promise.all (index 2)
+      at TestingInjector.resolveConstructorParams (../../../node_modules/@nestjs/core/injector/injector.js:144:27)
+      at TestingInjector.loadInstance (../../../node_modules/@nestjs/core/injector/injector.js:70:13)
+      at TestingInjector.loadProvider (../../../node_modules/@nestjs/core/injector/injector.js:98:9)
+      at ../../../node_modules/@nestjs/core/injector/instance-loader.js:56:13
+          at async Promise.all (index 3)
+      at TestingInstanceLoader.createInstancesOfProviders (../../../node_modules/@nestjs/core/injector/instance-loader.js:55:9)
+      at ../../../node_modules/@nestjs/core/injector/instance-loader.js:40:13
+          at async Promise.all (index 1)
+      at TestingInstanceLoader.createInstances (../../../node_modules/@nestjs/core/injector/instance-loader.js:39:9)
+      at TestingInstanceLoader.createInstancesOfDependencies (../../../node_modules/@nestjs/core/injector/instance-loader.js:22:13)
+      at TestingInstanceLoader.createInstancesOfDependencies (../../../node_modules/@nestjs/testing/testing-instance-loader.js:9:9)
+      at TestingModuleBuilder.createInstancesOfDependencies (../../../node_modules/@nestjs/testing/testing-module.builder.js:118:9)
+      at TestingModuleBuilder.compile (../../../node_modules/@nestjs/testing/testing-module.builder.js:74:9)
+      at Object.<anonymous> (security/layers/s4-audit-logging/audit.module.spec.ts:8:14)
+
+
+Test Suites: 46 failed, 17 passed, 63 total
+Tests:       1 failed, 75 passed, 76 total
+Snapshots:   0 total
+Time:        941.933 s
+Ran all test suites.

@@ -1,0 +1,103 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  TENANT_ADMIN
+  STORE_MANAGER
+  CUSTOMER
+}
+
+enum UserStatus {
+  ACTIVE
+  LOCKED
+  SUSPENDED
+  INACTIVE
+}
+
+model User {
+  id                    String     @id @default(uuid())
+  email                 String     @unique
+  firstName             String     @db.VarChar(100)
+  lastName              String     @db.VarChar(100)
+  passwordHash          String     @db.VarChar(255)
+  role                  UserRole   @default(CUSTOMER)
+  status                UserStatus @default(ACTIVE)
+  tenantId              String?    @db.VarChar(50)
+  isTwoFactorEnabled    Boolean    @default(false)
+  twoFactorSecret       String?    @db.VarChar(255)
+  failedLoginAttempts   Int        @default(0)
+  lockedUntil           DateTime?
+  lastLoginIp           String?    @db.VarChar(45)
+  lastLoginAt           DateTime?
+  emailVerified         Boolean    @default(false)
+  resetPasswordToken    String?    @db.VarChar(255)
+  resetPasswordExpires DateTime?
+  createdAt             DateTime   @default(now())
+  updatedAt             DateTime   @updatedAt
+  sessions              Session[]
+
+  @@index([email, tenantId])
+  @@index([tenantId, role])
+  @@map("users")
+}
+
+model Session {
+  id             String    @id @default(uuid())
+  token          String    @unique
+  refreshToken   String    @unique
+  ipAddress      String    @db.VarChar(45)
+  userAgent      String?
+  userId         String
+  user           User      @relation(fields: [userId], references: [id])
+  expiresAt      DateTime
+  invalidatedAt  DateTime?
+  isInvalidated  Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  tenantId       String?   @db.VarChar(50)
+
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model Tenant {
+  id            String   @id @db.VarChar(50)
+  name          String   @db.VarChar(150)
+  domain        String   @unique @db.VarChar(100)
+  businessType  String   @db.VarChar(50)
+  contactEmail  String   @db.VarChar(255)
+  status        String   @default("ACTIVE") @db.VarChar(20)
+  schemaName    String?  @db.VarChar(100)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  products      Product[]
+
+  @@map("tenants")
+}
+
+model Product {
+  id            String   @id @default(uuid())
+  name          String   @db.VarChar(150)
+  description   String?  @db.Text
+  price         Decimal  @db.Decimal(10, 2)
+  stockQuantity Int      @default(0)
+  category      String?  @db.VarChar(50)
+  status        String   @default("ACTIVE") @db.VarChar(20)
+  tenantId      String   @db.VarChar(50)
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([status])
+  @@map("products")
+}
