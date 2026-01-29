@@ -20,6 +20,7 @@ import { AllExceptionsFilter } from './security/layers/s5-error-handling/excepti
 import { AuditLoggerMiddleware } from './security/layers/s4-audit-logging/audit-logger.middleware';
 import { ProductModule } from './products/product.module';
 import { SecurityMonitoringModule } from './security/monitoring/security-monitoring.module';
+import { OnboardingModule } from './onboarding/onboarding.module';
 
 @Module({
     imports: [
@@ -46,7 +47,8 @@ import { SecurityMonitoringModule } from './security/monitoring/security-monitor
         RateLimitingModule,
         EncryptionModule,
         WebProtectionModule,
-        SecurityMonitoringModule
+        SecurityMonitoringModule,
+        OnboardingModule
     ],
     providers: [
         {
