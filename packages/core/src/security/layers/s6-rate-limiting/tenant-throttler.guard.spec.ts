@@ -1,9 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { TenantThrottlerGuard } from './tenant-throttler.guard';
-import { RateLimiterService } from '../services/rate-limiter.service';
-import { AnomalyDetectionService } from '../services/anomaly-detection.service';
+import { RateLimiterService } from './rate-limiter.service';
+import { AnomalyDetectionService } from './anomaly-detection.service';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { SecurityContext } from '../../security/security.context';
+import { SecurityContext } from '../../security.context';
 import { ForbiddenException, ExecutionContext } from '@nestjs/common';
 import { ThrottlerException } from '@nestjs/throttler';
 import { createMockPrisma, createMockRateLimiter, createMockAnomalyDetection, createMockSecurityContext } from '../../../../test/test-utils';

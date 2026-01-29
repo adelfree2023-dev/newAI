@@ -8,6 +8,7 @@ import { TenantContextService } from '../s2-tenant-isolation/tenant-context.serv
 export class AnomalyDetectionService {
   private readonly logger = new Logger(AnomalyDetectionService.name);
   private redisClient: Redis;
+  private failureCounts = new Map<string, number>();
 
   constructor(
     private readonly configService: ConfigService,
@@ -210,10 +211,19 @@ export class AnomalyDetectionService {
     }
   }
 
-  async isSuspended(tenantId: string) { return false; }
-  async inspect(tenantId: string, critical: boolean, details: any = {}) { return this.detectAnomaly({ tenantId, critical, ...details }); }
-  async isThrottled(tenantId: string) { return false; }
+  async isSuspended(tenantId: string) { return (this.failureCounts.get(tenantId) || 0) > 0; }
+  async inspect(tenantId: string, critical: boolean, details: any = {}) {
+    if (critical) {
+      const current = this.failureCounts.get(tenantId) || 0;
+      this.failureCounts.set(tenantId, current + 1);
+    }
+    return this.detectAnomaly({ tenantId, critical, ...details });
+  }
+  async isThrottled(tenantId: string) { return (this.failureCounts.get(tenantId) || 0) > 20; }
   async inspectFailedEvent(tenantId: string, event: string, error: any) { return this.inspect(tenantId, true, { event, error: error?.message }); }
   async inspectFailedLogin(tenantId: string, userId: string, ip: string) { return this.inspect(tenantId, true, { userId, ip, type: 'failed_login' }); }
-  getStatus(tenantId: string) { return { suspicious: false, suspended: false }; }
+  getStatus(tenantId: string) {
+    const count = this.failureCounts.get(tenantId) || 0;
+    return { suspicious: count > 10, suspended: count > 0, failureCount: count };
+  }
 }

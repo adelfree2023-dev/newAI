@@ -9,15 +9,12 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { PrismaService } from '../prisma/prisma.service';
 
 import { ConfigService } from '@nestjs/config';
-import { SecurityContext } from '../common/security/security.context';
-import { AnomalyDetectionService } from '../common/access-control/services/anomaly-detection.service';
-import { RateLimiterService } from '../common/access-control/services/rate-limiter.service';
-import { AuditService } from '../common/monitoring/audit/audit.service';
-import { EncryptedFieldService } from '../common/security/encryption/encrypted-field.service';
-import { InputValidatorService } from '../common/security/validation/input-validator.service';
-import { TenantContextService } from '../common/security/tenant-context/tenant-context.service';
-import { CacheService } from '../common/caching/cache.service';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { SecurityContext } from '../security.context';
+import { AnomalyDetectionService } from '../security/layers/s6-rate-limiting/anomaly-detection.service';
+import { RateLimiterService } from '../security/layers/s6-rate-limiting/rate-limiter.service';
+import { AuditService } from '../security/layers/s4-audit-logging/audit.service';
+import { InputValidatorService } from '../security/layers/s3-input-validation/input-validator.service';
+import { TenantContextService } from '../security/layers/s2-tenant-isolation/tenant-context.service';
 
 describe('AuthModule', () => {
   let module: TestingModule;
@@ -26,15 +23,12 @@ describe('AuthModule', () => {
     module = await Test.createTestingModule({
       imports: [AuthModule],
     })
-      .overrideProvider(CACHE_MANAGER).useValue({ get: jest.fn(), set: jest.fn(), del: jest.fn() })
-      .overrideProvider(CacheService).useValue({ get: jest.fn(), set: jest.fn(), del: jest.fn(), clear: jest.fn() })
       .overrideProvider(PrismaService).useValue({ $connect: jest.fn(), $disconnect: jest.fn(), $queryRawUnsafe: jest.fn().mockResolvedValue([]), $executeRawUnsafe: jest.fn().mockResolvedValue(1) })
       .overrideProvider(ConfigService).useValue({ get: jest.fn().mockReturnValue('mock-secret') })
       .overrideProvider(SecurityContext).useValue({ logSecurityEvent: jest.fn() })
       .overrideProvider(AnomalyDetectionService).useValue({ detect: jest.fn() })
       .overrideProvider(RateLimiterService).useValue({ consume: jest.fn() })
       .overrideProvider(AuditService).useValue({ logActivity: jest.fn(), logSecurityEvent: jest.fn() })
-      .overrideProvider(EncryptedFieldService).useValue({ encrypt: jest.fn() })
       .overrideProvider(InputValidatorService).useValue({ secureValidate: jest.fn() })
       .compile();
   });

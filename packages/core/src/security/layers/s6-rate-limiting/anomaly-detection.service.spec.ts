@@ -1,8 +1,8 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { AnomalyDetectionService } from './anomaly-detection.service';
-import { PrismaService } from '../../../prisma/prisma.service';
-import { SecurityContext } from '../../security/security.context';
+import { Test, TestingModule } from '@nestjs/testing';
+import { SecurityContext } from '../../security.context';
 import { createMockPrisma } from '../../../../test/test-utils';
+import { PrismaService } from '../../../prisma/prisma.service';
 
 describe('AnomalyDetectionService', () => {
     let service: AnomalyDetectionService;

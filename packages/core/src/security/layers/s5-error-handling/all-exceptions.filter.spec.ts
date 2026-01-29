@@ -1,7 +1,7 @@
-import { AllExceptionsFilter } from './all-exceptions.filter';
+import { AllExceptionsFilter } from './exceptions/secure-exception.filter';
 import { Test, TestingModule } from '@nestjs/testing';
-import { SecurityContext } from '../../security/security.context';
-import { AuditService } from '../../../common/monitoring/audit/audit.service';
+import { SecurityContext } from '../../security.context';
+import { AuditService } from '../s4-audit-logging/audit.service';
 import { HttpStatus, HttpException, ExecutionContext } from '@nestjs/common';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 

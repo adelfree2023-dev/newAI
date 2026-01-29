@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuditLoggerInterceptor } from './audit-logger.interceptor';
-import { SecurityContext } from '../../security/security.context';
+import { SecurityContext } from '../../security.context';
 import { ExecutionContext, CallHandler } from '@nestjs/common';
 import { of, throwError } from 'rxjs';
 
