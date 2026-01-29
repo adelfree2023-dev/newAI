@@ -37,13 +37,23 @@ export const createMockPrisma = () => ({
     $disconnect: jest.fn(),
 });
 
-export const createMockSecurityContext = () => ({
+export const createMockTenantContext = () => ({
     getTenantId: jest.fn(() => 'test-tenant-id'),
     getTenantSchema: jest.fn(() => 'test_schema'),
     setTenantId: jest.fn(),
     isSystemContext: jest.fn(() => false),
+    forceTenantContext: jest.fn(),
     validateTenantAccess: jest.fn(() => true),
     logSecurityIncident: jest.fn(),
+});
+
+export const createMockSecurityContext = createMockTenantContext;
+
+export const createMockAudit = () => ({
+    logActivity: jest.fn(),
+    logSecurityEvent: jest.fn(),
+    logBusinessEvent: jest.fn(),
+    logSystemEvent: jest.fn(),
 });
 
 export const createMockRateLimiter = () => ({
@@ -79,6 +89,16 @@ export const createMockMail = () => ({
 
 export const getCommonProviders = (additionalProviders: any[] = []): Provider[] => {
     const providers: Provider[] = [
+        {
+            provide: 'ConfigService',
+            useValue: {
+                get: jest.fn((key: string) => {
+                    if (key === 'JWT_SECRET') return 'test-secret';
+                    if (key === 'DATABASE_URL') return 'postgresql://user:pass@localhost:5432/db';
+                    return null;
+                }),
+            },
+        },
         {
             provide: ConfigService,
             useValue: {
@@ -128,6 +148,8 @@ export const getCommonProviders = (additionalProviders: any[] = []): Provider[] 
         },
     ];
 
+    if (additionalProviders.length === 0) return providers;
+
     return providers.filter(p => !additionalProviders.some(ap => {
         const providerToken = (p as any).provide;
         const additionalToken = typeof ap === 'function' ? ap : ap.provide;
@@ -135,4 +157,5 @@ export const getCommonProviders = (additionalProviders: any[] = []): Provider[] 
     }));
 };
 
-export const commonProviders = getCommonProviders;
+// للحفاظ على التوافق مع الكود الذي يستخدمها كمصفوفة
+export const commonProviders = getCommonProviders();
