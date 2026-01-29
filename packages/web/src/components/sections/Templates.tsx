@@ -22,25 +22,25 @@ export const Templates = ({ isAr }: { isAr: boolean }) => {
     const springTransition = { type: "spring", stiffness: 260, damping: 20 }
 
     return (
-        <section className="py-32 bg-slate-950 overflow-hidden relative">
+        <section className="py-32 bg-white dark:bg-slate-950 transition-colors duration-500 overflow-hidden relative border-t border-gray-100 dark:border-white/5">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <motion.div
                     initial={{ opacity: 0, y: 30 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={springTransition}
-                    className="text-center mb-20"
+                    className="text-center mb-24"
                 >
 
-                    <h2 className="text-4xl md:text-6xl font-black mb-6 tracking-tight">
+                    <h2 className="text-5xl md:text-7xl font-black mb-8 tracking-tight text-gray-900 dark:text-white">
                         {isAr ? 'اختر قالبك المثالي' : 'Choose Your Perfect Template'}
                     </h2>
-                    <p className="text-xl text-gray-400 max-w-2xl mx-auto">
+                    <p className="text-2xl text-gray-500 dark:text-gray-400 max-w-3xl mx-auto">
                         {isAr ? 'تصفح مجموعتنا من القوالب المصممة احترافياً' : 'Browse our collection of professionally designed templates'}
                     </p>
                 </motion.div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
                     {allTemplates.map((template) => (
                         <TemplateCard
                             key={template.id}
@@ -55,3 +55,4 @@ export const Templates = ({ isAr }: { isAr: boolean }) => {
         </section>
     )
 }
+

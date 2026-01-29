@@ -4,20 +4,21 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-    "inline-flex items-center justify-center rounded-xl text-sm font-semibold ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 active:scale-95",
+    "inline-flex items-center justify-center rounded-2xl text-sm font-bold ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 active:scale-95 transform-gpu",
     {
         variants: {
             variant: {
-                default: "bg-primary-500 text-white hover:bg-primary-500/90 shadow-[0_10px_20px_-5px_rgba(37,99,235,0.3)]",
-                secondary: "bg-secondary-500 text-white hover:bg-secondary-500/90 shadow-[0_10px_20px_-5px_rgba(6,182,212,0.3)]",
-                outline: "border border-input bg-transparent hover:bg-white/10 dark:hover:bg-white/5",
-                ghost: "hover:bg-accent hover:text-accent-foreground",
+                default: "bg-primary-500 text-white hover:bg-primary-600 shadow-[20px_20px_60px_-15px_rgba(37,99,235,0.3)] border border-primary-400/20",
+                secondary: "bg-secondary-500 text-white hover:bg-secondary-600 shadow-[20px_20px_60px_-15px_rgba(6,182,212,0.3)] border border-secondary-400/20",
+                outline: "border-2 border-gray-200 dark:border-white/10 bg-white/5 backdrop-blur-md text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-white/10",
+                ghost: "hover:bg-gray-100 dark:hover:bg-white/10 text-gray-700 dark:text-gray-200",
             },
             size: {
-                default: "h-10 px-4 py-2",
-                sm: "h-9 rounded-lg px-3",
-                lg: "h-12 rounded-xl px-8 text-base",
-                icon: "h-10 w-10",
+                default: "h-12 px-6 py-3",
+                sm: "h-10 rounded-xl px-4",
+                lg: "h-16 rounded-2xl px-10 text-lg",
+                xl: "h-20 rounded-3xl px-12 text-xl font-black",
+                icon: "h-12 w-12",
             },
         },
         defaultVariants: {
@@ -26,6 +27,7 @@ const buttonVariants = cva(
         },
     }
 )
+
 
 export interface ButtonProps
     extends React.ButtonHTMLAttributes<HTMLButtonElement>,
